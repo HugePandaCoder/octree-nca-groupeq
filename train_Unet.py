@@ -1,37 +1,25 @@
-from re import I
-import time
-import imageio
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
+# REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
+from unet import UNet2D
 from Nii_Gz_Dataset import Nii_Gz_Dataset
-from png_Dataset import png_Dataset
-from IPython.display import clear_output
-from lib.CAModel import CAModel
-from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
-from LossFunctions import DiceLoss, DiceBCELoss
 from Experiment import Experiment, DataSplit
-from Agent_NCA import Agent
-import sys
+import torch
+from LossFunctions import DiceLoss, DiceBCELoss
+from Agent_UNet import Agent
 
-# TODO REMOVE!!! 
-#import warnings
-#warnings.filterwarnings("ignore")
+import warnings
+warnings.filterwarnings("ignore")
 
 config = {
     'out_path': r"D:\PhD\NCA_Experiments",
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/results_pers_noAlpha_keepImage2.pth",
-    'reload': False,
+    'model_path': "models/unet_test2.pth",
+    'reload': True,
     'device':"cuda:0",
     'n_epoch': 40,
     # Learning rate
-    'lr': 2e-4,
+    'lr': 1e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
@@ -40,7 +28,7 @@ config = {
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 16,
+    'batch_size': 64,
     'persistence_chance':0.5,
     # Data
     'input_size': (64, 64),
@@ -56,15 +44,18 @@ exp.set_model_state('train')
 
 device = torch.device(config['device'])
 
-# Create Model
-ca = CAModel(config['channel_n'], config['cell_fire_rate'], device).to(device)
+model = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
+
 if config['reload'] == True:
-    ca.load_state_dict(torch.load(config['model_path']))
+    print("Model loaded")
+    model.load_state_dict(torch.load(config['model_path']))
 
-loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
-#loss = F.mse_loss()
-#loss = diceLoss()
+data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['batch_size'])
+agent = Agent(model, config)
 
-agent = Agent(ca, config)
-agent.train(dataset, config, loss_function)
+loss_function = DiceBCELoss()
+
+agent.train(data_loader, 40, loss_function)
+
+
 

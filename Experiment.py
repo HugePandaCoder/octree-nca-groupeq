@@ -8,17 +8,17 @@ class Experiment():
         if(config['reload'] == True):
             self.reload()
         else:
-            self.initialize()
+            self.setup()
 
         print(config)
         return
     
-    def initialize(self):
+    def setup(self):
         self.data_split = DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
 
     def reload(self):
         # TODO: Proper reload
-        self.initialize()
+        self.setup()
         return
 
     def set_model_state(self, state):

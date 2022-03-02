@@ -21,6 +21,7 @@ import nibabel as nib
 import sys
 import os
 
+from Agent_NCA import Agent
 from Experiment import Experiment, DataSplit
 
 config = {
@@ -28,7 +29,7 @@ config = {
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/results_pers_noAlpha_keepImage.pth",
+    'model_path': "models/results_pers_noAlpha_keepImage_77Dice.pth",
     'reload': True,
     'device':"cuda:0",
     'n_epoch': 40,
@@ -42,15 +43,12 @@ config = {
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 4,
+    'batch_size': 1,
     'persistence_chance':0.5,
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
 }
-
-
-p = config['target_padding']
 
 # Define Experiment
 dataset = Nii_Gz_Dataset(config['input_size'])
@@ -59,20 +57,20 @@ exp.set_model_state('test')
 
 device = torch.device("cpu")
 
-
 ca = CAModel(config['channel_n'], config['cell_fire_rate'], device).to(device)
 ca.load_state_dict(torch.load(config['model_path']))
 
 diceLoss = DiceLoss(useSigmoid=False)
 
-def evaluate(x, target, steps, optimizer, scheduler):
-    x = ca(x, steps=steps)
-    loss = F.mse_loss(x[:, :, :, :3], target)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    scheduler.step()
-    return x, loss
+agent = Agent(ca, config)
+
+data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+
+agent.test(dataset, config, diceLoss)
+
+exit()
+
+p = config['target_padding']
 
 _, id, slice = dataset.__getname__(0).split('_')
 patient_id = id
@@ -80,6 +78,15 @@ patient_3d_image = None
 patient_3d_label = None
 average_loss = 0
 patient_count = 0
+
+#def evaluate(x, target, steps, optimizer, scheduler):
+#    x = ca(x, steps=steps)
+#    loss = F.mse_loss(x[:, :, :, :3], target)
+#    optimizer.zero_grad()
+#    loss.backward()
+#    optimizer.step()
+#    scheduler.step()
+#    return x, loss
 
 for x in range(int(np.floor(dataset.__len__()))):
     # Create images
@@ -90,7 +97,7 @@ for x in range(int(np.floor(dataset.__len__()))):
         pad_target = np.pad(target_img, [(p, p), (p, p), (0, 0)])
         h, w = pad_target.shape[:2]
         pad_target = np.expand_dims(pad_target, axis=0)
-        pad_target = torch.from_numpy(pad_target.astype(np.float32)).to(device)
+        pad_target = torch.from_numpy(pad_target.astype(np.float32)).to(device)#
 
         pad_target_label = np.pad(target_label, [(p, p), (p, p), (0, 0)])
         h, w = pad_target_label.shape[:2]
