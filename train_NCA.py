@@ -26,10 +26,10 @@ config = {
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/results_pers_noAlpha_keepImage2.pth",
-    'reload': False,
+    'model_path': "models/nca_test_c16_cf05_newResLoss_v1.pth",
+    'reload': True,
     'device':"cuda:0",
-    'n_epoch': 40,
+    'n_epoch': 200,
     # Learning rate
     'lr': 2e-4,
     'lr_gamma': 0.9999,
@@ -40,12 +40,13 @@ config = {
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 16,
-    'persistence_chance':0.5,
+    'cell_fire_interval':None,
+    'batch_size': 8,
+    'repeat_factor': 2,
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
-    'pool_chance': 0.7,
+    'pool_chance': 0.5,
     'Persistence': True,
 }
 
@@ -62,8 +63,8 @@ if config['reload'] == True:
     ca.load_state_dict(torch.load(config['model_path']))
 
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
-#loss = F.mse_loss()
-#loss = diceLoss()
+#loss_function = F.mse_loss
+#loss_function = DiceLoss()
 
 agent = Agent(ca, config)
 agent.train(dataset, config, loss_function)

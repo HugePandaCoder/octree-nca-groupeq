@@ -29,7 +29,7 @@ config = {
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/results_pers_noAlpha_keepImage_77Dice.pth",
+    'model_path': "models/nca_test_c16_cf05_noOsc_DotInit_100.pth",
     'reload': True,
     'device':"cuda:0",
     'n_epoch': 40,
@@ -37,7 +37,7 @@ config = {
     'lr': 2e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [64],
+    'inference_steps': [128],
     # Model config
     'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
@@ -66,7 +66,7 @@ agent = Agent(ca, config)
 
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
 
-agent.test(dataset, config, diceLoss)
+agent.test(dataset, config, diceLoss, steps=config['inference_steps'][0])
 
 exit()
 

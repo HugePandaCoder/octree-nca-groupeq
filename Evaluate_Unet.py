@@ -39,7 +39,7 @@ config = {
     'lr': 2e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [64],
+    'inference_steps': [128],
     # Model config
     'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border

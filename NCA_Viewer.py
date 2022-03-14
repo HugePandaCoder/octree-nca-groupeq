@@ -19,7 +19,7 @@ config = {
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/results_pers_noAlpha_keepImage3.pth",
+    'model_path': "models/nca_test_c16_cf05_newResLoss_v1.pth",
     'reload': True,
     'device':"cuda:0",
     'n_epoch': 40,
@@ -107,7 +107,7 @@ def init_input(name):
     pad_target = torch.from_numpy(target_img.astype(np.float32)).to(torch.device('cpu'))
     _map_shape = config['input_size']
 
-    _map = make_seed(_map_shape, config['channel_n'])
+    _map = np.zeros([_map_shape[0], _map_shape[1], config['channel_n']], np.float32) #make_seed(_map_shape, config['channel_n'])
     _map[:, :, 0:3] = pad_target.cpu()
 
     output = torch.from_numpy(_map.reshape([1,_map_shape[0],_map_shape[1],config['channel_n']]).astype(np.float32))
@@ -116,7 +116,7 @@ def init_input(name):
     return output, target_label
 
 def combine_images(img, label):
-    print(label[label == 0])
+    #print(label[label == 0])
     return label
 
 def convert_image(img, label=None):
@@ -188,9 +188,9 @@ while True:
             pass
     elif event == "Play":
         for i in range(64):
-            print(i)
+            #print(i)
             start = time.time()
-            output = model(output, 1)
+            output = model.forward_x(output, 1)
             out_img = convert_image(output, label)
             window["-IMAGE-"].update(data=out_img)
             end = time.time()

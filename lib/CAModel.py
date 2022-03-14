@@ -18,10 +18,15 @@ class CAModel(nn.Module):
             self.fc1.weight.zero_()
 
         self.fire_rate = fire_rate
+
+        self.die_after_choice = False
         self.to(self.device)
 
     def alive(self, x):
         return F.max_pool2d(x[:, 3:4, :, :], kernel_size=3, stride=1, padding=1) > 0.1
+
+    def choiceMade(self, x):
+        return x > 0.5 # F.max_pool2d(x[:, 3, :, :], kernel_size=3, stride=1, padding=1)
 
     def perceive(self, x, angle):
 
@@ -42,8 +47,8 @@ class CAModel(nn.Module):
         y = torch.cat((x,y1,y2),1)
         return y
 
-    def update(self, x, fire_rate, angle):
-        x = x.transpose(1,3)
+    def update(self, x_in, fire_rate, angle):
+        x = x_in.transpose(1,3)
 
         if self.checkCellsAlive:
             pre_life_mask = self.alive(x)
@@ -63,14 +68,29 @@ class CAModel(nn.Module):
         x = x+dx.transpose(1,3)
 
         if self.checkCellsAlive:
-            pre_life_mask = self.alive(x)
+            #pre_life_mask = self.alive(x)
             post_life_mask = self.alive(x)
             life_mask = (pre_life_mask & post_life_mask).float()
             x = x * life_mask
 
-        return x.transpose(1,3)
+        x = x.transpose(1,3)
+
+        if self.die_after_choice:
+            dead_mask = x_in[..., 3] > 0 #x[..., 3]
+            x[..., 3][dead_mask] = 1 #x_in[..., 3][dead_mask]
+            #x[..., 3][dead_mask] = 1
+
+        return x #.transpose(1,3)
 
     def forward(self, x, steps=1, fire_rate=None, angle=0.0):
+        x_sum = x[...,3:6]
+        for step in range(steps):
+            x_temp = self.update(x, fire_rate, angle)
+            x_sum = x_sum + torch.abs(x_temp[..., 3:6] - x[..., 3:6])
+            x[...,3:] = x_temp[...,3:]
+        return x, x_sum
+
+    def forward_x(self, x, steps=1, fire_rate=None, angle=0.0):
         for step in range(steps):
             x[...,3:] = self.update(x, fire_rate, angle)[...,3:]
         return x
