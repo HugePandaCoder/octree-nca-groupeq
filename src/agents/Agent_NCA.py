@@ -1,21 +1,20 @@
 import torch
 import numpy as np
+from src.utils.helper import convert_image
+from src.agents.Agent import BaseAgent
+from src.losses.LossFunctions import DiceLoss
 import torch.optim as optim
-from helper import convert_image
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from IPython.display import clear_output
-from Agent import BaseAgent
-from LossFunctions import DiceLoss
+
 
 class Agent(BaseAgent):
     def __init__(self, model, exp):
         self.exp = exp
         self.model = model
         self.device = torch.device(self.exp.get_from_config('device'))
-
         self.optimizer = optim.Adam(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
-
         self.pool = Pool()
 
     def loss_noOcillation(self, x, target, freeChange=True):
@@ -29,8 +28,16 @@ class Agent(BaseAgent):
             loss = torch.sum(x) / xin_sum
         return loss
 
+    r"""Execute a single step of the NCA
+        Args:
+            x (tensor): Input to model
+            target (tensor): Target of model
+            steps (int): Number of steps for inference
+            optimizer (optim)
+            scheduler (lr_scheduler)
+            loss_function
+    """
     def step(self, x, target, steps, optimizer, scheduler, loss_function):
-        #x_mask = x[:, :, :, 3:6]
         if self.exp.get_from_config('cell_fire_interval'):
             fire_rate_loc = np.random.uniform(low=self.exp.get_from_config('cell_fire_interval')[0], high=self.exp.get_from_config('cell_fire_interval')[1]) #np.random.Generator.uniform(low=self.config['cell_fire_interval'][0], high=self.config['cell_fire_interval'][1])
             x[...,3:] = self.model(x, steps=steps, fire_rate=fire_rate_loc)[...,3:]
@@ -44,20 +51,32 @@ class Agent(BaseAgent):
         scheduler.step()
         return x, loss
 
+    r""" TODO """
     def loss_f(self, x, target):
         return torch.mean(torch.pow(x[..., :3]-target, 2), [-2,-3,-1])
 
+    r"""Creates a padding around the tensor 
+        Args:
+            target (tensor)
+            padding (int): padding on all 4 sides
+    """
     def pad_target_f(self, target, padding):
         target = np.pad(target, [(padding, padding), (padding, padding), (0, 0)])
         target = np.expand_dims(target, axis=0)
         target = torch.from_numpy(target.astype(np.float32)).to(self.device)
         return target
 
+    r"""Create a seed for the NCA - TODO: Currently only 0 input
+        Args:
+            shape ([int, int]): height, width shape
+            n_channels (int): Number of channels
+    """
     def make_seed(self, shape, n_channels):
         seed = np.zeros([shape[0], shape[1], n_channels], np.float32)
         #seed[shape[0]//2, shape[1]//2, 3:] = 1.0
         return seed
 
+    r""" TODO: Describe """
     def createSeed(self, target_img):
         pad_target = self.pad_target_f(target_img, self.exp.get_from_config('target_padding'))
         h, w = pad_target.shape[1:3]
@@ -65,9 +84,20 @@ class Agent(BaseAgent):
         seed[:, :, 0:3] = pad_target.cpu()[0,:,:,:]
         return seed
 
+    r"""Repeat batch -> Useful for better generalisation when doing random activated neurons
+        Args:
+            seed (tensor): Seed for NCA
+            target (tensor): Target of Model
+            repeat_factor (int): How many times it should be repeated
+    """
     def repeatBatch(self, seed, target, repeat_factor):
         return np.repeat(seed, repeat_factor, axis=0), np.repeat(target, repeat_factor, axis=0)
 
+    r"""Create a batch for use with the model
+        Args:
+            dataset (Dataset): To load the input from
+            x (tensor): 
+    """
     def makeBatch(self, dataset, x):
         # Create images
         batch_seed = np.empty([self.exp.get_from_config('batch_size'), self.exp.get_from_config('target_size') + 2* self.exp.get_from_config('target_padding'), self.exp.get_from_config('target_size') + 2* self.exp.get_from_config('target_padding'), self.exp.get_from_config('channel_n')])
@@ -88,6 +118,7 @@ class Agent(BaseAgent):
 
         return batch_seed, batch_target
 
+    # Input: 
     def getInferenceSteps(self):
         if len(self.exp.get_from_config('inference_steps')) == 2:
             steps = np.random.randint(self.exp.get_from_config('inference_steps')[0], self.exp.get_from_config('inference_steps')[1])

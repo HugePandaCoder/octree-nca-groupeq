@@ -1,7 +1,8 @@
 import os
 import torch
+from src.utils.helper import dump_json_file, load_json_file, dump_pickle_file, load_pickle_file
 from torch.utils.tensorboard import SummaryWriter
-from helper import dump_json_file, load_json_file, dump_pickle_file, load_pickle_file
+
 
 class Experiment():
     def __init__(self, config, dataset, model):

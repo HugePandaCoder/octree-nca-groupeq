@@ -7,14 +7,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from Nii_Gz_Dataset import Nii_Gz_Dataset
-from png_Dataset import png_Dataset
+from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from lib.CAModel import CAModel
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
-from LossFunctions import DiceLoss, DiceBCELoss
+from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from Experiment import Experiment, DataSplit
-from Agent_NCA import Agent
+from src.agents.Agent_NCA import Agent
 import sys
 import os
 
@@ -29,7 +29,7 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test10',
+    'model_path': r'models/NCA_Test12',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -38,13 +38,16 @@ config = [{
     'betas': (0.5, 0.5),
     'inference_steps': [64],
     # Model config
-    'channel_n': 32,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 8,
+    'batch_size': 6,
     'repeat_factor': 2,
+    'input_channels': 3,
+    'input_fixed': True,
+    'output_channels': 3,
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
