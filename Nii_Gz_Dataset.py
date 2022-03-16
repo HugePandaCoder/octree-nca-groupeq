@@ -10,12 +10,12 @@ import matplotlib.pyplot as plt
 
 class Nii_Gz_Dataset(Dataset):
 
-    def __init__(self, size): #, root_dir, size
+    def __init__(self): #size , root_dir, size
         #self.root_dir = root_dir
         #self.images_list = listdir(join(root_dir, "imagesTr"))
         #self.labels_list = listdir(join(root_dir, "labelsTr"))
         #self.length = [f for f in listdir(join(root_dir, "imagesTr")) if isfile(join(join(root_dir, "imagesTr"), f))]
-        self.size = size
+        self.size = (64, 64)
         return
 
     # Standard Method to replace depending on naming scheme
@@ -38,6 +38,8 @@ class Nii_Gz_Dataset(Dataset):
         self.labels_list = labels_list
         self.length = len(self.images_list)
 
+    def set_size(self, size):
+        self.size = tuple(size)
 
     def __len__(self):
         return self.length

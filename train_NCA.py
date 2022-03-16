@@ -16,18 +16,20 @@ from LossFunctions import DiceLoss, DiceBCELoss
 from Experiment import Experiment, DataSplit
 from Agent_NCA import Agent
 import sys
+import os
 
 # TODO REMOVE!!! 
 #import warnings
 #warnings.filterwarnings("ignore")
 
-config = {
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
+config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/nca_test_c16_cf05_newResLoss_v1.pth",
-    'reload': True,
+    'model_path': r'models/NCA_Test10',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -36,7 +38,7 @@ config = {
     'betas': (0.5, 0.5),
     'inference_steps': [64],
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 32,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
@@ -47,25 +49,25 @@ config = {
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
-    'Persistence': True,
-}
+    'Persistence': False,
+}#,
+#{
+#    'n_epoch': 200,
+#    'Persistence': True,
+#}
+]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset(config['input_size'])
-exp = Experiment(config, dataset)
+dataset = Nii_Gz_Dataset()
+device = torch.device(config[0]['device'])
+ca = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+exp = Experiment(config, dataset, ca)
 exp.set_model_state('train')
-
-device = torch.device(config['device'])
-
-# Create Model
-ca = CAModel(config['channel_n'], config['cell_fire_rate'], device).to(device)
-if config['reload'] == True:
-    ca.load_state_dict(torch.load(config['model_path']))
 
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-agent = Agent(ca, config)
-agent.train(dataset, config, loss_function)
+agent = Agent(ca, exp)
+agent.train(dataset, loss_function)
 
