@@ -1,7 +1,7 @@
 import PySimpleGUI as sg
 import os
-from Nii_Gz_Dataset import Nii_Gz_Dataset
-from png_Dataset import png_Dataset
+from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.Datasets.png_Dataset import png_Dataset
 from Experiment import Experiment
 from lib.CAModel import CAModel
 import torch

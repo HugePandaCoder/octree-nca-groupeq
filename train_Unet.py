@@ -1,10 +1,10 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
-from Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from Experiment import Experiment, DataSplit
 import torch
-from LossFunctions import DiceLoss, DiceBCELoss
-from Agent_UNet import Agent
+from src.LossFunctions.LossFunctions import DiceLoss, DiceBCELoss
+from src.Agents.Agent_UNet import Agent
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -14,7 +14,7 @@ config = {
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/unet_test2.pth",
+    'model_path': "models/unet_test3.pth",
     'reload': True,
     'device':"cuda:0",
     'n_epoch': 40,
@@ -36,6 +36,24 @@ config = {
     'pool_chance': 0.7,
     'Persistence': True,
 }
+
+# Define Experiment
+dataset = Nii_Gz_Dataset()
+device = torch.device(config[0]['device'])
+ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
+exp = Experiment(config, dataset, ca)
+exp.set_model_state('train')
+
+data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['batch_size'])
+
+loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
+#loss_function = F.mse_loss
+#loss_function = DiceLoss()
+
+agent = Agent(ca, exp)
+agent.train(dataset, loss_function)
+
+exit()
 
 # Define Experiment
 dataset = Nii_Gz_Dataset(config['input_size'])

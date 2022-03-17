@@ -22,6 +22,10 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
+r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
+    Args:
+
+        """
 def convert_image(img, label=None, encode_image=True):
     img_rgb = to_rgb2(img[..., :3]) #+ label[0:3]
     label = label[:,:,:3]#.astype(np.float32)
@@ -51,3 +55,13 @@ def convert_image(img, label=None, encode_image=True):
         return img_rgb
     #  #[..., np.newaxis] [1].tobytes() 
     return img_rgb #np.uint8(img_rgb) #.astype(np.uint8)
+
+def saveNiiGz(self, output, label, patient_id, path):
+    output = np.round(output.cpu().detach().numpy())
+    output[output < 0] = 0
+    output[output > 0] = 1
+    nib_image = nib.Nifti1Image(output, np.eye(4))
+    nib_label = nib.Nifti1Image(label.cpu().detach().numpy(), np.eye(4))
+    nib.save(nib_image, os.path.join(path, patient_id + "_image.nii.gz"))  
+    nib.save(nib_label, os.path.join(path, patient_id + "_label.nii.gz"))  
+    return

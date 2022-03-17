@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 
 from IPython.display import clear_output
 

@@ -3,7 +3,7 @@ import numpy as np
 import torch.optim as optim
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from IPython.display import clear_output
-from Agent import BaseAgent
+from src.agents.Agent import BaseAgent
 
 class Agent(BaseAgent):
 
@@ -21,21 +21,14 @@ class Agent(BaseAgent):
             print("Epoch: " + str(epoch))
             loss_log = []
             for i, data in enumerate(dataloader):
-                #print(len(data[0]))
                 inputs, targets = data
                 inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
-                #print("_______________________________________________________TEST")
                 inputs = inputs.permute(0, 3, 1, 2)
                 targets = targets.permute(0, 3, 1, 2)
-                #print(inputs.shape)
-                outputs = self.model(inputs) #torch.softmax(
+                outputs = self.model(inputs)
 
-                #print(targets.shape)
-                # Optimization step
                 self.optimizer.zero_grad()
-                #print(outputs.shape)
-                #print(targets.shape)
                 loss = loss_f(outputs[:,0,:,:], targets[:,0,:,:])
                 loss_log.append(loss.item())
                 loss.backward()

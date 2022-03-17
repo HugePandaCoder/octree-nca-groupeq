@@ -8,20 +8,20 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from Nii_Gz_Dataset import Nii_Gz_Dataset
-from png_Dataset import png_Dataset
+from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.Datasets.png_Dataset import png_Dataset
 
 from IPython.display import clear_output
 
 from lib.CAModel import CAModel
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 
-from LossFunctions import DiceLoss
+from src.LossFunctions.LossFunctions import DiceLoss
 import nibabel as nib
 import sys
 import os
 
-from Agent_UNet import Agent
+from src.Agents.Agent_UNet import Agent
 from Experiment import Experiment, DataSplit
 
 from unet import UNet2D

@@ -51,7 +51,8 @@ class Agent(BaseAgent):
         scheduler.step()
         return x, loss
 
-    r""" TODO """
+    r"""TODO 
+    """
     def loss_f(self, x, target):
         return torch.mean(torch.pow(x[..., :3]-target, 2), [-2,-3,-1])
 
@@ -76,7 +77,8 @@ class Agent(BaseAgent):
         #seed[shape[0]//2, shape[1]//2, 3:] = 1.0
         return seed
 
-    r""" TODO: Describe """
+    r"""TODO: Describe 
+    """
     def createSeed(self, target_img):
         pad_target = self.pad_target_f(target_img, self.exp.get_from_config('target_padding'))
         h, w = pad_target.shape[1:3]
@@ -118,7 +120,8 @@ class Agent(BaseAgent):
 
         return batch_seed, batch_target
 
-    # Input: 
+    r"""Get the number of steps for inference, if its set to an array its a random value inbetween
+    """
     def getInferenceSteps(self):
         if len(self.exp.get_from_config('inference_steps')) == 2:
             steps = np.random.randint(self.exp.get_from_config('inference_steps')[0], self.exp.get_from_config('inference_steps')[1])
@@ -126,12 +129,19 @@ class Agent(BaseAgent):
             steps = self.exp.get_from_config('inference_steps')[0]
         return steps
     
-    def printIntermediateResults(self, loss, i):
+    r"""Prints intermediate results of training and adds it to tensorboard
+        Args: 
+            loss (torch)
+            epoch (int) 
+    """
+    def printIntermediateResults(self, loss, epoch):
         clear_output()
-        print(i, "loss =", loss.item())
-        self.exp.save_model()#torch.save(self.model.state_dict(), self.exp.get_from_config('model_path'))
-        self.exp.write_scalar('Loss/train', loss, i)
+        print(epoch, "loss =", loss.item())
+        self.exp.save_model()
+        self.exp.write_scalar('Loss/train', loss, epoch)
 
+    r"""TODO: Use dataloader for more functionality instead, find way to do clean with Pool included (Second dataloader?)
+    """
     def train(self, dataset, loss_function):
         loss_log = []
         for i in range(self.exp.currentStep, self.exp.get_max_steps()):
@@ -144,7 +154,6 @@ class Agent(BaseAgent):
                 batch_target = torch.from_numpy(batch_target.astype(np.float32)).to(self.exp.get_from_config(('device')))
                 steps = self.getInferenceSteps()
                 output, loss = self.step(batch_seed, batch_target, steps, self.optimizer, self.scheduler, loss_function) #np.random.randint(64,96)
-                #loss_log.append(loss.item())
                 if(self.exp.get_from_config('Persistence') == True):
                     pool_temp.addToPool(output.detach().cpu(), j*self.exp.get_from_config('batch_size'), self.exp, dataset)
             if(self.exp.get_from_config('Persistence') == True):
@@ -152,13 +161,18 @@ class Agent(BaseAgent):
                 print("Pool size: " + str(self.pool.__len__()))
             if i%1 == 0:
                 self.printIntermediateResults(loss, self.exp.currentStep)
-            if i%10 == 0: # and i != 0:
+            if i%10 == 0:
                 diceLoss = DiceLoss(useSigmoid=False)
-                #torch.cuda.empty_cache()
                 loss_dice = self.test(dataset, diceLoss, self.getInferenceSteps())
                 self.exp.write_scalar('Dice/test', loss_dice, i)
             self.exp.increase_step()
 
+    r"""Evaluate model on testdata by merging it into 3d volumes first
+        Args:
+            dataset (Dataset)
+            loss_f (torch.nn.Module)
+            steps (int): Number of steps to do for inference
+    """
     def test(self, dataset, loss_f, steps=64):
         self.exp.set_model_state('test')
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
@@ -194,6 +208,8 @@ class Agent(BaseAgent):
         self.exp.set_model_state('train')
         return average_loss/patient_count
 
+r"""Keeps the previous outputs of the model in stored in a pool
+"""
 class Pool():
     def __init__(self):
         self.pool = {}
@@ -203,12 +219,24 @@ class Pool():
     def __len__(self):
         return len(self.pool)
 
+    r"""Add a value to the pool
+        Args:
+            output (tensor): Output to store
+            idx (int): idx in dataset
+            exp (Experiment): All experiment related configs
+            dataset (Dataset): The dataset
+    """
     def addToPool(self, output, idx, exp, dataset):
         for j in range(exp.get_from_config('batch_size')):
             if self.rng.random() < exp.get_from_config('pool_chance'):
                 #print("Add to Pool")
                 self.pool[dataset.getIdentifier(idx + j)] = output[j]
 
+    r"""Get value from pool
+        Args:
+            item (int): idx of item
+            dataset (Dataset)
+    """
     def getFromPool(self, item, dataset):   
         target_img, target_label = dataset.__getitem__(item)
         id = dataset.getIdentifier(item)
