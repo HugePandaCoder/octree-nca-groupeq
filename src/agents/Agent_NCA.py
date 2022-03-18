@@ -9,11 +9,13 @@ from IPython.display import clear_output
 
 
 class Agent(BaseAgent):
-    def __init__(self, model, exp):
-        self.exp = exp
+    def __init__(self, model):
+        #self.exp = exp
         self.model = model
+    
+    def initialize(self):
         self.device = torch.device(self.exp.get_from_config('device'))
-        self.optimizer = optim.Adam(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
         self.pool = Pool()
 
@@ -72,9 +74,9 @@ class Agent(BaseAgent):
             shape ([int, int]): height, width shape
             n_channels (int): Number of channels
     """
-    def make_seed(self, shape, n_channels):
-        seed = np.zeros([shape[0], shape[1], n_channels], np.float32)
-        #seed[shape[0]//2, shape[1]//2, 3:] = 1.0
+    def make_seed(self, img):
+        seed = torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
+        seed[..., :img.shape[3]] = img
         return seed
 
     r"""TODO: Describe 
@@ -93,7 +95,7 @@ class Agent(BaseAgent):
             repeat_factor (int): How many times it should be repeated
     """
     def repeatBatch(self, seed, target, repeat_factor):
-        return np.repeat(seed, repeat_factor, axis=0), np.repeat(target, repeat_factor, axis=0)
+        return torch.Tensor.repeat_interleave(seed, repeat_factor, dim=0), torch.Tensor.repeat_interleave(target, repeat_factor, dim=0)
 
     r"""Create a batch for use with the model
         Args:
@@ -142,7 +144,7 @@ class Agent(BaseAgent):
 
     r"""TODO: Use dataloader for more functionality instead, find way to do clean with Pool included (Second dataloader?)
     """
-    def train(self, dataset, loss_function):
+    def train_old(self, dataset, loss_function):
         loss_log = []
         for i in range(self.exp.currentStep, self.exp.get_max_steps()):
             if(self.exp.get_from_config('Persistence') == True):
@@ -167,44 +169,161 @@ class Agent(BaseAgent):
                 self.exp.write_scalar('Dice/test', loss_dice, i)
             self.exp.increase_step()
 
+    r"""Prepare the data to be used with the model
+        Args:
+            data (int, tensor, tensor): identity, image, target mask
+        Returns:
+            inputs (tensor): Input to model
+            targets (tensor): Target of model
+    """
+    def prepare_data(self, data, eval=False):
+        id, inputs, targets = data
+        inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
+        inputs, targets = inputs.to(self.device), targets.to(self.device)
+        inputs = self.make_seed(inputs)
+        if not eval:
+            if self.exp.get_from_config('Persistence'):
+                inputs = self.pool.getFromPool(inputs, id, self.device)
+            inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('repeat_factor'))
+        return id, inputs, targets
+
+    def get_outputs(self, data):
+        id, inputs, targets = data
+        outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+        if self.exp.get_from_config('Persistence'):
+            if np.random.random() < self.exp.get_from_config('pool_chance'):
+                self.epoch_pool.addToPool(outputs.detach(), id)
+        return outputs[..., 3:6], targets
+
+    r"""Create a pool for the current epoch
+    """
+    def initialize_epoch(self):
+        if self.exp.get_from_config('Persistence'):
+            self.epoch_pool = Pool()
+        return
+
+    r"""Set epoch pool as active pool
+    """
+    def conclude_epoch(self):
+        if self.exp.get_from_config('Persistence'):
+            self.pool = self.epoch_pool
+            print("Pool_size: " + str(len(self.pool)))
+        return
+
+    r"""Execute a single batch
+        Args:
+            data (tensor, tensor): inputs, targets
+            loss_f (torch.nn.Module): loss function
+        Returns:
+            loss item
+    """
+    def batch_step(self, data, loss_f):
+        data = self.prepare_data(data)
+        outputs, targets = self.get_outputs(data)
+        self.optimizer.zero_grad()
+        loss = loss_f(outputs, targets)
+        loss.backward()
+        self.optimizer.step()
+        self.scheduler.step()
+        return loss.item()
+
+    r"""Write intermediate results to tensorboard
+        Args:
+            epoch (int): Current epoch
+            los_log ([loss]): Array of losses
+    """
+    def intermediate_results(self, epoch, loss_log):
+        average_loss = sum(loss_log) / len(loss_log)
+        print(epoch, "loss =", average_loss)
+        self.exp.write_scalar('Loss/train', average_loss, epoch)
+
+    r"""Do an intermediate evluation during training 
+        TODO: Make variable for more evaluation scores (Maybe pass list of metrics)
+        Args:
+            dataset (Dataset)
+            epoch (int)
+    """
+    def intermediate_evaluation(self, dataloader, epoch):
+        diceLoss = DiceLoss(useSigmoid=True)
+        dice_score = self.test(diceLoss, self.getInferenceSteps())
+        self.exp.write_scalar('Dice/test', dice_score, epoch)
+        return
+
+    def load_model(self, model_path):
+        self.model.load_state_dict(torch.load(model_path))
+
+    r"""Save state of current model
+    """
+    def save_state(self):
+        self.exp.save_model()
+
+    r"""Execute training of NCA
+        Args:
+            dataloader (Dataloader): contains training data
+            loss_f (nn.Model): The loss for training"""
+    def train(self, dataloader, loss_f):
+        for epoch in range(self.exp.currentStep, self.exp.get_max_steps()):
+            print("Epoch: " + str(epoch))
+            loss_log = []
+            self.initialize_epoch()
+            print('Dataset size: ' + str(len(dataloader)))
+            for i, data in enumerate(dataloader):
+                loss_item = self.batch_step(data, loss_f)
+                loss_log.append(loss_item)
+            self.intermediate_results(epoch, loss_log)
+            if epoch % self.exp.get_from_config('evaluate_interval') == 0:
+                print("Evaluate model")
+                self.intermediate_evaluation(dataloader, epoch)
+            if epoch % self.exp.get_from_config('save_interval') == 0:
+                print("Model saved")
+                self.save_state()
+            self.conclude_epoch()
+            self.exp.increase_epoch()
+
     r"""Evaluate model on testdata by merging it into 3d volumes first
+        TODO: Write nicely with dataloader
         Args:
             dataset (Dataset)
             loss_f (torch.nn.Module)
             steps (int): Number of steps to do for inference
     """
-    def test(self, dataset, loss_f, steps=64):
+    def test(self, loss_f, steps=64):
+        dataset = self.exp.dataset
         self.exp.set_model_state('test')
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
 
         save_img = [5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
-        for i in range(dataset.__len__()):
-            inputs, targets = dataset.__getitem__(i)
-            inputs = self.createSeed(inputs)
-            inputs, targets = torch.from_numpy(np.expand_dims(inputs, axis=0)), torch.from_numpy(np.expand_dims(targets, axis=0))
-            inputs, targets = inputs.to(self.device), targets.to(self.device)
-            outputs = torch.sigmoid(self.model.forward_x(inputs, steps=steps))
+        for i, data in enumerate(dataloader):
+            #data = dataset.__getitem__(i)
+            data = self.prepare_data(data, eval=True)
+            data_id, inputs, _ = data
+            outputs, targets = self.get_outputs(data)
+            #inputs = self.make_seed(inputs)
+            #inputs, targets = torch.from_numpy(np.expand_dims(inputs, axis=0)), torch.from_numpy(np.expand_dims(targets, axis=0))
+            #inputs, targets = inputs.to(self.device), targets.to(self.device)
+            #outputs = torch.sigmoid(self.model.forward_x(inputs, steps=steps))
 
-            _, id, slice = dataset.__getname__(i).split('_')
+            _, id, slice = dataset.__getname__(data_id).split('_')
             #print(id)
             if id != patient_id and patient_id != None:
                 loss = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0)
                 print(patient_id + ", " + str(loss.item()))
-                self.saveNiiGz(patient_3d_image, patient_3d_label, patient_id, self.exp.get_from_config('out_path'))
+                #self.saveNiiGz(patient_3d_image, patient_3d_label, patient_id, self.exp.get_from_config('out_path'))
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
                 average_loss, patient_count = average_loss + loss.item(), patient_count + 1
                 print("Average Dice Loss: " + str(average_loss/patient_count))
 
             if patient_3d_image == None:
                 patient_id = id
-                patient_3d_image = outputs.detach().cpu()[:, :, :, 3] #:4
+                patient_3d_image = outputs.detach().cpu()[:, :, :, 0] #:4
                 patient_3d_label = targets.detach().cpu()[:, :, :, 0]
             else:
-                patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()[:, :, :, 3])) #:4
+                patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()[:, :, :, 0])) #:4
                 patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()[:, :, :, 0])) #:4
             # Add image to tensorboard
             if i in save_img: #np.random.random() < chance:
-                self.exp.write_img('test/img/' + str(patient_id) + "_" + str(len(patient_3d_image)), convert_image(outputs[0].detach().cpu().numpy(), targets[0].detach().cpu().numpy(), encode_image=False), self.exp.currentStep+1)
+                self.exp.write_img('test/img/' + str(patient_id) + "_" + str(len(patient_3d_image)), convert_image(inputs.detach().cpu().numpy()[...,0:3], outputs.detach().cpu().numpy(), targets.detach().cpu().numpy(), encode_image=False), self.exp.currentStep)
         self.exp.set_model_state('train')
         return average_loss/patient_count
 
@@ -213,8 +332,6 @@ r"""Keeps the previous outputs of the model in stored in a pool
 class Pool():
     def __init__(self):
         self.pool = {}
-        self.rng = np.random.default_rng() #12345
-        return
 
     def __len__(self):
         return len(self.pool)
@@ -226,23 +343,19 @@ class Pool():
             exp (Experiment): All experiment related configs
             dataset (Dataset): The dataset
     """
-    def addToPool(self, output, idx, exp, dataset):
-        for j in range(exp.get_from_config('batch_size')):
-            if self.rng.random() < exp.get_from_config('pool_chance'):
-                #print("Add to Pool")
-                self.pool[dataset.getIdentifier(idx + j)] = output[j]
+    def addToPool(self, outputs, ids):
+        for i, key in enumerate(ids):
+            self.pool[key] = outputs[i]
 
     r"""Get value from pool
         Args:
             item (int): idx of item
             dataset (Dataset)
     """
-    def getFromPool(self, item, dataset):   
-        target_img, target_label = dataset.__getitem__(item)
-        id = dataset.getIdentifier(item)
-        if id in self.pool:
-            return self.pool[id], target_label, True
-        else:
-            return target_img, target_label, False
+    def getFromPool(self, inputs, ids, device):   
+        for i, key in enumerate(ids):
+            if key in self.pool.keys():
+                inputs[i] = self.pool[key].to(device)
+        return inputs
 
     

@@ -41,7 +41,8 @@ config = {
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
 ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
-exp = Experiment(config, dataset, ca)
+agent = Agent(ca)
+exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['batch_size'])
@@ -50,7 +51,6 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-agent = Agent(ca, exp)
 agent.train(dataset, loss_function)
 
 exit()

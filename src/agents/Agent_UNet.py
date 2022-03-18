@@ -16,7 +16,6 @@ class Agent(BaseAgent):
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, config['lr_gamma'])
 
     def train(self, dataloader, epochs, loss_f):
-        
         for epoch in range(epochs):
             print("Epoch: " + str(epoch))
             loss_log = []

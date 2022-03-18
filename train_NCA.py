@@ -26,24 +26,27 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test12',
+    'model_path': r'models/NCA_Test18_tiny_dataloader',
     'device':"cuda:0",
-    'n_epoch': 200,
+    'n_epoch': 1000,
     # Learning rate
     'lr': 2e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
+    # Training config
+    'save_interval': 10,
+    'evaluate_interval': 10,
     # Model config
-    'channel_n': 64,        # Number of CA state channels
+    'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 6,
+    'batch_size': 12,
     'repeat_factor': 2,
     'input_channels': 3,
     'input_fixed': True,
@@ -53,24 +56,24 @@ config = [{
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
-}#,
-#{
-#    'n_epoch': 200,
-#    'Persistence': True,
-#}
+},
+{
+    'n_epoch': 2000,
+    'Persistence': True,
+}
 ]
 
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
 ca = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
-exp = Experiment(config, dataset, ca)
+agent = Agent(ca)
+exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
+data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
-
-agent = Agent(ca, exp)
-agent.train(dataset, loss_function)
+agent.train(data_loader, loss_function)
 

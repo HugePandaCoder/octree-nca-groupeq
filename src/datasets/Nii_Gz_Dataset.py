@@ -73,7 +73,7 @@ class Nii_Gz_Dataset(Dataset):
     def __getitem__(self, idx):
         img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
         label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
-        return self.processing(img, label)
+        return idx, *self.processing(img, label)
 
     r"""TODO: Remove redundancy"""
     def getIdentifier(self, idx):

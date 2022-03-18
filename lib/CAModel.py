@@ -82,7 +82,7 @@ class CAModel(nn.Module):
 
         return x #.transpose(1,3)
 
-    def forward(self, x, steps=1, fire_rate=None, angle=0.0):
+    def forward_old(self, x, steps=1, fire_rate=None, angle=0.0):
         x_sum = x[...,3:6]
         for step in range(steps):
             x_temp = self.update(x, fire_rate, angle)
@@ -90,7 +90,7 @@ class CAModel(nn.Module):
             x[...,3:] = x_temp[...,3:]
         return x, x_sum
 
-    def forward_x(self, x, steps=1, fire_rate=None, angle=0.0):
+    def forward(self, x, steps=1, fire_rate=None, angle=0.0):
         for step in range(steps):
             x[...,3:] = self.update(x, fire_rate, angle)[...,3:]
         return x

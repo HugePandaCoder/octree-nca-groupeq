@@ -26,13 +26,14 @@ r"""Convert an image plus an optional label into one image that can be dealt wit
     Args:
 
         """
-def convert_image(img, label=None, encode_image=True):
-    img_rgb = to_rgb2(img[..., :3]) #+ label[0:3]
-    label = label[:,:,:3]#.astype(np.float32)
+def convert_image(img, prediction, label=None, encode_image=True):
+    img_rgb = to_rgb2(img) #+ label[0:3]
     img_rgb = img_rgb - np.amin(img_rgb)
     img_rgb = img_rgb * img_rgb #* img_rgb * 3
     img_rgb = img_rgb / np.amax(img_rgb)
-    label_pred = to_rgb2(img[..., 3:6])
+    label_pred = to_rgb2(prediction)
+
+    img_rgb, label, label_pred = [v.squeeze() for v in [img_rgb, label, label_pred]]
 
     if label is not None:
         sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
