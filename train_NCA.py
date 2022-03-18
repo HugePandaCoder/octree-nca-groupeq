@@ -29,7 +29,7 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test18_tiny_dataloader',
+    'model_path': r'models/NCA_Test20_tiny_dataloader',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate

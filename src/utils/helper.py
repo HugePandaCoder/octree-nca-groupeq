@@ -3,6 +3,7 @@ import json
 import cv2
 import numpy as np
 from lib.utils_vis import to_rgb, to_rgb2, make_seed
+import seaborn as sns
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -23,6 +24,7 @@ def load_json_file(path):
     return file
 
 r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
+    TODO: Write nicely and optmiize output, currently only for displaying intermediate results
     Args:
 
         """
@@ -65,4 +67,10 @@ def saveNiiGz(self, output, label, patient_id, path):
     nib_label = nib.Nifti1Image(label.cpu().detach().numpy(), np.eye(4))
     nib.save(nib_image, os.path.join(path, patient_id + "_image.nii.gz"))  
     nib.save(nib_label, os.path.join(path, patient_id + "_label.nii.gz"))  
-    return
+    
+
+r"""Plot individual patient scores
+    TODO: 
+"""
+def loss_log_to_image(loss_log):
+    sns.scatterplot(data=loss_log, x="id", y="Dice")

@@ -1,41 +1,43 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
-from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from Experiment import Experiment, DataSplit
 import torch
-from src.LossFunctions.LossFunctions import DiceLoss, DiceBCELoss
-from src.Agents.Agent_UNet import Agent
+from src.losses.LossFunctions import DiceLoss, DiceBCELoss
+from src.agents.Agent_UNet import Agent
 
 import warnings
 warnings.filterwarnings("ignore")
 
-config = {
+config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/unet_test3.pth",
-    'reload': True,
+    'model_path': r'models/UNet_Test2',
     'device':"cuda:0",
-    'n_epoch': 40,
+    'n_epoch': 1000,
     # Learning rate
     'lr': 1e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
+    # Training config
+    'save_interval': 100,
+    'evaluate_interval': 10,
     # Model config
     'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 64,
+    'batch_size': 32,
     'persistence_chance':0.5,
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.7,
     'Persistence': True,
-}
+}]
 
 # Define Experiment
 dataset = Nii_Gz_Dataset()
@@ -45,13 +47,13 @@ agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=config['batch_size'])
+data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-agent.train(dataset, loss_function)
+agent.train(data_loader, loss_function)
 
 exit()
 
