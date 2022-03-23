@@ -4,7 +4,7 @@ from src.utils.helper import dump_json_file, load_json_file, dump_pickle_file, l
 from torch.utils.tensorboard import SummaryWriter
 
 r"""This class handles:
-        - Interactions with the drive
+        - Interactions with the experiment folder
         - Loading / Saving experiments
         - Datasets
 """
@@ -27,6 +27,7 @@ class Experiment():
         # Create dirs
         os.makedirs(self.config['model_path'], exist_ok=True)
         os.makedirs(os.path.join(self.config['model_path'], 'models'), exist_ok=True)
+        os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
         # Create basic configuration
         self.data_split = DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
         dump_pickle_file(self.data_split, os.path.join(self.config['model_path'], 'data_split.dt'))
@@ -57,9 +58,11 @@ class Experiment():
     """
     def general(self):
         self.dataset.set_size(self.config['input_size'])
-        self.writer = SummaryWriter(log_dir=self.get_from_config('model_path'))
+        self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
         self.set_current_config()
         self.agent.set_exp(self)
+        if self.currentStep == 0:
+            self.write_text('config', str(self.projectConfig), 0)
 
     r"""Reload model
         TODO: Move to a more logical position. Probably to the model and then call directly from the agent
@@ -127,6 +130,10 @@ class Experiment():
     """
     def write_img(self, tag, image, step):
         self.writer.add_image(tag, image, step, dataformats='HWC')
+
+    def write_text(self, tag, text, step):
+        self.writer.add_text(tag, text, step)
+
 
 r"""Handles the splitting of data
 """

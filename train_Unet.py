@@ -14,7 +14,7 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/UNet_Test2',
+    'model_path': r'models/UNet_Test3',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate

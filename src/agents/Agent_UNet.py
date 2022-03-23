@@ -8,6 +8,13 @@ from src.losses.LossFunctions import DiceLoss
 
 class Agent(BaseAgent):
 
+    r"""Prepare the data to be used with the model
+        Args:
+            data (int, tensor, tensor): identity, image, target mask
+        Returns:
+            inputs (tensor): Input to model
+            targets (tensor): Target of model
+    """
     def prepare_data(self, data, eval=False):
         id, inputs, targets = data
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)

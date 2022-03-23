@@ -26,14 +26,14 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test20_tiny_dataloader',
+    'model_path': r'models/NCA_Test25_dataloader_c64_l16e4',
     'device':"cuda:0",
-    'n_epoch': 1000,
+    'n_epoch': 200,
     # Learning rate
-    'lr': 2e-4,
+    'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
@@ -41,13 +41,13 @@ config = [{
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 12,
-    'repeat_factor': 2,
+    'batch_size': 10,
+    'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
     'output_channels': 3,
@@ -56,11 +56,11 @@ config = [{
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
-},
-{
-    'n_epoch': 2000,
-    'Persistence': True,
-}
+}#,
+#{
+#    'n_epoch': 2000,
+#    'Persistence': True,
+#}
 ]
 
 # Define Experiment
