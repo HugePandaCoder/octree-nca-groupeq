@@ -61,7 +61,7 @@ class Nii_Gz_Dataset(Dataset):
     def getitembyname(self, name):
         img = nib.load(os.path.join(self.images_path, name)).get_fdata()
         label = nib.load(os.path.join(self.labels_path, name)).get_fdata()[..., np.newaxis]
-        return self.processing(img, label)
+        return self.preprocessing(img, label)
 
     r"""Standard get item function
         Args:
@@ -73,7 +73,7 @@ class Nii_Gz_Dataset(Dataset):
     def __getitem__(self, idx):
         img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
         label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
-        return idx, *self.processing(img, label)
+        return idx, *self.preprocessing(img, label)
 
     r"""TODO: Remove redundancy"""
     def getIdentifier(self, idx):
@@ -84,7 +84,7 @@ class Nii_Gz_Dataset(Dataset):
             img (numpy): Image to preprocess
             label (numpy): Label to preprocess
     """
-    def processing(self, img, label):
+    def preprocessing(self, img, label):
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)

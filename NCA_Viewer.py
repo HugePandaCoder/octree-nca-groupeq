@@ -1,7 +1,7 @@
 import PySimpleGUI as sg
 import os
-from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
-from src.Datasets.png_Dataset import png_Dataset
+from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.png_Dataset import png_Dataset
 from Experiment import Experiment
 from lib.CAModel import CAModel
 import torch
@@ -13,15 +13,16 @@ from PIL import Image
 import io
 import time
 import matplotlib.pyplot as plt
+from src.agents.Agent_NCA import Agent
+from src.utils.helper import convert_image
 
-config = {
+config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/nca_test_c16_cf05_newResLoss_v1.pth",
-    'reload': True,
-    'device':"cuda:0",
+    'model_path': "models/NCA_Test25_dataloader_c64_l16e4.pth",
+    'device':"cpu",
     'n_epoch': 40,
     # Learning rate
     'lr': 2e-4,
@@ -38,13 +39,15 @@ config = {
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
-}
+}]
 
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset(config['input_size'])
-exp = Experiment(config, dataset)
+dataset = Nii_Gz_Dataset()
+model = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
+agent = Agent(model)
+exp = Experiment(config, dataset, model, agent)
 exp.set_model_state('test')
 
 
@@ -93,33 +96,35 @@ layout = [
     ]
 ]
 
-model = CAModel(config['channel_n'], config['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
-if config['reload'] == True:
-    model.load_state_dict(torch.load(config['model_path']))
+#if config['reload'] == True:
+#    model.load_state_dict(torch.load(config['model_path']))
 
 def init_input(name):
     target_img, target_label = dataset.getitembyname(name)
-
+    target_img, target_label = torch.from_numpy(target_img), torch.from_numpy(target_label)
     #pad_target = np.pad(target_img, [(0, 0), (0, 0), (0, 0)])
     #h, w = pad_target.shape[:2]
     #pad_target = np.expand_dims(pad_target, axis=0)
     #pad_target = torch.from_numpy(pad_target.astype(np.float32)).to(torch.device('cpu'))
-    pad_target = torch.from_numpy(target_img.astype(np.float32)).to(torch.device('cpu'))
-    _map_shape = config['input_size']
+    #pad_target = torch.from_numpy(target_img.astype(np.float32)).to(torch.device('cpu'))
+    #_map_shape = config['input_size']
 
-    _map = np.zeros([_map_shape[0], _map_shape[1], config['channel_n']], np.float32) #make_seed(_map_shape, config['channel_n'])
-    _map[:, :, 0:3] = pad_target.cpu()
+    data = 0, torch.unsqueeze(target_img, 0), torch.unsqueeze(target_label, 0)
 
-    output = torch.from_numpy(_map.reshape([1,_map_shape[0],_map_shape[1],config['channel_n']]).astype(np.float32))
+    data = agent.prepare_data(data, eval=True)
+    _, output, target_label = data
+    #_map = np.zeros([_map_shape[0], _map_shape[1], config['channel_n']], np.float32) #make_seed(_map_shape, config['channel_n'])
+    #_map[:, :, 0:3] = pad_target.cpu()
+
+    #output = torch.from_numpy(_map.reshape([1,_map_shape[0],_map_shape[1],config['channel_n']]).astype(np.float32))
     #target_output = torch.from_numpy(target_label.astype(np.float32)).to(torch.device('cpu'))
-
     return output, target_label
 
 def combine_images(img, label):
     #print(label[label == 0])
     return label
 
-def convert_image(img, label=None):
+#def convert_image(img, label=None):
     img_rgb = to_rgb2(img.detach().numpy()[0][..., :3]) #+ label[0:3]
     label = label[:,:,:3]#.astype(np.float32)
     label_pred = to_rgb2(img.detach().numpy()[0][..., 3:6])
@@ -180,8 +185,11 @@ while True:
                 values["-Images-"], values["-FILE LIST-"][0]
             )
             output, label = init_input(values["-FILE LIST-"][0])
-            out_img = convert_image(output, label)#cv2.imencode(".png", to_rgb(output.detach().numpy()[0])*256)[1].tobytes() 
-
+            print("TEST2")
+            print(output.shape)
+            print(label.shape)
+            out_img = convert_image(output[...,:3], output[...,3:6], label)#cv2.imencode(".png", to_rgb(output.detach().numpy()[0])*256)[1].tobytes() 
+            print("TEST")
             window["-TOUT-"].update(filename)
             window["-IMAGE-"].update(data=out_img)
         except:
@@ -190,8 +198,10 @@ while True:
         for i in range(64):
             #print(i)
             start = time.time()
-            output = model.forward_x(output, 1)
+            output = model(output, 1)
+            print(output.shape)
             out_img = convert_image(output, label)
+            print(out_img.shape)
             window["-IMAGE-"].update(data=out_img)
             end = time.time()
             time_passed = end-start

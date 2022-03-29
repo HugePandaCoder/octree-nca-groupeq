@@ -137,15 +137,17 @@ class BaseAgent():
             data_id, inputs, _ = data
             outputs, targets = self.get_outputs(data)
 
-            _, id, slice = dataset.__getname__(data_id).split('_')
+            if isinstance(data_id, str):
+                print("IsInstance")
+                _, id, slice = dataset.__getname__(data_id).split('_')
+            else:
+                _, id, slice = data_id[0].split('_')
+
             #print(id)
             if id != patient_id and patient_id != None:
                 loss_log[id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
                 print(patient_id + ", " + str(loss_log[id]))
-                #self.saveNiiGz(patient_3d_image, patient_3d_label, patient_id, self.exp.get_from_config('out_path'))
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
-                #average_loss, patient_count = average_loss + loss.item(), patient_count + 1
-                print("Average Dice Loss: " + str(sum(loss_log.values())/len(loss_log)))
 
             if patient_3d_image == None:
                 patient_id = id
@@ -161,5 +163,9 @@ class BaseAgent():
                 self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
                 self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
                 encode_image=False), self.exp.currentStep)
+
+        loss_log[id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+        print("Average Dice Loss: " + str(sum(loss_log.values())/len(loss_log)))
+
         self.exp.set_model_state('train')
         return loss_log
