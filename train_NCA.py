@@ -46,7 +46,7 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 10,
+    'batch_size': 1,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -75,5 +75,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
-agent.train(data_loader, loss_function)
+exp.temporarly_overwrite_config(config)
+agent.getAverageDiceScore()
+#agent.test(data_loader, loss_function)
 

@@ -1,12 +1,13 @@
 import torch
 import numpy as np
-from src.utils.helper import convert_image
+from src.utils.helper import convert_image, dump_compressed_pickle_file, load_compressed_pickle_file
 from src.agents.Agent import BaseAgent
 from src.losses.LossFunctions import DiceLoss
 import torch.optim as optim
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from IPython.display import clear_output
-
+from src.utils.helper import dump_pickle_file, load_pickle_file
+import os
 
 class Agent(BaseAgent):
     
@@ -29,6 +30,20 @@ class Agent(BaseAgent):
     """
     def loss_f(self, x, target):
         return torch.mean(torch.pow(x[..., :3]-target, 2), [-2,-3,-1])
+
+    r"""Save state - Add Pool to state
+    """
+    def save_state(self, model_path):
+        super().save_state(model_path)
+        if self.pool.__len__() != 0:
+            dump_compressed_pickle_file(self.pool, os.path.join(model_path, 'pool.pbz2'))
+
+    r"""Load state - Add Pool to state
+    """
+    def load_state(self, model_path):
+        super().load_state(model_path)
+        if os.path.exists(os.path.join(model_path, 'pool.pbz2')):
+            self.pool = load_compressed_pickle_file(os.path.join(model_path, 'pool.pbz2'))
 
     r"""Creates a padding around the tensor 
         Args:

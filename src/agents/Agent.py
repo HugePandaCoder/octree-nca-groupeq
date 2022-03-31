@@ -81,21 +81,34 @@ class BaseAgent():
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
         self.exp.write_scalar('Dice/test', sum(loss_log.values())/len(loss_log), epoch)
+        self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
+
+    def getAverageDiceScore(self):
+        diceLoss = DiceLoss(useSigmoid=True)
+        loss_log = self.test(diceLoss)
+        return sum(loss_log.values())/len(loss_log)
 
     r"""Save state of current model
     """
-    def save_state(self):
-        self.exp.save_model()
+    def save_state(self, model_path):
+        os.makedirs(model_path, exist_ok=True)
+        torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
+        torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
+        torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
 
-    def load_model(self, model_path):
-        self.model.load_state_dict(torch.load(model_path))
+    r"""Load state of current model
+    """
+    def load_state(self, model_path):
+        self.model.load_state_dict(torch.load(os.path.join(model_path, 'model.pth')))
+        self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
+        self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
 
     r"""Execute training of model
         Args:
             dataloader (Dataloader): contains training data
             loss_f (nn.Model): The loss for training"""
     def train(self, dataloader, loss_f):
-        for epoch in range(self.exp.currentStep, self.exp.get_max_steps()):
+        for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
             print("Epoch: " + str(epoch))
             loss_log = []
             self.initialize_epoch()
@@ -109,7 +122,7 @@ class BaseAgent():
                 self.intermediate_evaluation(dataloader, epoch)
             if epoch % self.exp.get_from_config('save_interval') == 0:
                 print("Model saved")
-                self.save_state()
+                self.save_state(os.path.join(self.exp.get_from_config('model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
             self.conclude_epoch()
             self.exp.increase_epoch()
 
@@ -138,7 +151,6 @@ class BaseAgent():
             outputs, targets = self.get_outputs(data)
 
             if isinstance(data_id, str):
-                print("IsInstance")
                 _, id, slice = dataset.__getname__(data_id).split('_')
             else:
                 _, id, slice = data_id[0].split('_')

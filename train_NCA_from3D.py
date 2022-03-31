@@ -26,10 +26,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Prostate\original_dataset\ISBI\Images",
-    'label_path': r"M:\MasterThesis\Datasets\Prostate\original_dataset\ISBI\Labels",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\hippocampus_3d\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\hippocampus_3d\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test25_dataloader_3D_c64_l16e4_prostate',
+    'model_path': r'models/NCA_Test25_dataloader_3D_c64_l16e4_hippocampus_remove',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -46,7 +46,7 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 10,
+    'batch_size': 8,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,

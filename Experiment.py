@@ -15,11 +15,13 @@ class Experiment():
         self.dataset = dataset
         self.model = model
         self.agent = agent
-        if(os.path.isdir(self.config['model_path'])):
+        self.general()
+        if(os.path.isdir(os.path.join(self.config['model_path'], 'models'))):
             self.reload()
         else:
             self.setup()
-        self.general()
+        self.currentStep = self.currentStep+1
+
     
     r"""Initial experiment setup when first started
     """
@@ -32,7 +34,14 @@ class Experiment():
         self.data_split = DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
         dump_pickle_file(self.data_split, os.path.join(self.config['model_path'], 'data_split.dt'))
         dump_json_file(self.projectConfig, os.path.join(self.config['model_path'], 'config.dt'))
-        self.currentStep = 0
+
+    r"""This function is useful for evaluation purposes where you want to change the config, e.g. data paths or similar.
+        It does not save the config and should NEVER be used during training.
+    """
+    def temporarly_overwrite_config(self, config):
+        print("WARNING: NEVER USE \'temporarly_overwrite_config\' FUNCTION DURING TRAINING.")
+        self.projectConfig = config
+        self.set_current_config()
 
     r"""Get max defined training steps of experiment
     """
@@ -44,19 +53,19 @@ class Experiment():
     """
     def reload(self):
         # TODO: Proper reload
-        self.currentStep = self.current_step()
         self.data_split = load_pickle_file(os.path.join(self.config['model_path'], 'data_split.dt'))
         self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
         self.config = self.projectConfig[0]
-        model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep), 'model.pth')
+        model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
         if os.path.exists(model_path):
-            self.agent.load_model(model_path)
-        print("Reload State " + str(self.currentStep))
+            print("Reload State " + str(self.currentStep))
+            self.agent.load_state(model_path)
         #self.setup()
         
     r"""General experiment configurations needed after setup or loading
     """
     def general(self):
+        self.currentStep = self.current_step()
         self.dataset.set_size(self.config['input_size'])
         self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
         self.set_current_config()
@@ -70,7 +79,8 @@ class Experiment():
     def reload_model(self):
         model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep), 'model.pth')
         if os.path.exists(model_path):
-            self.model.load_state_dict(torch.load(model_path))
+            self.agent.load_model(model_path)
+            #self.model.load_state_dict(torch.load(model_path))
 
     r"""TODO: Same as for reload -> move to better location
     """
@@ -82,12 +92,13 @@ class Experiment():
 
     r"""Find out the initial epoch by checking the saved models"""
     def current_step(self):
-        dirs = [d for d in os.listdir(os.path.join(self.config['model_path'], 'models')) if os.path.isdir(os.path.join(os.path.join(self.config['model_path'], 'models'), d))]
-        if dirs:
-            maxDir = max([int(d.split('_')[1]) for d in dirs])
-            return maxDir
-        else: 
-            return 0
+        model_path = os.path.join(self.config['model_path'], 'models')
+        if os.path.exists(model_path):
+            dirs = [d for d in os.listdir(model_path) if os.path.isdir(os.path.join(os.path.join(self.config['model_path'], 'models'), d))]
+            if dirs:
+                maxDir = max([int(d.split('_')[1]) for d in dirs])
+                return maxDir
+        return 0
 
     r"""TODO: remove? """
     def set_model_state(self, state):
@@ -126,13 +137,20 @@ class Experiment():
     def write_scalar(self, tag, value, step):
         self.writer.add_scalar(tag, value, step)
 
-    r"""Write an image to tenorboard
+    r"""Write an image to tensorboard
     """
     def write_img(self, tag, image, step):
         self.writer.add_image(tag, image, step, dataformats='HWC')
 
+    r"""Write text to tensorboard
+    """
     def write_text(self, tag, text, step):
         self.writer.add_text(tag, text, step)
+
+    r"""Write data as histogram to tensorboard
+    """
+    def write_histogram(self, tag, data, step):
+        self.writer.add_histogram(tag, data, step)
 
 
 r"""Handles the splitting of data

@@ -1,3 +1,4 @@
+from cmath import nan
 import torch
 from torch.utils.data import Dataset, DataLoader
 from os import listdir
@@ -73,6 +74,7 @@ class Nii_Gz_Dataset(Dataset):
     def __getitem__(self, idx):
         img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
         label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
+        idx = self.__getname__(idx)
         return idx, *self.preprocessing(img, label)
 
     r"""TODO: Remove redundancy"""
@@ -88,6 +90,7 @@ class Nii_Gz_Dataset(Dataset):
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        img[np.isnan(img)] = 1
 
         label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
         label = np.repeat(label[:, :, np.newaxis], 3, axis=2)

@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from lib.utils_vis import to_rgb, to_rgb2, make_seed
 import seaborn as sns
+import bz2
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -14,6 +15,15 @@ def load_pickle_file(path):
         file =  pickle.load(input_file)
     return file
 
+def dump_compressed_pickle_file(file, path):
+    with bz2.BZ2File(path, 'w') as output_file:
+        pickle.dump(file, output_file)
+
+def load_compressed_pickle_file(path):
+    with bz2.BZ2File(path, 'rb') as input_file:
+        file = pickle.load(input_file)
+    return file
+    
 def dump_json_file(file, path):
     with open(path, 'w') as output_file:
         json.dump(file, output_file)
