@@ -11,18 +11,19 @@ import os
 import matplotlib.pyplot as plt
 
 class Nii_Gz_Dataset(Dataset):
+    r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""
 
     def __init__(self): 
         self.size = (64, 64)
         return
 
-    r"""Get files in path ordered by id and slice
-        Args:
-            path (string): The path which should be worked through
-        Returns:
-            dic (dictionary): {key:patientID, {key:sliceID, img_slice}
-    """
     def getFilesInPath(self, path):
+        r"""Get files in path ordered by id and slice
+            Args:
+                path (string): The path which should be worked through
+            Returns:
+                dic (dictionary): {key:patientID, {key:sliceID, img_slice}
+        """
         dir_files = listdir(join(path))
         dic = {}
         for f in dir_files:
@@ -32,61 +33,61 @@ class Nii_Gz_Dataset(Dataset):
             dic[id][slice] = f
         return dic
 
-    r"""TODO"""
     def setPaths(self, images_path, images_list, labels_path, labels_list):
+        r"""TODO"""
         self.images_path = images_path
         self.images_list = images_list
         self.labels_path = labels_path
         self.labels_list = labels_list
         self.length = len(self.images_list)
 
-    r"""Set size of images
-        Args:
-            size (int, int): Size of images
-    """
     def set_size(self, size):
+        r"""Set size of images
+            Args:
+                size (int, int): Size of images
+        """
         self.size = tuple(size)
 
-    r"""Get number of items in dataset"""
     def __len__(self):
+        r"""Get number of items in dataset"""
         return self.length
 
-    r"""Get name of item by id"""
     def __getname__(self, idx):
+        r"""Get name of item by id"""
         return self.images_list[idx]
 
-    r"""Get item by its name
-        Args:
-            name (string): Name of item
-    """
     def getitembyname(self, name):
+        r"""Get item by its name
+            Args:
+                name (string): Name of item
+        """
         img = nib.load(os.path.join(self.images_path, name)).get_fdata()
         label = nib.load(os.path.join(self.labels_path, name)).get_fdata()[..., np.newaxis]
         return self.preprocessing(img, label)
 
-    r"""Standard get item function
-        Args:
-            idx (int): Id of item to loa
-        Returns:
-            img (numpy): Image data
-            label (numpy): Label data
-    """
     def __getitem__(self, idx):
+        r"""Standard get item function
+            Args:
+                idx (int): Id of item to loa
+            Returns:
+                img (numpy): Image data
+                label (numpy): Label data
+        """
         img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
         label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
         idx = self.__getname__(idx)
         return idx, *self.preprocessing(img, label)
 
-    r"""TODO: Remove redundancy"""
     def getIdentifier(self, idx):
+        r""".. TODO:: Remove redundancy"""
         return self.__getname__(idx)
 
-    r"""Preprocessing of image
-        Args:
-            img (numpy): Image to preprocess
-            label (numpy): Label to preprocess
-    """
     def preprocessing(self, img, label):
+        r"""Preprocessing of image
+            Args:
+                img (numpy): Image to preprocess
+                label (numpy): Label to preprocess
+        """
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)

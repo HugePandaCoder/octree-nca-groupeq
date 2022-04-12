@@ -33,12 +33,12 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
-r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
-    TODO: Write nicely and optmiize output, currently only for displaying intermediate results
-    Args:
-
-        """
 def convert_image(img, prediction, label=None, encode_image=True):
+    r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
+        TODO: Write nicely and optmiize output, currently only for displaying intermediate results
+        Args:
+
+            """
     img_rgb = to_rgb2(img) #+ label[0:3]
     img_rgb = img_rgb - np.amin(img_rgb)
     img_rgb = img_rgb * img_rgb #* img_rgb * 3

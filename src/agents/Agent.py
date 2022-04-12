@@ -21,12 +21,12 @@ class BaseAgent():
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
 
-    r"""Prints intermediate results of training and adds it to tensorboard
-        Args: 
-            loss (torch)
-            epoch (int) 
-    """
     def printIntermediateResults(self, loss, epoch):
+        r"""Prints intermediate results of training and adds it to tensorboard
+            Args: 
+                loss (torch)
+                epoch (int) 
+        """
         #clear_output()
         print(epoch, "loss =", loss.item())
         self.exp.save_model()
@@ -44,14 +44,14 @@ class BaseAgent():
     def conclude_epoch(self):
         return
 
-    r"""Execute a single batch training step
-        Args:
-            data (tensor, tensor): inputs, targets
-            loss_f (torch.nn.Module): loss function
-        Returns:
-            loss item
-    """
     def batch_step(self, data, loss_f):
+        r"""Execute a single batch training step
+            Args:
+                data (tensor, tensor): inputs, targets
+                loss_f (torch.nn.Module): loss function
+            Returns:
+                loss item
+        """
         data = self.prepare_data(data)
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
@@ -61,53 +61,59 @@ class BaseAgent():
         self.scheduler.step()
         return loss.item()
 
-    r"""Write intermediate results to tensorboard
-        Args:
-            epoch (int): Current epoch
-            los_log ([loss]): Array of losses
-    """
     def intermediate_results(self, epoch, loss_log):
+        r"""Write intermediate results to tensorboard
+            Args:
+                epoch (int): Current epoch
+                los_log ([loss]): Array of losses
+        """
         average_loss = sum(loss_log) / len(loss_log)
         print(epoch, "loss =", average_loss)
         self.exp.write_scalar('Loss/train', average_loss, epoch)
 
-    r"""Do an intermediate evluation during training 
-        TODO: Make variable for more evaluation scores (Maybe pass list of metrics)
-        Args:
-            dataset (Dataset)
-            epoch (int)
-    """
     def intermediate_evaluation(self, dataloader, epoch):
+        r"""Do an intermediate evluation during training 
+            TODO: Make variable for more evaluation scores (Maybe pass list of metrics)
+            Args:
+                dataset (Dataset)
+                epoch (int)
+        """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
         self.exp.write_scalar('Dice/test', sum(loss_log.values())/len(loss_log), epoch)
         self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
+        param_lst = []
+        for param in self.model.parameters():
+            print(param.flatten())
+            param_lst.extend(np.fromiter(param.flatten(), dtype=float))
+        print(param_lst)
+        self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
     def getAverageDiceScore(self):
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
         return sum(loss_log.values())/len(loss_log)
 
-    r"""Save state of current model
-    """
     def save_state(self, model_path):
+        r"""Save state of current model
+        """
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
 
-    r"""Load state of current model
-    """
     def load_state(self, model_path):
+        r"""Load state of current model
+        """
         self.model.load_state_dict(torch.load(os.path.join(model_path, 'model.pth')))
         self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
         self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
 
-    r"""Execute training of model
-        Args:
-            dataloader (Dataloader): contains training data
-            loss_f (nn.Model): The loss for training"""
     def train(self, dataloader, loss_f):
+        r"""Execute training of model
+            Args:
+                dataloader (Dataloader): contains training data
+                loss_f (nn.Model): The loss for training"""
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
             print("Epoch: " + str(epoch))
             loss_log = []
@@ -129,14 +135,14 @@ class BaseAgent():
     def prepare_image_for_display(self, image):
         return image
 
-    r"""Evaluate model on testdata by merging it into 3d volumes first
-        TODO: Write nicely with dataloader
-        Args:
-            dataset (Dataset)
-            loss_f (torch.nn.Module)
-            steps (int): Number of steps to do for inference
-    """
     def test(self, loss_f):
+        r"""Evaluate model on testdata by merging it into 3d volumes first
+            TODO: Write nicely with dataloader
+            Args:
+                dataset (Dataset)
+                loss_f (torch.nn.Module)
+                steps (int): Number of steps to do for inference
+        """
         dataset = self.exp.dataset
         self.exp.set_model_state('test')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)

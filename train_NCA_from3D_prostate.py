@@ -29,10 +29,10 @@ def main():
 
     config = [{
         'out_path': r"D:\PhD\NCA_Experiments",
-        'img_path': r"M:\MasterThesis\Datasets\Hippocampus\hippocampus_3d\imagesTr",
-        'label_path': r"M:\MasterThesis\Datasets\Hippocampus\hippocampus_3d\labelsTr",
+        'img_path': r"M:\\MasterThesis\\Datasets\\Prostate\\original_dataset\\ISBI\\Images",
+        'label_path': r"M:\\MasterThesis\\Datasets\\Prostate\\original_dataset\\ISBI\\Labels",
         'data_type': '.nii.gz', # .nii.gz, .jpg
-        'model_path': r'models/NCA_Test28_dataloader_3D_c64_l16e4_hippocampus_resizetest',
+        'model_path': r'models/NCA_Test27_dataloader_3D_c64_l16e4_prostate_full',
         'device':"cuda:0",
         'n_epoch': 200,
         # Learning rate
@@ -49,13 +49,13 @@ def main():
         'target_size': 64,
         'cell_fire_rate': 0.5,
         'cell_fire_interval':None,
-        'batch_size': 8,
+        'batch_size': 3,
         'repeat_factor': 1,
         'input_channels': 3,
         'input_fixed': True,
         'output_channels': 3,
         # Data
-        'input_size': (64, 64),
+        'input_size': (128, 128),
         'data_split': [0.6, 0, 0.4], 
         'pool_chance': 0.5,
         'Persistence': False,
@@ -66,7 +66,7 @@ def main():
     #}
     ]
     # Define Experiment
-    dataset = Dataset_NiiGz_3D(slice=2)
+    dataset = Dataset_NiiGz_3D(slice=2, resize=True)
     device = torch.device(config[0]['device'])
     ca = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
     agent = Agent(ca)

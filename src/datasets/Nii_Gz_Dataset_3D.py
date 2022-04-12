@@ -7,13 +7,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
     def getDataShapes():
         return
 
-    r"""Get files in path ordered by id and slice
-        Args:
-            path (string): The path which should be worked through
-        Returns:
-            dic (dictionary): {key:patientID, {key:sliceID, img_slice}
-    """
     def getFilesInPath(self, path):
+        r"""Get files in path ordered by id and slice
+            Args:
+                path (string): The path which should be worked through
+            Returns:
+                dic (dictionary): {key:patientID, {key:sliceID, img_slice}
+        """
         dir_files = os.listdir(os.path.join(path))
         dic = {}
         for id_f, f in enumerate(dir_files):
@@ -36,18 +36,18 @@ class Dataset_NiiGz_3D(Dataset_3D):
     def load_item(self, path):
         return nib.load(path).get_fdata()
 
-    r"""Get number of items in dataset"""
     def __len__(self):
+        r"""Get number of items in dataset"""
         return self.length
 
-    r"""Standard get item function
-        Args:
-            idx (int): Id of item to loa
-        Returns:
-            img (numpy): Image data
-            label (numpy): Label data
-    """
     def __getitem__(self, idx):
+        r"""Standard get item function
+            Args:
+                idx (int): Id of item to loa
+            Returns:
+                img (numpy): Image data
+                label (numpy): Label data
+        """
         #
         # print(self.images_list)
         img_name, p_id, img_id = self.images_list[idx]
