@@ -11,7 +11,7 @@ from lib.utils_vis import to_rgb, make_seed
 
 from src.Datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.Datasets.png_Dataset import png_Dataset
-from Experiment import Experiment
+from src.utils.Experiment import Experiment
 
 import cv2
 

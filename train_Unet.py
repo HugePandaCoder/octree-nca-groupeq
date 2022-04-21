@@ -1,7 +1,7 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
-from Experiment import Experiment, DataSplit
+from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.agents.Agent_UNet import Agent

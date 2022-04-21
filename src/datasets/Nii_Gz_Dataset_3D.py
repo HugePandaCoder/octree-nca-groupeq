@@ -3,6 +3,7 @@ import nibabel as nib
 import os
 
 class Dataset_NiiGz_3D(Dataset_3D):
+    """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
 
     def getDataShapes():
         return
@@ -34,6 +35,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return self.load_item(path).shape[axis]
 
     def load_item(self, path):
+        r"""Loads the data of an image of a given path.
+            Args:
+                path (String): The path to the nib file to be loaded."""
         return nib.load(path).get_fdata()
 
     def __len__(self):

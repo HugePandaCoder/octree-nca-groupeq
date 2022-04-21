@@ -3,3 +3,5 @@
 *.gif
 *.ipynb
 models/
+runs/
+html/

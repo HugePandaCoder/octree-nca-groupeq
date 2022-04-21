@@ -1,0 +1,1 @@
+tensorboard --logdir M:\MasterThesis\Git\NCA\models\NCA_Test25_dataloader_c64_l16e4_87pc\tensorboard

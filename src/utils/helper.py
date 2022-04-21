@@ -12,7 +12,7 @@ def dump_pickle_file(file, path):
 
 def load_pickle_file(path):
     with open(path, 'rb') as input_file:
-        file =  pickle.load(input_file)
+        file = pickle.load(input_file)
     return file
 
 def dump_compressed_pickle_file(file, path):
@@ -48,18 +48,20 @@ def convert_image(img, prediction, label=None, encode_image=True):
     img_rgb, label, label_pred = [v.squeeze() for v in [img_rgb, label, label_pred]]
 
     if label is not None:
+        print("IRGENDWAS")
+        print(label.shape)
         sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
         sobel_y = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=0, dy=1, ksize=3)
         sobel = sobel_x + sobel_y
         sobel[:,:,2] = sobel[:,:,0]
         sobel[:,:,0] = 0
-
         sobel = np.abs(sobel)
         img_rgb[img_rgb < 0] = 0
         label_pred[label_pred < 0] = 0
 
         img_rgb = np.clip((sobel * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
     #img_rgb = img_rgb / np.amax(img_rgb)
+    print(img_rgb.shape)
     if encode_image:
         img_rgb = img_rgb * 255
         img_rgb[img_rgb > 255] = 255

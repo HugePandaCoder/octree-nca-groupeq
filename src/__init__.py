@@ -4,6 +4,8 @@
 Quickstart:
 -----------
 
-QUICKSTART HERE
+To train a new model run one of the predefined scripts train_NCA.py or train_UNet.py
+
+.. TODO:: MORE
 
 """

@@ -1,7 +1,7 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
-from Experiment import Experiment, DataSplit
+from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.agents.Agent_UNet import Agent
@@ -15,7 +15,7 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Prostate\original_dataset\ISBI\Images",
     'label_path': r"M:\MasterThesis\Datasets\Prostate\original_dataset\ISBI\Labels",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/UNet_Test4_3D',
+    'model_path': r'models/UNet_Test4_3D_prostate',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -24,20 +24,20 @@ config = [{
     'betas': (0.5, 0.5),
     'inference_steps': [64],
     # Training config
-    'save_interval': 50,
+    'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
     'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 32,
+    'batch_size': 24,
     'persistence_chance':0.5,
     # Data
-    'input_size': (64, 64),
+    'input_size': (128, 128),
     'data_split': [0.6, 0, 0.4], 
     'pool_chance': 0.7,
-    'Persistence': True,
+    'Persistence': False,
 }]
 
 # Define Experiment

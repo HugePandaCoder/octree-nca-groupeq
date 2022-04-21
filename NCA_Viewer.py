@@ -1,8 +1,8 @@
 import PySimpleGUI as sg
 import os
-from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.png_Dataset import png_Dataset
-from Experiment import Experiment
+from src.utils.Experiment import Experiment
 from lib.CAModel import CAModel
 import torch
 import numpy as np
@@ -17,34 +17,43 @@ from src.agents.Agent_NCA import Agent
 from src.utils.helper import convert_image
 
 config = [{
-    'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
+    'out_path': r"D:/PhD/NCA_Experiments",
+    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/hippocampus_3d/imagesTr",
+    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/hippocampus_3d/labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': "models/NCA_Test25_dataloader_c64_l16e4.pth",
+    'model_path': r'models/NCA_Test28_dataloader_3D_c64_l16e4_hippocampus_resizetest_remove',
     'device':"cpu",
-    'n_epoch': 40,
+    'n_epoch': 200,
     # Learning rate
-    'lr': 2e-4,
+    'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
+    # Training config
+    'save_interval': 10,
+    'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
-    'batch_size': 4,
-    'persistence_chance':0.5,
+    'cell_fire_interval':None,
+    'batch_size': 8,
+    'repeat_factor': 1,
+    'input_channels': 3,
+    'input_fixed': True,
+    'output_channels': 3,
     # Data
     'input_size': (64, 64),
-    'data_split': [0.7, 0, 0.3], 
+    'data_split': [0.6, 0, 0.4], 
+    'pool_chance': 0.5,
+    'Persistence': False,
 }]
 
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset()
+dataset = Dataset_NiiGz_3D(slice=2)
 model = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 agent = Agent(model)
 exp = Experiment(config, dataset, model, agent)
@@ -100,8 +109,10 @@ layout = [
 #    model.load_state_dict(torch.load(config['model_path']))
 
 def init_input(name):
-    target_img, target_label = dataset.getitembyname(name)
+    print("GEHT noch")
+    _, target_img, target_label = dataset.getItemByName(name)
     target_img, target_label = torch.from_numpy(target_img), torch.from_numpy(target_label)
+    print("GEHT immer noch")
     #pad_target = np.pad(target_img, [(0, 0), (0, 0), (0, 0)])
     #h, w = pad_target.shape[:2]
     #pad_target = np.expand_dims(pad_target, axis=0)
@@ -118,6 +129,8 @@ def init_input(name):
 
     #output = torch.from_numpy(_map.reshape([1,_map_shape[0],_map_shape[1],config['channel_n']]).astype(np.float32))
     #target_output = torch.from_numpy(target_label.astype(np.float32)).to(torch.device('cpu'))
+    print(output.shape)
+    print(target_label.shape)
     return output, target_label
 
 def combine_images(img, label):
@@ -172,18 +185,20 @@ while True:
         except:
             file_list = []
 
-        fnames = [
-            f
-            for f in file_list
-            if os.path.isfile(os.path.join(folder, f))
-            and f.lower().endswith((".png", ".gif", ".nii.gz"))
-        ]
+        fnames = dataset.getImagePaths()
+        #[
+        #    f
+        #    for f in file_list
+        #    if os.path.isfile(os.path.join(folder, f))
+        #    and f.lower().endswith((".png", ".gif", ".nii.gz"))
+        #]
         window["-FILE LIST-"].update(fnames)
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         try:
-            filename = os.path.join(
-                values["-Images-"], values["-FILE LIST-"][0]
-            )
+            #filename = os.path.join(
+            #    values["-Images-"], values["-FILE LIST-"][0]
+            #)
+            filename = ""
             output, label = init_input(values["-FILE LIST-"][0])
             print("TEST2")
             print(output.shape)

@@ -13,7 +13,7 @@ from IPython.display import clear_output
 from lib.CAModel import CAModel
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
-from Experiment import Experiment, DataSplit
+from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
 import sys
 import os

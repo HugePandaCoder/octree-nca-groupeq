@@ -9,10 +9,16 @@ from src.utils.helper import convert_image
 from src.losses.LossFunctions import DiceLoss
 
 class BaseAgent():
+    """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
+    
+    ..Hint:: In many cases only the data preparation and outputs need to be changed."""
     def __init__(self, model):
         self.model = model
 
     def set_exp(self, exp):
+        r"""Set experiment of agent and initialize.
+            Args:
+                exp (Experiment): Experiment class"""
         self.exp = exp
         self.initialize()
 
@@ -33,15 +39,28 @@ class BaseAgent():
         self.exp.write_scalar('Loss/train', loss, epoch)
 
     def prepare_data(self, data, eval=False):
+        r"""If any data preparation needs to be done do it here. 
+            Args:
+                data ([]): The data to be processed.
+                eval (Bool): Whether or not its for evaluation. 
+        """
         return data
 
     def get_outputs(self, data):
+        r"""Get the output of the model.
+            Args: 
+                data (torch): The data to be passed to the model.
+        """
         return self.model(data)
 
     def initialize_epoch(self):
+        r"""Everything that should happen once before each epoch should be defined here.
+        """
         return
 
     def conclude_epoch(self):
+        r"""Everything that should happen once after each epoch should be defined here.
+        """
         return
 
     def batch_step(self, data, loss_f):
@@ -84,12 +103,15 @@ class BaseAgent():
         self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
         param_lst = []
         for param in self.model.parameters():
-            print(param.flatten())
+            #print(param.flatten())
             param_lst.extend(np.fromiter(param.flatten(), dtype=float))
-        print(param_lst)
+        #print(param_lst)
         self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
     def getAverageDiceScore(self):
+        r"""Get the average Dice test score.
+            Returns:
+                return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
         return sum(loss_log.values())/len(loss_log)
@@ -133,11 +155,15 @@ class BaseAgent():
             self.exp.increase_epoch()
 
     def prepare_image_for_display(self, image):
+        r"""Prepare an image to be displayed in tensorboard. Since images need to be in a specific format these modifications these can be done here.
+            Args:
+                image (torch): The image to be processed for display. 
+        """
         return image
 
     def test(self, loss_f):
         r"""Evaluate model on testdata by merging it into 3d volumes first
-            TODO: Write nicely with dataloader
+            TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             Args:
                 dataset (Dataset)
                 loss_f (torch.nn.Module)
