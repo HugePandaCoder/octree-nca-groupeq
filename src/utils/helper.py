@@ -48,8 +48,6 @@ def convert_image(img, prediction, label=None, encode_image=True):
     img_rgb, label, label_pred = [v.squeeze() for v in [img_rgb, label, label_pred]]
 
     if label is not None:
-        print("IRGENDWAS")
-        print(label.shape)
         sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
         sobel_y = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=0, dy=1, ksize=3)
         sobel = sobel_x + sobel_y

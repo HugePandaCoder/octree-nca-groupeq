@@ -11,7 +11,7 @@ from src.losses.LossFunctions import DiceLoss
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
     
-    ..Hint:: In many cases only the data preparation and outputs need to be changed."""
+    .. note:: In many cases only the data preparation and outputs need to be changed."""
     def __init__(self, model):
         self.model = model
 
@@ -92,7 +92,7 @@ class BaseAgent():
 
     def intermediate_evaluation(self, dataloader, epoch):
         r"""Do an intermediate evluation during training 
-            TODO: Make variable for more evaluation scores (Maybe pass list of metrics)
+            .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
             Args:
                 dataset (Dataset)
                 epoch (int)
@@ -113,7 +113,7 @@ class BaseAgent():
             Returns:
                 return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=True)
-        loss_log = self.test(diceLoss)
+        loss_log = self.test(diceLoss, save_img=[])
         return sum(loss_log.values())/len(loss_log)
 
     def save_state(self, model_path):
@@ -161,7 +161,7 @@ class BaseAgent():
         """
         return image
 
-    def test(self, loss_f):
+    def test(self, loss_f, save_img = None):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             Args:
@@ -175,7 +175,9 @@ class BaseAgent():
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         loss_log = {}
 
-        save_img = [5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
+        if save_img == None:
+            save_img = [5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
+
         for i, data in enumerate(dataloader):
             #data = dataset.__getitem__(i)
             data = self.prepare_data(data, eval=True)

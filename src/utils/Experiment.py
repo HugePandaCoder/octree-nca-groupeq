@@ -30,9 +30,12 @@ class Experiment():
         os.makedirs(os.path.join(self.config['model_path'], 'models'), exist_ok=True)
         os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
         # Create basic configuration
-        self.data_split = DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
+        self.data_split = self.new_datasplit()
         dump_pickle_file(self.data_split, os.path.join(self.config['model_path'], 'data_split.dt'))
         dump_json_file(self.projectConfig, os.path.join(self.config['model_path'], 'config.dt'))
+
+    def new_datasplit(self):
+        return DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
 
     def temporarly_overwrite_config(self, config):
         r"""This function is useful for evaluation purposes where you want to change the config, e.g. data paths or similar.

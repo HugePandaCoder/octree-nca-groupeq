@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
+from src. datasets.Nii_Gz_Dataset import Dataset
 from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from lib.CAModel_Noise import CAModel_Noise
@@ -30,10 +31,10 @@ def main():
 
     config = [{
         'out_path': r"D:\PhD\NCA_Experiments",
-        'img_path': r"M:\MasterThesis\Datasets\Hippocampus\original_dataset\imagesTr",
-        'label_path': r"M:\MasterThesis\Datasets\Hippocampus\original_dataset\labelsTr",
+        'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_test\imagesTr",
+        'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_test\labelsTr",#"M:\MasterThesis\Datasets\Hippocampus\original_dataset\labelsTr",
         'data_type': '.nii.gz', # .nii.gz, .jpg
-        'model_path': r'models/NCA_Test29_dataloader_3D_c64_l16e4_full',
+        'model_path': r'models/NCA_Test29_dataloader_3D_c64_l16e4_beternoise_full',
         'device':"cuda:0",
         'n_epoch': 400,
         # Learning rate
@@ -50,7 +51,7 @@ def main():
         'target_size': 64,
         'cell_fire_rate': 0.5,
         'cell_fire_interval':None,
-        'batch_size': 8,
+        'batch_size': 1,
         'repeat_factor': 1,
         'input_channels': 3,
         'input_fixed': True,
@@ -67,18 +68,24 @@ def main():
     #}
     ]
     # Define Experiment
-    dataset = Dataset_NiiGz_3D(slice=2)
+    dataset = Dataset()#(slice=2)
     device = torch.device(config[0]['device'])
-    ca = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+    ca = CAModel_Noise(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
     agent = Agent(ca)
     exp = Experiment(config, dataset, ca, agent)
-    exp.set_model_state('train')
+    exp.new_datasplit()
+    exp.set_model_state('test')
     data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size')) #, collate_fn=collate_variable_size
 
     loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
     #loss_function = F.mse_loss
     #loss_function = DiceLoss()
-    agent.train(data_loader, loss_function)
+    #agent.train(data_loader, loss_function)
+    exp.temporarly_overwrite_config(config)
+    dice = DiceLoss()
+
+    loss_log = agent.test(dice)
+    print("Average Score: " + str(sum(loss_log.values())/len(loss_log)))
 
 if __name__ == '__main__':
     main()

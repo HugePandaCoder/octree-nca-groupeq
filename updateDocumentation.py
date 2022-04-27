@@ -1,11 +1,13 @@
 import pdoc
 import os
 
+"""https://pdoc.dev/docs/pdoc.html"""
+
 def addFileToDocumentation(path):
     os.system('pdoc --html ' + path + ' --force')
 
 def main():
-    os.system('pdoc --html src --force')
+    os.system('pdoc src ') #--force --html
     exit()
     modules = ['Experiment', '/src/agents/Agent']  # Public submodules are auto-imported
     context = pdoc.Context()
