@@ -14,9 +14,12 @@ from lib.CAModel import CAModel
 from lib.CAModel_Noise import CAModel_Noise
 from lib.CAModel_deeper import CAModel_Deeper
 from lib.CAModel_Residual import CAModel_Residual
+from lib.CAModel_partiallyDead import CAModel_partiallyDead
+from lib.CAModel_optimizedTraining import CAModel_optimizedTraining
 from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
+from src.agents.Agent_NCA_optTrain import Agent_OptTrain
 from src.agents.Agent_NCA import Agent
 import sys
 import os
@@ -32,11 +35,11 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test31_dataloader_c64_l16e4_Residual_tiny',
+    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test32_dataloader_c64_l16e4_tiny_partDead',
     'device':"cuda:0",
-    'n_epoch': 10,
+    'n_epoch': 1000,
     # Learning rate
-    'lr': 16e-4,
+    'lr': 16e-4, #16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
@@ -49,7 +52,7 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 6,
+    'batch_size': 10,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -69,7 +72,7 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
-ca = CAModel_Residual(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+ca = CAModel_partiallyDead(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=32).to(device)
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
