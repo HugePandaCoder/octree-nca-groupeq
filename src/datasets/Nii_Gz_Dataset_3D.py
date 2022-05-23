@@ -1,6 +1,7 @@
 from src.datasets.Dataset_3D import Dataset_3D
 import nibabel as nib
 import os
+import numpy as np
 
 class Dataset_NiiGz_3D(Dataset_3D):
     """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
@@ -57,6 +58,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img_name, p_id, img_id = self.images_list[idx]
         label_name, _, _ = self.labels_list[idx]
         img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, label_name))
+        #img[np.isnan(img)] = 1
         if self.slice is not None:
             if self.slice == 0:
                 img, label = img[img_id, :, :], label[img_id, :, :]

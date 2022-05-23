@@ -21,6 +21,7 @@ from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_se
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA_optTrain import Agent_OptTrain
+from src.agents.Agent_NCA_scaleSize import Agent_ScaleSize
 from src.agents.Agent_NCA import Agent
 import sys
 import os
@@ -36,24 +37,24 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test36_dataloader_c16_l16e4_very_smol_evol',
+    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test38_dataloader_c16_l16e4_changeSize_learntPerceive',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
-    'lr': 16e-5, #16e-4,
+    'lr': 16e-4, #16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [64],
+    'inference_steps': [32],
     # Training config
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 8,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 50,
+    'batch_size': 10,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -73,8 +74,8 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
-ca = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=16).to(device)
-agent = Agent(ca)
+ca = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=16).to(device)
+agent = Agent_ScaleSize(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))

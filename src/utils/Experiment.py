@@ -105,7 +105,20 @@ class Experiment():
     def set_model_state(self, state):
         r"""TODO: remove? """
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
-        
+
+    def set_model_state_subset(self, state, subset=1):
+        r"""TODO: remove? """
+        images = self.data_split.get_images(state)
+        labels = self.data_split.get_labels(state)
+
+        length = max(1, int(len(images) * subset))
+        images = images[0:length]
+        labels = labels[0:length]
+
+        print(len(images))
+
+        self.dataset.setPaths(self.config['img_path'], images, self.config['label_path'], labels)
+
     def get_from_config(self, tag):
         r"""Get from config
             Args:

@@ -108,11 +108,11 @@ class BaseAgent():
         #print(param_lst)
         self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self):
+    def getAverageDiceScore(self, useSigmoid=True):
         r"""Get the average Dice test score.
             Returns:
                 return (float): Average Dice score of test set. """
-        diceLoss = DiceLoss(useSigmoid=True)
+        diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=[])
         return sum(loss_log.values())/len(loss_log)
 
@@ -191,8 +191,8 @@ class BaseAgent():
 
             #print(id)
             if id != patient_id and patient_id != None:
-                loss_log[id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
-                print(patient_id + ", " + str(loss_log[id]))
+                loss_log[patient_id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+                print(patient_id + ", " + str(loss_log[patient_id]))
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
 
             if patient_3d_image == None:
@@ -210,7 +210,8 @@ class BaseAgent():
                 self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
                 encode_image=False), self.exp.currentStep)
 
-        loss_log[id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+        loss_log[patient_id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+        print(patient_id + ", " + str(loss_log[patient_id]))
         print("Average Dice Loss: " + str(sum(loss_log.values())/len(loss_log)))
 
         self.exp.set_model_state('train')

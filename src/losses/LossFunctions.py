@@ -33,3 +33,17 @@ class DiceBCELoss(torch.nn.Module):
         Dice_BCE = BCE + dice_loss
         
         return Dice_BCE
+
+class BCELoss(torch.nn.Module):
+    def __init__(self, useSigmoid = True):
+        self.useSigmoid = useSigmoid
+        super(BCELoss, self).__init__()
+
+    def forward(self, input, target, smooth=1):
+        
+        input = torch.sigmoid(input)       
+        input = torch.flatten(input) 
+        target = torch.flatten(target)
+
+        BCE = torch.nn.functional.binary_cross_entropy(input, target, reduction='mean')
+        return BCE

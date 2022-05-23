@@ -11,7 +11,17 @@ import os
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 
 class Agent_OptTrain(Agent):
-    
+    def initialize_epoch(self):
+        r"""Everything that should happen once before each epoch should be defined here.
+        """
+        if( self.exp.currentStep < 30):
+            current_epoch = 0.1
+        else:
+            current_epoch = (self.exp.currentStep - 30) * 0.01
+        subset = min(1, current_epoch)
+        self.exp.set_model_state_subset('train', subset=subset)
+        return
+
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step
             Args:
@@ -22,13 +32,9 @@ class Agent_OptTrain(Agent):
         """
         data = self.prepare_data(data)
 
-        patch_scale = 64
-        xs = torch.randint(0, 256 - patch_scale, (1,))[0] 
-        ys = torch.randint(0, 256 - patch_scale, (1,))[0] 
-
-        print("___________")
-        print(xs)
-        print(ys)
+        patch_scale = 32
+        xs = torch.randint(0, 64 - patch_scale, (1,))[0] 
+        ys = torch.randint(0, 64 - patch_scale, (1,))[0] 
 
         outputs, targets = self.get_outputs(data, xs, ys, patch_scale)
         self.optimizer.zero_grad()
@@ -38,9 +44,14 @@ class Agent_OptTrain(Agent):
         outputs = outputs[:, 1:-1, 1:-1 :]
         targets = targets[:, 1:-1, 1:-1 :]
 
-        loss_function = DiceBCELoss()
+        #loss_function = DiceBCELoss()
 
-        loss = loss_f(outputs, targets) + loss_function(outputs, targets)
+        #print(torch.max(outputs))
+        #print(torch.max(targets))
+        #print(torch.min(outputs))
+        #print(torch.min(targets))
+
+        loss = loss_f(outputs, targets) # + loss_function(outputs, targets)
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()

@@ -7,8 +7,8 @@ import numpy as np
 
 #print(a)
 
-size = 10
-steps = 10
+size = 20
+steps = 8
 
 a = np.zeros((size, size))
 a[int(size/2),int(size/2)] = 1
@@ -29,5 +29,7 @@ for s in range(steps):
                 if np.sum(a[x-1:x+2, y-1:y+2]) > 0:
                     b[x, y] = 1
     a = b.copy()
+
+a[int(size/2),int(size/2)] = 2
 
 print(a)
