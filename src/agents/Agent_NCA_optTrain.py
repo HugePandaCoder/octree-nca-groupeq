@@ -12,15 +12,40 @@ from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 
 class Agent_OptTrain(Agent):
     def initialize_epoch(self):
-        r"""Everything that should happen once before each epoch should be defined here.
+        r"""Create a pool for the current epoch
         """
-        if( self.exp.currentStep < 30):
-            current_epoch = 0.1
-        else:
-            current_epoch = (self.exp.currentStep - 30) * 0.01
-        subset = min(1, current_epoch)
-        self.exp.set_model_state_subset('train', subset=subset)
-        return
+        #if self.exp.get_from_config('Persistence'):
+        #    self.epoch_pool = Pool()
+        
+        #self.exp.get_from_config('evaluate_interval')
+
+        numberOfSteps = 20
+        numberOfDoubling = 4
+
+        if( self.exp.currentStep %numberOfSteps == 1 and self.exp.currentStep > 5 and self.exp.currentStep < numberOfDoubling*numberOfSteps+1):
+            self.model = self.model.increaseChannelSize(increase=16*int(self.exp.currentStep/10))
+            self.exp.config['channel_n'] = self.exp.config['channel_n']*2
+            self.exp.projectConfig[0]['channel_n'] = self.exp.config['channel_n']
+            
+            #self.model = self.model.increaseHiddenLayer(increase=16*int(self.exp.currentStep/10), optimizer=self.optimizer)
+           
+           
+           # self.model = self.model.doubleHiddenLayer() #
+            #print(self.optimizer.state_dict())
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+            #self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
+            self.optimizer.zero_grad()
+
+    #def initialize_epoch(self):
+    #    r"""Everything that should happen once before each epoch should be defined here.
+    #    """
+    #    if( self.exp.currentStep < 30):
+    #        current_epoch = 0.1
+    #    else:
+    #        current_epoch = (self.exp.currentStep - 30) * 0.01
+    #    subset = min(1, current_epoch)
+    #    self.exp.set_model_state_subset('train', subset=subset)
+    #    return
 
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step

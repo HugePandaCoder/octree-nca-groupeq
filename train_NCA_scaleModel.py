@@ -35,10 +35,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_warp\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_warp\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test40_dataloader_c16_l16e4_scaleModel10',
+    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test40_dataloader_c16_l16e4_scaleChannels3',
     'device':"cuda:0",
     'n_epoch': 800,
     # Learning rate
@@ -76,7 +76,7 @@ config = [{
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
 ca = CAModel_scale(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=128).to(device)
-agent = Agent_ScaleSize(ca)
+agent = Agent_ScaleSize(ca) #_ScaleSize
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
@@ -85,9 +85,9 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
-#exp.temporarly_overwrite_config(config)
-#agent.getAverageDiceScore()
+exp.temporarly_overwrite_config(config)
+agent.getAverageDiceScore()
 #agent.test(data_loader, loss_function)
 

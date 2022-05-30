@@ -11,6 +11,7 @@ class CAModel_learntPerceive(nn.Module):
         self.device = device
         self.channel_n = channel_n
         self.checkCellsAlive = checkCellsAlive
+        self.hidden_size = hidden_size
 
         self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1)
         self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1)
@@ -28,6 +29,35 @@ class CAModel_learntPerceive(nn.Module):
 
         self.die_after_choice = False
         self.to(self.device)
+
+    def increaseHiddenLayer(self, increase=1, optimizer = None):
+        print("____________________________")
+        print(self.fc0.bias.shape)
+        print(self.fc0.weight.data.shape) 
+        print(self.fc1.weight.data.shape) 
+        #print(self.fc1.bias.shape)
+        #x = torch.zeros(increase, self.channel_n*3)
+
+        # Scale hidden_size by given size
+        increase = self.hidden_size
+        fc0_copy = self.fc0
+        fc1_copy = self.fc1
+        self.fc0 = nn.Linear(self.channel_n*3, self.hidden_size+increase)
+        self.fc1 = nn.Linear(self.hidden_size+increase, self.channel_n, bias=False)
+        self.hidden_size = self.hidden_size+increase
+
+        self.fc0.weight.data = torch.cat((fc0_copy.weight.data, 0.01*torch.nn.init.xavier_uniform(torch.full((increase, fc0_copy.weight.data.size(1)), 0.0001).to(self.device))), dim=0) #.resize_(self.fc0.weight.data.size(0), self.fc0.weight.data.size(1) +1)
+        self.fc0.weight.data.requires_grad_(True)
+        self.fc0.bias = torch.nn.parameter.Parameter(data=torch.cat((fc0_copy.bias, torch.full((increase,), 0).to(self.device)), dim=0))
+        self.fc0.bias.requires_grad_(True)
+        self.fc1.weight.data = torch.cat((fc1_copy.weight.data, 0.01*torch.nn.init.xavier_uniform(torch.full((fc1_copy.weight.data.size(0), increase), 0.0001).to(self.device))), dim=1)
+        self.fc1.weight.data.requires_grad_(True)
+        print(self.fc0.bias.shape)
+        print(self.fc0.weight.data.shape)
+        print(self.fc1.weight.data.shape)
+        #optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        return self
 
     def alive(self, x):
         return F.max_pool2d(x[:, 3:4, :, :], kernel_size=3, stride=1, padding=1) > 0.1

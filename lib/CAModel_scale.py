@@ -28,6 +28,32 @@ class CAModel_scale(nn.Module):
         self.die_after_choice = False
         self.to(self.device)
 
+    def increaseChannelSize(self, increase=1):
+        print("____________________________")
+        print(self.fc0.bias.shape)
+        print(self.fc0.weight.data.shape) 
+        print(self.fc1.weight.data.shape) 
+        increase = self.channel_n
+        fc0_copy = self.fc0
+        fc1_copy = self.fc1
+
+        self.fc0 = nn.Linear(self.channel_n*3+increase*3, self.hidden_size+increase)
+        self.fc1 = nn.Linear(self.hidden_size, self.channel_n+increase*3, bias=False)
+
+        self.fc0.weight.data = torch.cat((fc0_copy.weight.data, 0.01*torch.nn.init.xavier_uniform(torch.full((fc0_copy.weight.data.size(0), increase*3), 0.0001).to(self.device))), dim=1)
+        self.fc0.weight.data.requires_grad_(True)
+        self.fc0.bias = fc0_copy.bias
+        self.fc1.weight.data = torch.cat((fc1_copy.weight.data, 0.01*torch.nn.init.xavier_uniform(torch.full((increase, fc1_copy.weight.data.size(1)), 0.0001).to(self.device))), dim=0)
+        self.fc1.weight.data.requires_grad_(True)
+        #self.fc1 = nn.Linear(self.hidden_size+increase, self.channel_n, bias=False)
+        
+        self.channel_n = self.channel_n+increase
+
+        print(self.fc0.bias.shape)
+        print(self.fc0.weight.data.shape)
+        print(self.fc1.weight.data.shape)
+        return self
+
     def increaseHiddenLayer(self, increase=1, optimizer = None):
         print("____________________________")
         print(self.fc0.bias.shape)
@@ -118,6 +144,8 @@ class CAModel_scale(nn.Module):
         if self.checkCellsAlive:
             pre_life_mask = self.alive(x)
 
+        #print(x.shape)
+        #print(self.channel_n)
         dx = self.perceive(x, angle)
         dx = dx.transpose(1,3)
         #print(dx.shape)
@@ -131,6 +159,9 @@ class CAModel_scale(nn.Module):
         stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
 
+        #print("_________________")
+        #print(x.shape)
+        #print(dx.transpose(1,3).shape)
         x = x+dx.transpose(1,3)
 
         if self.checkCellsAlive:

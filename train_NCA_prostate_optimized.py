@@ -38,7 +38,7 @@ config = [{
     'img_path': r"M:\MasterThesis\Datasets\Prostate\preprocessed_dataset_train\imagesTr",
     'label_path': r"M:\MasterThesis\Datasets\Prostate\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test35_dataloader_c16_l16e4_opt_prostate_full',
+    'model_path': r'M:\MasterThesis\Git\NCA\models\NCA_Test41_dataloader_c16_l16e4_opt_prostate_full_andScale4',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -50,12 +50,12 @@ config = [{
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 8,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 16,
+    'batch_size': 10,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -75,19 +75,19 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
-ca = CAModel_optimizedTraining(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+ca = CAModel_optimizedTraining(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=128).to(device)
 agent = Agent_OptTrain(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-#loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
-loss_function = F.mse_loss
+loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
+#loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
-exp.temporarly_overwrite_config(config)
-agent.getAverageDiceScore(useSigmoid=False)
+#exp.temporarly_overwrite_config(config)
+#agent.getAverageDiceScore(useSigmoid=False)
 #agent.test(data_loader, loss_function)
 

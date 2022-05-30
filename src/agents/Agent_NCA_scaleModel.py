@@ -21,8 +21,16 @@ class Agent_ScaleSize(Agent):
         
         #self.exp.get_from_config('evaluate_interval')
 
-        if( self.exp.currentStep %30 == 1 and self.exp.currentStep > 5 and self.exp.currentStep < 100):
-            self.model = self.model.increaseHiddenLayer(increase=16*int(self.exp.currentStep/10), optimizer=self.optimizer)
+        numberOfSteps = 100
+        numberOfDoubling = 4
+
+        if( self.exp.currentStep %numberOfSteps == 1 and self.exp.currentStep > 1 and self.exp.currentStep < numberOfDoubling*numberOfSteps+1):
+            
+            self.model = self.model.increaseChannelSize(increase=16*int(self.exp.currentStep/10))
+            self.exp.config['channel_n'] = self.exp.config['channel_n']*2
+            self.exp.projectConfig[0]['channel_n'] = self.exp.config['channel_n']
+           
+           
            # self.model = self.model.doubleHiddenLayer() #
             #print(self.optimizer.state_dict())
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
