@@ -35,7 +35,7 @@ class Agent(BaseAgent):
         r"""Save state - Add Pool to state
         """
         super().save_state(model_path)
-        if self.pool.__len__() != 0:
+        if self.pool.__len__() != 0 and self.exp.get_from_config('save_pool'):
             dump_compressed_pickle_file(self.pool, os.path.join(model_path, 'pool.pbz2'))
 
     def load_state(self, model_path):
@@ -119,7 +119,6 @@ class Agent(BaseAgent):
         """
         if self.exp.get_from_config('Persistence'):
             self.epoch_pool = Pool()
-        return
 
     def conclude_epoch(self):
         r"""Set epoch pool as active pool

@@ -25,6 +25,7 @@ from src.agents.Agent_NCA_scaleSize import Agent_ScaleSize
 from src.agents.Agent_NCA import Agent
 import sys
 import os
+import torchmetrics as tm
 
 # TODO REMOVE!!! 
 #import warnings
@@ -74,13 +75,14 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
-ca = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=16).to(device)
+ca = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=8).to(device)
 agent = Agent_ScaleSize(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
+loss_function = tm.JaccardIndex(num_classes=2)
+#loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 

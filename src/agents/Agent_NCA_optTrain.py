@@ -11,6 +11,12 @@ import os
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 
 class Agent_OptTrain(Agent):
+
+    def initialize(self):
+        super().initialize()
+        self.x_pos = 0
+        self.y_pos = 0
+
     def initialize_epoch(self):
         r"""Create a pool for the current epoch
         """
@@ -22,12 +28,12 @@ class Agent_OptTrain(Agent):
         numberOfSteps = 20
         numberOfDoubling = 4
 
-        if( self.exp.currentStep %numberOfSteps == 1 and self.exp.currentStep > 5 and self.exp.currentStep < numberOfDoubling*numberOfSteps+1):
-            self.model = self.model.increaseChannelSize(increase=16*int(self.exp.currentStep/10))
-            self.exp.config['channel_n'] = self.exp.config['channel_n']*2
-            self.exp.projectConfig[0]['channel_n'] = self.exp.config['channel_n']
+        if( self.exp.currentStep %numberOfSteps == 1 and self.exp.currentStep > 1 and self.exp.currentStep < numberOfDoubling*numberOfSteps+1):
+            #self.model = self.model.increaseChannelSize(increase=16*int(self.exp.currentStep/10))
+            #self.exp.config['channel_n'] = self.exp.config['channel_n']*2
+            #self.exp.projectConfig[0]['channel_n'] = self.exp.config['channel_n']
             
-            #self.model = self.model.increaseHiddenLayer(increase=16*int(self.exp.currentStep/10), optimizer=self.optimizer)
+            self.model = self.model.increaseHiddenLayer(increase=16*int(self.exp.currentStep/10), optimizer=self.optimizer)
            
            
            # self.model = self.model.doubleHiddenLayer() #
@@ -57,15 +63,30 @@ class Agent_OptTrain(Agent):
         """
         data = self.prepare_data(data)
 
-        patch_scale = 32
-        xs = torch.randint(0, 64 - patch_scale, (1,))[0] 
-        ys = torch.randint(0, 64 - patch_scale, (1,))[0] 
+        patch_scale = 64
+        image_size = 256
+        #if torch.randint(0,1) == 1:
+
+        self.x_pos = (self.x_pos +1) % int(image_size/patch_scale)
+        
+        if self.x_pos == 0:
+            self.y_pos = (self.y_pos +1) % int(image_size/patch_scale)
+
+        xs = self.x_pos * patch_scale#torch.randint(0, image_size - patch_scale, (1,))[0] 
+        ys = self.y_pos * patch_scale#torch.randint(0, image_size - patch_scale, (1,))[0] 
+
+        #xs = torch.randint(0, image_size - patch_scale, (1,))[0] 
+        #ys = torch.randint(0, image_size - patch_scale, (1,))[0] 
 
         outputs, targets = self.get_outputs(data, xs, ys, patch_scale)
         self.optimizer.zero_grad()
-
+        #print("________________________")
+        #print(targets.shape)
         outputs = outputs[:, xs:(xs+patch_scale), ys:(ys+patch_scale), :]
         targets = targets[:, xs:(xs+patch_scale), ys:(ys+patch_scale), :]
+        #print(targets.shape)
+        #print(torch.sum(targets))
+
         outputs = outputs[:, 1:-1, 1:-1 :]
         targets = targets[:, 1:-1, 1:-1 :]
 
@@ -77,6 +98,10 @@ class Agent_OptTrain(Agent):
         #print(torch.min(targets))
 
         loss = loss_f(outputs, targets) # + loss_function(outputs, targets)
+
+        if torch.sum(targets) == 0: 
+            loss = loss * 0.1
+
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()

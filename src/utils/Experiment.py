@@ -157,6 +157,11 @@ class Experiment():
         """
         self.writer.add_image(tag, image, step, dataformats='HWC')
 
+    def write_figure(self, tag, figure, step):
+        r"""Write a figure to tensorboard
+        """
+        self.writer.add_figure(tag, figure, step)
+
     def write_text(self, tag, text, step):
         r"""Write text to tensorboard
         """

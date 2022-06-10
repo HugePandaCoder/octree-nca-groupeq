@@ -153,6 +153,7 @@ class CAModel_optimizedTraining(nn.Module):
 
         #print(x.shape)
         #x2 = x.detach().clone()
+        print("forward")
         x_part = x[:, xs:(xs+patch_scale), ys:(ys+patch_scale), :].clone()
         x2  = x.clone()
         for step in range(steps):

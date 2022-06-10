@@ -7,6 +7,7 @@ import torch
 import torch.optim as optim
 from src.utils.helper import convert_image
 from src.losses.LossFunctions import DiceLoss
+import seaborn as sns
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -74,6 +75,7 @@ class BaseAgent():
         data = self.prepare_data(data)
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
+        targets = targets.int()
         loss = loss_f(outputs, targets)
         loss.backward()
         self.optimizer.step()
@@ -90,6 +92,19 @@ class BaseAgent():
         print(epoch, "loss =", average_loss)
         self.exp.write_scalar('Loss/train', average_loss, epoch)
 
+    def plot_results_byPatient(self, loss_log):
+        r"""Plot losses in a per patient fashion with seaborn to display in tensorboard.
+            Args:
+                loss_log ({name: loss}: Dictionary of losses
+        """
+        #loss_log = np.array(loss_log)
+        print(loss_log)
+        sns.set_theme()
+        plot = sns.scatterplot(x=loss_log.keys(), y=loss_log.values())
+        plot.set(ylim=(0, 1))
+        plot = plot.get_figure()
+        return plot
+
     def intermediate_evaluation(self, dataloader, epoch):
         r"""Do an intermediate evluation during training 
             .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
@@ -99,6 +114,8 @@ class BaseAgent():
         """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
+        img_plot = self.plot_results_byPatient(loss_log)
+        self.exp.write_figure('Patient/dice', img_plot, epoch)
         self.exp.write_scalar('Dice/test', sum(loss_log.values())/len(loss_log), epoch)
         self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
         param_lst = []
