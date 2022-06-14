@@ -1,5 +1,6 @@
 from src.datasets.Dataset_3D import Dataset_3D
 import nibabel as nib
+import torch
 import os
 
 class Dataset_NiiGz_3D(Dataset_3D):
@@ -52,18 +53,25 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img (numpy): Image data
                 label (numpy): Label data
         """
-        #
-        # print(self.images_list)
-        img_name, p_id, img_id = self.images_list[idx]
-        label_name, _, _ = self.labels_list[idx]
-        img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, label_name))
-        if self.slice is not None:
-            if self.slice == 0:
-                img, label = img[img_id, :, :], label[img_id, :, :]
-            elif self.slice == 1:
-                img, label = img[:, img_id, :], label[:, img_id, :]
-            elif self.slice == 2:
-                img, label = img[:, :, img_id], label[:, :, img_id]
-            img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
-        img_id = "_" + str(p_id) + "_" + str(img_id)
-        return img_id, img, label 
+
+        img = self.data.get_data(key=self.images_list[idx])
+        if not img:
+            img_name, p_id, img_id = self.images_list[idx]
+
+            label_name, _, _ = self.labels_list[idx]
+
+            img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, label_name))
+            if self.slice is not None:
+                if self.slice == 0:
+                    img, label = img[img_id, :, :], label[img_id, :, :]
+                elif self.slice == 1:
+                    img, label = img[:, img_id, :], label[:, img_id, :]
+                elif self.slice == 2:
+                    img, label = img[:, :, img_id], label[:, :, img_id]
+                img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
+            img_id = "_" + str(p_id) + "_" + str(img_id)
+            
+            self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+            img = self.data.get_data(key=self.images_list[idx])
+
+        return img
