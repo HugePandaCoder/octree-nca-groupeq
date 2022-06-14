@@ -60,7 +60,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
             label_name, _, _ = self.labels_list[idx]
 
-            img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, label_name))
+            img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, img_name))
             if self.slice is not None:
                 if self.slice == 0:
                     img, label = img[img_id, :, :], label[img_id, :, :]
