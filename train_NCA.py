@@ -13,7 +13,6 @@ from IPython.display import clear_output
 from src.models.Model_BasicNCA import BasicNCA
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
-from src.agents.Agent_NCA_optTrain import Agent_OptTrain
 from src.agents.Agent_NCA import Agent
 import sys
 import os
@@ -31,9 +30,9 @@ config = [{
     'data_type': '.nii.gz', # .nii.gz, .jpg
     'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA',
     'device':"cuda:0",
-    'n_epoch': 200,
+    'n_epoch': 10,
     # Learning rate
-    'lr': 16e-5, #16e-4,
+    'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
     'inference_steps': [64],
@@ -41,7 +40,7 @@ config = [{
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
@@ -81,4 +80,3 @@ with torch.autograd.set_detect_anomaly(True):
 #exp.temporarly_overwrite_config(config)
 #agent.getAverageDiceScore()
 #agent.test(data_loader, loss_function)
-
