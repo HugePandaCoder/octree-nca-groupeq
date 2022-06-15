@@ -4,7 +4,6 @@ from src.utils.helper import convert_image, dump_compressed_pickle_file, load_co
 from src.agents.Agent import BaseAgent
 from src.losses.LossFunctions import DiceLoss
 import torch.optim as optim
-from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from IPython.display import clear_output
 from src.utils.helper import dump_pickle_file, load_pickle_file
 import os
@@ -62,7 +61,9 @@ class Agent(BaseAgent):
                 shape ([int, int]): height, width shape
                 n_channels (int): Number of channels
         """
-        seed = torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
+        # dtype=torch.FloatTensor, 
+        #
+        seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
         seed[..., :img.shape[3]] = img
         return seed
 

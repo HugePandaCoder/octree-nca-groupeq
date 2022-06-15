@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+from src.datasets.Data_Instance import Data_Container
 import cv2
 import numpy as np
 
@@ -9,6 +10,7 @@ class Dataset_3D(Dataset):
     def __init__(self, slice=None, resize=True): 
         self.slice = slice
         self.resize = resize
+        self.data = Data_Container()
 
     def set_size(self, size):
         r"""Set size of images. Images will later be rescaled if necessary and not disabled.

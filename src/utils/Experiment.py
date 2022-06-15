@@ -75,6 +75,11 @@ class Experiment():
         if self.currentStep == 0:
             self.write_text('config', str(self.projectConfig), 0)
 
+        if self.get_from_config('unlock_CPU') is None or self.get_from_config('unlock_CPU') is False:
+            print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
+            torch.set_num_threads(1)
+
+
     def reload_model(self):
         r"""Reload model
             TODO: Move to a more logical position. Probably to the model and then call directly from the agent
@@ -124,7 +129,10 @@ class Experiment():
             Args:
                 tag (String): Key of requested value
         """
-        return self.config[tag]
+        if tag in self.config.keys():
+            return self.config[tag]
+        else:
+            return None
 
     def set_current_config(self):
         r"""Set current config. This can change during training and will always 
