@@ -75,7 +75,7 @@ class BaseAgent():
         data = self.prepare_data(data)
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
-        targets = targets.int()
+        #targets = targets.int()
         loss = loss_f(outputs, targets)
         loss.backward()
         self.optimizer.step()
