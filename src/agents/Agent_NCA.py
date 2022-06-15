@@ -4,7 +4,6 @@ from src.utils.helper import convert_image, dump_compressed_pickle_file, load_co
 from src.agents.Agent import BaseAgent
 from src.losses.LossFunctions import DiceLoss
 import torch.optim as optim
-from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
 from IPython.display import clear_output
 from src.utils.helper import dump_pickle_file, load_pickle_file
 import os

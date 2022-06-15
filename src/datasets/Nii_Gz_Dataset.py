@@ -9,13 +9,14 @@ import numpy as np
 import cv2
 import os
 import matplotlib.pyplot as plt
+from src.datasets.Data_Instance import Data_Container
 
 class Nii_Gz_Dataset(Dataset):
     r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""
 
     def __init__(self): 
         self.size = (64, 64)
-        return
+        self.data = Data_Container()
 
     def getFilesInPath(self, path):
         r"""Get files in path ordered by id and slice
@@ -73,10 +74,17 @@ class Nii_Gz_Dataset(Dataset):
                 img (numpy): Image data
                 label (numpy): Label data
         """
-        img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
-        label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
-        idx = self.__getname__(idx)
-        return idx, *self.preprocessing(img, label)
+
+        img_id = self.__getname__(idx)
+        out = self.data.get_data(key=img_id)
+        if out == False:
+            img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
+            label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
+            img, label = self.preprocessing(img, label)
+            self.data.set_data(key=img_id, data=(img_id, img, label))
+
+            out = self.data.get_data(key=img_id)
+        return out
 
     def getIdentifier(self, idx):
         r""".. TODO:: Remove redundancy"""
@@ -88,6 +96,7 @@ class Nii_Gz_Dataset(Dataset):
                 img (numpy): Image to preprocess
                 label (numpy): Label to preprocess
         """
+        
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)

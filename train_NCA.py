@@ -10,11 +10,7 @@ import torch.nn.functional as F
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
-from lib.CAModel import CAModel
-from lib.CAModel_Noise import CAModel_Noise
-from lib.CAModel_deeper import CAModel_Deeper
-from lib.CAModel_Residual import CAModel_Residual
-from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
+from src.models.Model_BasicNCA import BasicNCA
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
@@ -29,10 +25,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train_tiny/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train_tiny/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test31_dataloader_c64_l16e4_Residual_tiny',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA',
     'device':"cuda:0",
     'n_epoch': 10,
     # Learning rate
@@ -49,7 +45,7 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 6,
+    'batch_size': 48,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -69,7 +65,7 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
-ca = CAModel_Residual(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+ca = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
@@ -78,8 +74,8 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
-
-agent.train(data_loader, loss_function)
+with torch.autograd.set_detect_anomaly(True):
+    agent.train(data_loader, loss_function)
 
 #exp.temporarly_overwrite_config(config)
 #agent.getAverageDiceScore()
