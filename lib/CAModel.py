@@ -92,5 +92,6 @@ class CAModel(nn.Module):
 
     def forward(self, x, steps=1, fire_rate=None, angle=0.0):
         for step in range(steps):
-            x[...,3:] = self.update(x, fire_rate, angle)[...,3:]
+            x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
+            x = torch.concat((x[...,:3], x2[...,3:]), 3)
         return x
