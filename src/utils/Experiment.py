@@ -110,20 +110,7 @@ class Experiment():
     def set_model_state(self, state):
         r"""TODO: remove? """
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
-
-    def set_model_state_subset(self, state, subset=1):
-        r"""TODO: remove? """
-        images = self.data_split.get_images(state)
-        labels = self.data_split.get_labels(state)
-
-        length = max(1, int(len(images) * subset))
-        images = images[0:length]
-        labels = labels[0:length]
-
-        print(len(images))
-
-        self.dataset.setPaths(self.config['img_path'], images, self.config['label_path'], labels)
-
+        
     def get_from_config(self, tag):
         r"""Get from config
             Args:
@@ -165,11 +152,6 @@ class Experiment():
         """
         self.writer.add_image(tag, image, step, dataformats='HWC')
 
-    def write_figure(self, tag, figure, step):
-        r"""Write a figure to tensorboard
-        """
-        self.writer.add_figure(tag, figure, step)
-
     def write_text(self, tag, text, step):
         r"""Write text to tensorboard
         """
@@ -179,6 +161,11 @@ class Experiment():
         r"""Write data as histogram to tensorboard
         """
         self.writer.add_histogram(tag, data, step)
+
+    def write_figure(self, tag, figure, step):
+        r"""Write a figure to tensorboard images
+        """
+        self.writer.add_figure(tag, figure, step)
 
 
 class DataSplit():
