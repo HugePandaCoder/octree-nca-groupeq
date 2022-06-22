@@ -201,14 +201,14 @@ class BaseAgent():
             data_id, inputs, _ = data
             outputs, targets = self.get_outputs(data)
 
-            if type(data_id) is tuple:
-                id = data_id[0]
-                slice = 0
+            #if type(data_id) is tuple:
+            #    id = data_id[0]
+            #    slice = 0
+            #else:
+            if isinstance(data_id, str):
+                _, id, slice = dataset.__getname__(data_id).split('_')
             else:
-                if isinstance(data_id, str):
-                    _, id, slice = dataset.__getname__(data_id).split('_')
-                else:
-                    _, id, slice = data_id[0].split('_')
+                _, id, slice = data_id[0].split('_')
 
             #print(id)
             if id != patient_id and patient_id != None:
