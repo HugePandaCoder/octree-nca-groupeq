@@ -19,7 +19,7 @@ class Nii_Gz_Dataset_CMR(Nii_Gz_Dataset):
     def __init__(self): 
         self.size = (64, 64)
         self.data = Data_Container()
-        f = open("M:\MasterThesis\Datasets\labels.json")
+        f = open("/home/jkalkhof_locale/Documents/Data/cmr_challenge_smaller/labels.json")
         self.json_data = json.load(f)
         #self.labels = 
 

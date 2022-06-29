@@ -1,0 +1,7 @@
+exec(open("train_NCA_from3D_prostate_lowpass.py").read())
+exec(open("train_NCA_from3D_prostate_highpass.py").read())
+exit()
+exec(open("train_NCA_highpass.py").read())
+exec(open("train_NCA_lowpass.py").read())
+exec(open("train_Unet_highpass.py").read())
+exec(open("train_Unet_lowpass.py").read())

@@ -119,11 +119,10 @@ class BaseAgent():
         self.exp.write_scalar('Dice/test', sum(loss_log.values())/len(loss_log), epoch)
         self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
         param_lst = []
-        for param in self.model.parameters():
-            #print(param.flatten())
-            param_lst.extend(np.fromiter(param.flatten(), dtype=float))
-        #print(param_lst)
-        self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
+        # ADD AGAIN TODO
+        #for param in self.model.parameters():
+        #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
+        #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
     def getAverageDiceScore(self, useSigmoid=True):
         r"""Get the average Dice test score.

@@ -30,7 +30,7 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         x,y = image.shape[0], image.shape[1]
         #size of circle
-        e_x,e_y=20,20
+        e_x,e_y=10,10
         #create a box 
         bbox=((x/2)-(e_x/2),(y/2)-(e_y/2),(x/2)+(e_x/2),(y/2)+(e_y/2))
         low_pass=Image.new("L",(image.shape[0],image.shape[1]),color=0)
@@ -57,7 +57,7 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         x,y = image.shape[0], image.shape[1]
         #size of circle
-        e_x,e_y=20,20
+        e_x,e_y=10,10
         #create a box 
         bbox=((x/2)-(e_x/2),(y/2)-(e_y/2),(x/2)+(e_x/2),(y/2)+(e_y/2))
         low_pass=Image.new("L",(image.shape[0],image.shape[1]),color=0)
