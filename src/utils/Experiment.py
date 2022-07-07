@@ -59,6 +59,7 @@ class Experiment():
         self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
         self.config = self.projectConfig[0]
         model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
+        print(model_path)
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
             self.agent.load_state(model_path)
@@ -215,6 +216,7 @@ class DataSplit():
                 dic['val'][key] = files[key]
             else:
                 dic['test'][key] = files[key]
+        print("Datasplit-> train entries: {}, val entries: {}, test entries: {}".format(len(dic['train']), len(dic['val']), len(dic['test'])))
         return dic
 
     def getFilesInFolder(self, path, dataset):

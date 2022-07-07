@@ -13,15 +13,18 @@ from src.datasets.Data_Instance import Data_Container
 from scipy import fftpack
 from PIL import Image, ImageDraw
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+import torchio
 
 
 class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
     r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""
 
-    def __init__(self, filter="lowpass"): 
+    def __init__(self, filter="lowpass", aug_type=None): 
         self.size = (64, 64)
         self.data = Data_Container()
         self.filter = filter
+        self.aug_type = aug_type
+        torch.manual_seed(42)
 
 
     def lowpass_filter(self, image):
@@ -42,6 +45,10 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         #multiply both the images
         filtered=np.multiply(fft1,low_pass_np)
+
+        #imgPIL = Image.fromarray(np.uint8(filtered))
+        #imgPIL.save("C:/Users/John/Desktop/testnca.jpg")
+        #cv2.imwrite("C:/Users/John/Desktop/testnca.jpg", filtered)
 
         #inverse fft
         ifft2 = np.real(fftpack.ifft2(fftpack.ifftshift(filtered)))
@@ -79,6 +86,23 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         return ifft2
 
+    def torchio_augmentation(self, img, aug_type=None):
+        #print(aug_type)
+        if aug_type == None:
+            return img
+        if aug_type == "random_noise":
+            transform = torchio.RandomNoise(mean=100, std=200)
+        if aug_type == "random_spike":
+            transform = torchio.RandomSpike(num_spikes=7, intensity=(0, 0.5))
+        if aug_type == "random_anitrosopy":
+            transform = torchio.RandomAnisotropy(downsampling=(3.5, 9))
+
+        img = np.expand_dims(img, axis=0)
+        img = np.expand_dims(img, axis=0)
+        img = transform(img)
+        img = np.squeeze(img)
+        return img
+
     def preprocessing(self, img, label):
         r"""Preprocessing of image
             Args:
@@ -87,6 +111,7 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
         """
         
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
+        img = self.torchio_augmentation(img, aug_type=self.aug_type)
         if self.filter == "lowpass":
             img = self.lowpass_filter(img)
         else:

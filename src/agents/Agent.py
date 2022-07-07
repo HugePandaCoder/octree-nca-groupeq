@@ -8,6 +8,7 @@ import torch.optim as optim
 from src.utils.helper import convert_image
 from src.losses.LossFunctions import DiceLoss
 import seaborn as sns
+from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -164,6 +165,9 @@ class BaseAgent():
             if epoch % self.exp.get_from_config('evaluate_interval') == 0:
                 print("Evaluate model")
                 self.intermediate_evaluation(dataloader, epoch)
+            if epoch % self.exp.get_from_config('ood_interval') == 0:
+                print("Evaluate model in OOD cases")
+                self.ood_evaluation(epoch=epoch)
             if epoch % self.exp.get_from_config('save_interval') == 0:
                 print("Model saved")
                 self.save_state(os.path.join(self.exp.get_from_config('model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
@@ -177,7 +181,22 @@ class BaseAgent():
         """
         return image
 
-    def test(self, loss_f, save_img = None):
+    def ood_evaluation(self, ood_cases=["random_noise", "random_spike", "random_anitrosopy"], epoch=0):
+        print("OOD EVALUATION")
+        dataset_train = self.exp.dataset
+        diceLoss = DiceLoss(useSigmoid=True)
+        for augmentation in ood_cases:
+            dataset_eval = Nii_Gz_Dataset_lowPass(aug_type=augmentation)
+            self.exp.dataset = dataset_eval
+            loss_log = self.test(diceLoss, tag='ood/' + str(augmentation) + '/')
+            #img_plot = self.plot_results_byPatient(loss_log)
+            #self.exp.write_figure('Patient/dice', img_plot, epoch)
+            self.exp.write_scalar('ood/Dice/' + str(augmentation), sum(loss_log.values())/len(loss_log), epoch)
+            self.exp.write_histogram('ood/Dice/' + str(augmentation) + '/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
+        self.exp.dataset = dataset_train
+
+
+    def test(self, loss_f, save_img = None, tag='test/img/'):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             Args:
@@ -224,7 +243,7 @@ class BaseAgent():
                 patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))#[:, :, :, 0])) #:4
             # Add image to tensorboard
             if i in save_img: #np.random.random() < chance:
-                self.exp.write_img('test/img/' + str(patient_id) + "_" + str(len(patient_3d_image)), 
+                self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                 convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
                 self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
                 self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
