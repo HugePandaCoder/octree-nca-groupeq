@@ -42,10 +42,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 path (String): The path to the nib file to be loaded."""
         return nib.load(path).get_fdata()
 
-    def __len__(self):
-        r"""Get number of items in dataset"""
-        return self.length
-
     def __getitem__(self, idx):
         r"""Standard get item function
             Args:

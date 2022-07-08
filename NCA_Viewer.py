@@ -86,6 +86,7 @@ file_list_column = [
             values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
         )
     ],
+    [sg.Combo(['train', 'val', 'test'],default_value='test',key='-DataType-', readonly=True, enable_events=True)],
 ]
 
 image_viewer_column = [
@@ -140,6 +141,12 @@ def update_image(output, label):
     out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]))#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
     window["-IMAGE-"].update(data=out_img)
 
+def update_ImageList():
+    fnames = dataset.getImagePaths()
+    window["-FILE LIST-"].update(fnames)
+
+
+
 output = None
 label = None
 window = sg.Window("NCA Viewer", layout)
@@ -147,20 +154,35 @@ window = sg.Window("NCA Viewer", layout)
 playActive = False
 i = 0
 
+steps_left = 0
+
 while True:
-    event, values = window.read()
+    event, values = window.Read(timeout = 1)
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
-    if event == "-Images-":
-        folder = values["-Images-"]
-        try:
-            # Get list of files in folder
-            file_list = os.listdir(folder)
-        except:
-            file_list = []
 
-        fnames = dataset.getImagePaths()
-        window["-FILE LIST-"].update(fnames)
+    # Do Step
+    if steps_left > 0:
+        start = time.time()
+        output = model(output, 1)
+        update_image(output, label)
+        end = time.time()
+        time_passed = end-start
+        if(time_passed < speed_levels[int(values["-SPEED_SLIDER-"])]):
+            time.sleep(speed_levels[int(values["-SPEED_SLIDER-"])] - time_passed) #"-SPEED_SLIDER-"
+        window.refresh()
+        steps_left = steps_left -1
+        print(steps_left)
+
+    if event == "-Images-":
+        #folder = values["-Images-"]
+        #try:
+        #    # Get list of files in folder
+        #    file_list = os.listdir(folder)
+        #except:
+        #    file_list = []
+
+        update_ImageList()
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         try:
             filename = ""
@@ -170,17 +192,14 @@ while True:
         except:
             pass
     elif event == "Play":
-        for i in range(64):
-            start = time.time()
-            output = model(output, 1)
-            update_image(output, label)
-            end = time.time()
-            time_passed = end-start
-            if(time_passed < speed_levels[int(values["-SPEED_SLIDER-"])]):
-                time.sleep(speed_levels[int(values["-SPEED_SLIDER-"])] - time_passed) #"-SPEED_SLIDER-"
-            window.refresh()
+        steps_left = steps_left + 64
     elif event == "-DIVIDE_SLIDER-":
         update_image(output, label)
+    elif event== '-DataType-':
+        print(values['-DataType-'])
+        exp.set_model_state(values['-DataType-'])
+        update_ImageList()
+
 
 window.close()
 

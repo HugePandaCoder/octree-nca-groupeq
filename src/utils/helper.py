@@ -110,12 +110,12 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3):
 
     max = np.max(img_all_channels)    
     min = np.min(img_all_channels)
-    print(max)
-    print(min)
+    #print(max)
+    #print(min)
     #img_all_channels = np.log(img_all_channels)
     #img_all_channels = (img_all_channels - min) / (-min+max)
 
-    print(img_all_channels.shape)
+    #print(img_all_channels.shape)
     if replace_firstImage is not None:
         print("YES")
         print(replace_firstImage.shape)

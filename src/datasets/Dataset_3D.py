@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+from src.datasets.Dataset_Base import Dataset_Base
 from src.datasets.Data_Instance import Data_Container
 import cv2
 import numpy as np
@@ -9,15 +10,7 @@ class Dataset_3D(Dataset):
     """
     def __init__(self, slice=None, resize=True): 
         self.slice = slice
-        self.resize = resize
-        self.data = Data_Container()
-
-    def set_size(self, size):
-        r"""Set size of images. Images will later be rescaled if necessary and not disabled.
-            Args:
-                size (int, int): Size of images
-        """
-        self.size = tuple(size)
+        super().__init__(resize)
 
     def getImagePaths(self):
         r"""Get a list of all images in dataset
@@ -35,22 +28,6 @@ class Dataset_3D(Dataset):
         """
         idx = self.images_list.index(name)
         return self.__getitem__(idx)
-
-
-    def setPaths(self, images_path, images_list, labels_path, labels_list):
-        r"""Set the important image paths
-            Args:
-                images_path (String): The path to the images
-                images_list ([String]): A list of the names of all images
-                labels_path (String): The path to the labels
-                labels_list ([String]): A list of the names of all labels
-            .. TODO:: Refactor
-        """
-        self.images_path = images_path
-        self.images_list = images_list
-        self.labels_path = labels_path
-        self.labels_list = labels_list
-        self.length = len(self.images_list)
     
     def resize_image(self, img, isLabel):
         r"""TODO REMOVE OR USE"""
