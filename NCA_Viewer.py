@@ -1,9 +1,11 @@
 import PySimpleGUI as sg
 import os
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
+from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.png_Dataset import png_Dataset
 from src.utils.Experiment import Experiment
 from lib.CAModel import CAModel
+from src.models.Model_BasicNCA import BasicNCA
 import torch
 import numpy as np
 from lib.utils_vis import to_rgb, to_rgb2, make_seed
@@ -14,14 +16,15 @@ import io
 import time
 import matplotlib.pyplot as plt
 from src.agents.Agent_NCA import Agent
-from src.utils.helper import convert_image
+from src.utils.helper import convert_image, visualize_all_channels
+from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 
 config = [{
-    'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/hippocampus_3d/imagesTr",
-    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/hippocampus_3d/labelsTr",
+    'out_path': r"D:\PhD\NCA_Experiments",
+    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
+    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/NCA_Test28_dataloader_3D_c64_l16e4_hippocampus_resizetest_remove',
+    'model_path': r'M:\Models\TestNCA_lowpass_full_filter1010',
     'device':"cpu",
     'n_epoch': 200,
     # Learning rate
@@ -33,7 +36,7 @@ config = [{
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 64,        # Number of CA state channels
+    'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
@@ -53,8 +56,10 @@ config = [{
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D(slice=2)
-model = CAModel(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
+dataset = Nii_Gz_Dataset_lowPass(filter="lowpass") #_3D(slice=2)
+model = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
+print("PARAMETERS")
+print(model.parameters)
 agent = Agent(model)
 exp = Experiment(config, dataset, model, agent)
 exp.set_model_state('test')
@@ -94,7 +99,15 @@ image_viewer_column = [
          default_value=2,
          size=(20,15),
          orientation='horizontal',
-         font=('Helvetica', 12))],
+         font=('Helvetica', 12)),
+    sg.Text("Log:"),
+    sg.Slider(key="-DIVIDE_SLIDER-",
+        range=(1,100),
+         default_value=1,
+         size=(20,15),
+         orientation='horizontal',
+         font=('Helvetica', 12),
+         enable_events=True)],
 ]
 
 layout = [
@@ -105,39 +118,74 @@ layout = [
     ]
 ]
 
-#if config['reload'] == True:
-#    model.load_state_dict(torch.load(config['model_path']))
-
 def init_input(name):
-    print("GEHT noch")
     _, target_img, target_label = dataset.getItemByName(name)
     target_img, target_label = torch.from_numpy(target_img), torch.from_numpy(target_label)
-    print("GEHT immer noch")
-    #pad_target = np.pad(target_img, [(0, 0), (0, 0), (0, 0)])
-    #h, w = pad_target.shape[:2]
-    #pad_target = np.expand_dims(pad_target, axis=0)
-    #pad_target = torch.from_numpy(pad_target.astype(np.float32)).to(torch.device('cpu'))
-    #pad_target = torch.from_numpy(target_img.astype(np.float32)).to(torch.device('cpu'))
-    #_map_shape = config['input_size']
 
     data = 0, torch.unsqueeze(target_img, 0), torch.unsqueeze(target_label, 0)
 
     data = agent.prepare_data(data, eval=True)
     _, output, target_label = data
-    #_map = np.zeros([_map_shape[0], _map_shape[1], config['channel_n']], np.float32) #make_seed(_map_shape, config['channel_n'])
-    #_map[:, :, 0:3] = pad_target.cpu()
 
-    #output = torch.from_numpy(_map.reshape([1,_map_shape[0],_map_shape[1],config['channel_n']]).astype(np.float32))
-    #target_output = torch.from_numpy(target_label.astype(np.float32)).to(torch.device('cpu'))
-    print(output.shape)
-    print(target_label.shape)
     return output, target_label
 
 def combine_images(img, label):
     #print(label[label == 0])
     return label
 
-#def convert_image(img, label=None):
+def update_image(output, label):
+    output_vis = torch.Tensor.numpy(output.clone().detach())
+    label_vis = torch.Tensor.numpy(label.clone().detach())
+    overlayed_img = convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis, encode_image=False)
+    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]))#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
+    window["-IMAGE-"].update(data=out_img)
+
+output = None
+label = None
+window = sg.Window("NCA Viewer", layout)
+
+playActive = False
+i = 0
+
+while True:
+    event, values = window.read()
+    if event == "Exit" or event == sg.WIN_CLOSED:
+        break
+    if event == "-Images-":
+        folder = values["-Images-"]
+        try:
+            # Get list of files in folder
+            file_list = os.listdir(folder)
+        except:
+            file_list = []
+
+        fnames = dataset.getImagePaths()
+        window["-FILE LIST-"].update(fnames)
+    elif event == "-FILE LIST-":  # A file was chosen from the listbox
+        try:
+            filename = ""
+            output, label = init_input(values["-FILE LIST-"][0])
+            update_image(output, label)
+            window["-TOUT-"].update(filename)
+        except:
+            pass
+    elif event == "Play":
+        for i in range(64):
+            start = time.time()
+            output = model(output, 1)
+            update_image(output, label)
+            end = time.time()
+            time_passed = end-start
+            if(time_passed < speed_levels[int(values["-SPEED_SLIDER-"])]):
+                time.sleep(speed_levels[int(values["-SPEED_SLIDER-"])] - time_passed) #"-SPEED_SLIDER-"
+            window.refresh()
+    elif event == "-DIVIDE_SLIDER-":
+        update_image(output, label)
+
+window.close()
+
+
+def convert_image_old(img, label=None):
     img_rgb = to_rgb2(img.detach().numpy()[0][..., :3]) #+ label[0:3]
     label = label[:,:,:3]#.astype(np.float32)
     label_pred = to_rgb2(img.detach().numpy()[0][..., 3:6])
@@ -158,70 +206,4 @@ def combine_images(img, label):
     img_rgb[img_rgb > 256] = 256
     img_rgb = cv2.resize(img_rgb, dsize=(512, 512), interpolation=cv2.INTER_NEAREST)
     img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
-    #  #[..., np.newaxis] [1].tobytes() 
     return img_rgb
-
-output = None
-label = None
-window = sg.Window("NCA Viewer", layout)
-
-playActive = False
-i = 0
-#window["-Images-"].InitialFolder = r"C:\\"
-
-# init
-#event, values = window.read()
-#window['-Images-'].InitialFolder = config['img_path']
-
-while True:
-    event, values = window.read()
-    if event == "Exit" or event == sg.WIN_CLOSED:
-        break
-    if event == "-Images-":
-        folder = values["-Images-"]
-        try:
-            # Get list of files in folder
-            file_list = os.listdir(folder)
-        except:
-            file_list = []
-
-        fnames = dataset.getImagePaths()
-        #[
-        #    f
-        #    for f in file_list
-        #    if os.path.isfile(os.path.join(folder, f))
-        #    and f.lower().endswith((".png", ".gif", ".nii.gz"))
-        #]
-        window["-FILE LIST-"].update(fnames)
-    elif event == "-FILE LIST-":  # A file was chosen from the listbox
-        try:
-            #filename = os.path.join(
-            #    values["-Images-"], values["-FILE LIST-"][0]
-            #)
-            filename = ""
-            output, label = init_input(values["-FILE LIST-"][0])
-            print("TEST2")
-            print(output.shape)
-            print(label.shape)
-            out_img = convert_image(output[...,:3], output[...,3:6], label)#cv2.imencode(".png", to_rgb(output.detach().numpy()[0])*256)[1].tobytes() 
-            print("TEST")
-            window["-TOUT-"].update(filename)
-            window["-IMAGE-"].update(data=out_img)
-        except:
-            pass
-    elif event == "Play":
-        for i in range(64):
-            #print(i)
-            start = time.time()
-            output = model(output, 1)
-            print(output.shape)
-            out_img = convert_image(output, label)
-            print(out_img.shape)
-            window["-IMAGE-"].update(data=out_img)
-            end = time.time()
-            time_passed = end-start
-            if(time_passed < speed_levels[int(values["-SPEED_SLIDER-"])]):
-                time.sleep(speed_levels[int(values["-SPEED_SLIDER-"])] - time_passed) #"-SPEED_SLIDER-"
-            window.refresh()
-
-window.close()

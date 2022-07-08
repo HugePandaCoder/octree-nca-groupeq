@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import seaborn as sns
 import bz2
+import math
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -32,6 +33,97 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
+def visualize_all_channels(img, replace_firstImage = None, divide_by=3):
+    if img.shape[0] == 1:
+        img = img[0]
+
+    tiles = int(math.ceil(math.sqrt(img.shape[2])))
+    img_x = img.shape[0]
+    img_y = img.shape[1]
+
+    img_all_channels = np.zeros((img_x*tiles, img_y*tiles))
+    for tile_pos in range(img.shape[2]):
+        tile = img[:,:,tile_pos]
+        x = tile_pos%tiles
+        y = int(math.floor(tile_pos/tiles))
+        if tile_pos < 3:
+            tile = tile
+            if False:
+                min = np.min(tile)
+                max = np.max(tile)
+                tile = tile - min
+                tile = np.log2(tile)
+                min = np.min(tile)
+                max = np.max(tile)
+                tile = tile-min / (-min+max)
+
+        img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
+    
+    output_log = False
+
+    if output_log:
+        print(np.max(img_all_channels))
+        print(np.min(img_all_channels))
+
+
+    img_all_channels_blue = img_all_channels.copy()
+    img_all_channels_blue[img_all_channels_blue >= 1] = 0
+    img_all_channels_blue[img_all_channels_blue <= 0] = 0
+    if output_log:
+        print(np.max(img_all_channels_blue))
+        print(np.min(img_all_channels_blue))
+
+    img_all_channels_red = img_all_channels.copy()
+    img_all_channels_red[img_all_channels_red > 0] = 0
+
+    img_all_channels_green = img_all_channels.copy()
+    img_all_channels_green[img_all_channels_green < 0] = 0
+
+    if output_log:
+        print("REEED")
+        print(np.max(img_all_channels_red))
+        print(np.min(img_all_channels_red))
+    #img_all_channels_red = img_all_channels_red * -1
+    #img_all_channels_red = img_all_channels_red / 20
+    img_all_channels_red = img_all_channels_red * -1
+    img_all_channels_red = np.log(img_all_channels_red) 
+    img_all_channels_red = (img_all_channels_red) / np.log(divide_by)
+    if output_log:
+        print(np.max(img_all_channels_red))
+        print(np.min(img_all_channels_red))
+
+        print("GREEEN")
+        print(np.max(img_all_channels_green))
+        print(np.min(img_all_channels_green))
+    #img_all_channels_green = img_all_channels_green / 20
+    img_all_channels_green = np.log(img_all_channels_green) 
+    img_all_channels_green = (img_all_channels_green) / np.log(divide_by)
+    if output_log:
+        print(np.max(img_all_channels_green))
+        print(np.min(img_all_channels_green))
+
+        print("TEEESTST")
+    
+    img_all_channels = np.stack([img_all_channels_blue, img_all_channels_green, img_all_channels_red], axis=2)
+    
+    #img_all_channels = np.stack([img_all_channels for _ in range(3)], axis=2)
+
+    max = np.max(img_all_channels)    
+    min = np.min(img_all_channels)
+    print(max)
+    print(min)
+    #img_all_channels = np.log(img_all_channels)
+    #img_all_channels = (img_all_channels - min) / (-min+max)
+
+    print(img_all_channels.shape)
+    if replace_firstImage is not None:
+        print("YES")
+        print(replace_firstImage.shape)
+        img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
+
+
+    return encode(img_all_channels)
+
 def convert_image(img, prediction, label=None, encode_image=True):
     r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
         TODO: Write nicely and optmiize output, currently only for displaying intermediate results
@@ -46,6 +138,7 @@ def convert_image(img, prediction, label=None, encode_image=True):
 
     img_rgb, label, label_pred = [v.squeeze() for v in [img_rgb, label, label_pred]]
 
+    # Overlay Label on Image
     if label is not None:
         sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
         sobel_y = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=0, dy=1, ksize=3)
@@ -57,16 +150,17 @@ def convert_image(img, prediction, label=None, encode_image=True):
         label_pred[label_pred < 0] = 0
 
         img_rgb = np.clip((sobel * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
-    #img_rgb = img_rgb / np.amax(img_rgb)
-    print(img_rgb.shape)
+
     if encode_image:
-        img_rgb = img_rgb * 255
-        img_rgb[img_rgb > 255] = 255
-        img_rgb = cv2.resize(img_rgb, dsize=(512, 512), interpolation=cv2.INTER_NEAREST)
-        img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
-        return img_rgb
-    #  #[..., np.newaxis] [1].tobytes() 
-    return img_rgb #np.uint8(img_rgb) #.astype(np.uint8)
+        img_rgb = encode(img_rgb)
+    return img_rgb 
+
+def encode(img_rgb):
+    img_rgb = img_rgb * 255
+    img_rgb[img_rgb > 255] = 255
+    img_rgb = cv2.resize(img_rgb, dsize=(512, 512), interpolation=cv2.INTER_NEAREST)
+    img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
+    return img_rgb
 
 def saveNiiGz(self, output, label, patient_id, path):
     output = np.round(output.cpu().detach().numpy())

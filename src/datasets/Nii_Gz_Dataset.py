@@ -57,14 +57,24 @@ class Nii_Gz_Dataset(Dataset):
         r"""Get name of item by id"""
         return self.images_list[idx]
 
-    def getitembyname(self, name):
+    def getItemByName(self, name):
         r"""Get item by its name
             Args:
                 name (string): Name of item
         """
-        img = nib.load(os.path.join(self.images_path, name)).get_fdata()
-        label = nib.load(os.path.join(self.labels_path, name)).get_fdata()[..., np.newaxis]
-        return self.preprocessing(img, label)
+        idx = self.images_list.index(name)
+        out = self.__getitem__(idx)
+        print(out)
+        #img = nib.load(os.path.join(self.images_path, name)).get_fdata()
+        #label = nib.load(os.path.join(self.labels_path, name)).get_fdata()[..., np.newaxis]
+        return out #self.preprocessing(img, label)
+
+    def getImagePaths(self):
+        r"""Get a list of all images in dataset
+            Returns:
+                list ([String]): List of images
+        """
+        return self.images_list
 
     def __getitem__(self, idx):
         r"""Standard get item function

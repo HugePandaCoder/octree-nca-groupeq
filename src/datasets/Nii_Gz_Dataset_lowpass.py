@@ -26,7 +26,6 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
         self.aug_type = aug_type
         torch.manual_seed(42)
 
-
     def lowpass_filter(self, image):
         #image = image.numpy()
         fft1 = fftpack.fftshift(fftpack.fft2(image))

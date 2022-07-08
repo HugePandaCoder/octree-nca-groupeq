@@ -111,3 +111,8 @@ class Nii_Gz_Dataset_DistanceField(Dataset):
 
         return img, label
 
+    def createDistanceField(self, label_layer):
+        for x in range(label_layer.shape[0]):
+            
+        return label_layer
+

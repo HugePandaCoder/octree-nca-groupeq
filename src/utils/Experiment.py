@@ -63,6 +63,7 @@ class Experiment():
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
             self.agent.load_state(model_path)
+
         #self.setup()
         
     def general(self):
