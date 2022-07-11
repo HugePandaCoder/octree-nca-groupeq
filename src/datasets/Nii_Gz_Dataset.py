@@ -75,7 +75,14 @@ class Nii_Gz_Dataset(Dataset_Base):
         label = np.repeat(label[:, :, np.newaxis], 3, axis=2)
 
         label[:,:, 0] = label[:,:, 0] != 0
-        label[:,:, 1] = 0
+
+        # Edges as second mask
+        gx, gy = np.gradient(label[:,:, 0])
+        
+        label[:, :, 1] = gy * gy + gx * gx
+        label[:, :, 1][label[:, :, 1] != 0.0] = 1
+        
+        #label[:,:, 1] = 0
         label[:,:, 2] = 0
 
         return img, label

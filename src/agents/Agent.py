@@ -77,7 +77,9 @@ class BaseAgent():
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
         #targets = targets.int()
-        loss = loss_f(outputs, targets)
+        loss = 0
+        for m in range(outputs.shape[-1]):
+            loss = loss + loss_f(outputs[..., m], targets[..., m])
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()
