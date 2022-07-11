@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from src.agents.Agent_NCA import Agent
 from src.utils.helper import convert_image, visualize_all_channels
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
+from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
@@ -56,7 +57,7 @@ config = [{
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_lowPass(filter="lowpass") #_3D(slice=2)
+dataset = Nii_Gz_Dataset_allPass() #_3D(slice=2)
 model = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 print("PARAMETERS")
 print(model.parameters)
