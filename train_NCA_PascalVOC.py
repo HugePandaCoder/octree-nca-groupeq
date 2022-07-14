@@ -9,9 +9,11 @@ import torch.optim as optim
 import torch.nn.functional as F
 from src.models.Model_BasicNCA import BasicNCA
 from lib.CAModel_deeper import CAModel_Deeper
+from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
+from src.datasets.PascalVOC_Dataset import PascalVOC_Dataset
 from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from src.models.Model_BasicNCA import BasicNCA
@@ -30,10 +32,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/imagesTr/",
-    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/labelsTr/",
+    'img_path': r"M:/MasterThesis/Datasets/VOC2012/Small/JPEGImages_min/",
+    'label_path': r"M:/MasterThesis/Datasets/VOC2012/Small/SegmentationClass/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/TestNCA_normal_allPass',
+    'model_path': r'M:/Models/TestNCA_normal_PascalVOC4',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -46,16 +48,16 @@ config = [{
     'evaluate_interval': 10,
     'ood_interval':100,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 12,
+    'batch_size': 6,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
-    'output_channels': 3,
+    'output_channels': 24,
     # Data
     'input_size': (64, 64),
     'data_split': [0.7, 0, 0.3], 
@@ -70,9 +72,9 @@ config = [{
 ]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_allPass()
+dataset = PascalVOC_Dataset()
 device = torch.device(config[0]['device'])
-ca = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=8).to(device)
+ca = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=128).to(device)
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')

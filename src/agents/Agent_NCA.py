@@ -12,6 +12,8 @@ class Agent(BaseAgent):
     
     def initialize(self):
         super().initialize()
+        self.input_channels = self.exp.get_from_config('input_channels')
+        self.output_channels = self.exp.get_from_config('output_channels')
         self.pool = Pool()
 
     def loss_noOcillation(self, x, target, freeChange=True):
@@ -113,7 +115,7 @@ class Agent(BaseAgent):
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
-        return outputs[..., 3:6], targets
+        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets
 
     def initialize_epoch(self):
         r"""Create a pool for the current epoch

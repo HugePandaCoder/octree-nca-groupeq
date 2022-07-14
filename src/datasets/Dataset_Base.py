@@ -53,3 +53,9 @@ class Dataset_Base(Dataset):
         """
         idx = self.images_list.index(name)
         return self.__getitem__(idx)
+
+    def getFilesInPath(self, path):
+        raise NotImplementedError("Subclasses should implement this!")
+
+    def __getitem__(self, idx):
+        raise NotImplementedError("Subclasses should implement this!")

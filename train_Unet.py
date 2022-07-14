@@ -1,6 +1,7 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
@@ -11,10 +12,10 @@ warnings.filterwarnings("ignore")
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train_tiny\labelsTr",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'models/UNet_Test3',
+    'model_path': r'M:/Models/UNet_Test_lowpass_full_filter1010',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -40,7 +41,7 @@ config = [{
 }]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset()
+dataset = Nii_Gz_Dataset_lowPass()
 device = torch.device(config[0]['device'])
 ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
 agent = Agent(ca)
@@ -53,7 +54,10 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-agent.train(data_loader, loss_function)
+exp.temporarly_overwrite_config(config)
+agent.ood_evaluation(epoch=exp.currentStep)
+#agent.getAverageDiceScore()
+#agent.train(data_loader, loss_function)
 
 exit()
 

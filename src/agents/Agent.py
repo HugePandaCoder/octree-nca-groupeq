@@ -166,7 +166,7 @@ class BaseAgent():
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
             print("Epoch: " + str(epoch))
             loss_log = {}
-            for m in range(3):
+            for m in range(self.output_channels):
                 loss_log[m] = []
             self.initialize_epoch()
             print('Dataset size: ' + str(len(dataloader)))

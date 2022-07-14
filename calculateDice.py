@@ -3,7 +3,7 @@ import nibabel as nib
 from src.losses.LossFunctions import DiceLoss
 import torch
 
-location = "D:\\CMRxMotion_Training_Dataset\\ukbb_cardiac_predictions\\full"
+location = "M:\\MasterThesis\\Git\\UKBB\\demo_image"
 
 dice = DiceLoss(useSigmoid = False)
 
