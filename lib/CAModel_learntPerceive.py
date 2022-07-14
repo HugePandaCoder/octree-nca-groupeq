@@ -13,8 +13,8 @@ class CAModel_learntPerceive(nn.Module):
         self.checkCellsAlive = checkCellsAlive
         self.hidden_size = hidden_size
 
-        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1)
-        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1)
+        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
         self.fc0 = nn.Linear(channel_n*3, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
         with torch.no_grad():
@@ -22,8 +22,8 @@ class CAModel_learntPerceive(nn.Module):
 
         #torch.nn.init.xavier_uniform(self.fc0.weight)
         #torch.nn.init.xavier_uniform(self.fc1.weight)
-        torch.nn.init.xavier_uniform(self.p0.weight)
-        torch.nn.init.xavier_uniform(self.p1.weight)
+        #torch.nn.init.xavier_uniform(self.p0.weight)
+        #torch.nn.init.xavier_uniform(self.p1.weight)
 
         self.fire_rate = fire_rate
 
@@ -131,5 +131,6 @@ class CAModel_learntPerceive(nn.Module):
 
     def forward(self, x, steps=1, fire_rate=None, angle=0.0):
         for step in range(steps):
-            x[...,3:] = self.update(x, fire_rate, angle)[...,3:]
+            x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
+            x = torch.concat((x[...,:3], x2[...,3:]), 3)
         return x

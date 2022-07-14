@@ -14,22 +14,26 @@ class CAModel_Deeper(nn.Module):
         self.channel_n = channel_n
         self.checkCellsAlive = checkCellsAlive
 
+        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
         self.fc0 = nn.Linear(channel_n*3, hidden_size)
         self.fc1 = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.fc2 = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.fc3 = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.fc4 = nn.Linear(hidden_size, channel_n, bias=False)
+        self.fc2 = nn.Linear(hidden_size, channel_n, bias=False)
+        #self.fc3 = nn.Linear(hidden_size, hidden_size, bias=False)
+        #self.fc4 = nn.Linear(hidden_size, channel_n, bias=False)
         #self.fc3 = nn.Linear(hidden_size, channel_n, bias=False)
 
         with torch.no_grad():
             self.fc1.weight.zero_()
             self.fc2.weight.zero_()
 
+        #torch.nn.init.xavier_uniform(self.p0)
+        #torch.nn.init.xavier_uniform(self.p1)
         torch.nn.init.xavier_uniform(self.fc0.weight)
         torch.nn.init.xavier_uniform(self.fc1.weight)
         torch.nn.init.xavier_uniform(self.fc2.weight)
-        torch.nn.init.xavier_uniform(self.fc3.weight)
-        torch.nn.init.xavier_uniform(self.fc4.weight)
+        #torch.nn.init.xavier_uniform(self.fc3.weight)
+        #torch.nn.init.xavier_uniform(self.fc4.weight)
 
         self.fire_rate = fire_rate
 
@@ -67,17 +71,19 @@ class CAModel_Deeper(nn.Module):
         if self.checkCellsAlive:
             pre_life_mask = self.alive(x)
 
-        dx = self.perceive(x, angle)
+        y1 = self.p0(x)#self.perceive(x, angle)
+        y2 = self.p1(x)
+        dx = torch.cat((x,y1,y2),1) #,y2
         dx = dx.transpose(1,3)
         dx = self.fc0(dx)
         dx = F.relu(dx)
         dx = self.fc1(dx)
         dx = F.relu(dx)
         dx = self.fc2(dx)
-        dx = F.relu(dx)
-        dx = self.fc3(dx)
-        dx = F.relu(dx)
-        dx = self.fc4(dx)
+        #dx = F.relu(dx)
+        #dx = self.fc3(dx)
+        #dx = F.relu(dx)
+        #dx = self.fc4(dx)
 
 
         if fire_rate is None:
@@ -105,5 +111,6 @@ class CAModel_Deeper(nn.Module):
 
     def forward(self, x, steps=1, fire_rate=None, angle=0.0):
         for step in range(steps):
-            x[...,3:] = self.update(x, fire_rate, angle)[...,3:]
+            x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
+            x = torch.concat((x[...,:3], x2[...,3:]), 3)
         return x

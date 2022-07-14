@@ -4,7 +4,7 @@ from src.datasets.Data_Instance import Data_Container
 import cv2
 import numpy as np
 
-class Dataset_3D(Dataset):
+class Dataset_3D(Dataset_Base):
     r"""Base class to load 3D datasets
         .. WARNING:: Not to be used directly!
     """

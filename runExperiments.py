@@ -1,5 +1,5 @@
-exec(open("train_NCA_from3D_prostate_lowpass.py").read())
-exec(open("train_NCA_from3D_prostate_highpass.py").read())
+exec(open("train_NCA_normal_HP35.py").read())
+exec(open("train_NCA_normal_LP35.py").read())
 exit()
 exec(open("train_NCA_highpass.py").read())
 exec(open("train_NCA_lowpass.py").read())
