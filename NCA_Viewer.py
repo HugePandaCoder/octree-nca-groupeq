@@ -3,6 +3,7 @@ import os
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.png_Dataset import png_Dataset
+from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.utils.Experiment import Experiment
 from lib.CAModel import CAModel
 from src.models.Model_BasicNCA import BasicNCA
@@ -19,20 +20,21 @@ from src.agents.Agent_NCA import Agent
 from src.utils.helper import convert_image, visualize_all_channels
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
+from lib.CAModel_deeper import CAModel_Deeper
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
-    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:\Models\TestNCA_lowpass_full_filter1010',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_normal_full_LP35_reflectPad_learntPerceive_deeper2/',
     'device':"cpu",
     'n_epoch': 200,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [64],
+    'inference_steps': [128],
     # Training config
     'save_interval': 10,
     'evaluate_interval': 10,
@@ -57,8 +59,8 @@ config = [{
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_allPass() #_3D(slice=2)
-model = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
+dataset = Dataset_NiiGz_3D(slice=2)
+model = CAModel_Deeper(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 print("PARAMETERS")
 print(model.parameters)
 agent = Agent(model)
@@ -104,7 +106,7 @@ image_viewer_column = [
          font=('Helvetica', 12)),
     sg.Text("Log:"),
     sg.Slider(key="-DIVIDE_SLIDER-",
-        range=(1,100),
+        range=(1,10000),
          default_value=1,
          size=(20,15),
          orientation='horizontal',
