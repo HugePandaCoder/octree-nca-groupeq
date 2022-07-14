@@ -112,7 +112,7 @@ class Agent(BaseAgent):
         outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
-                self.epoch_pool.addToPool(outputs.detach().cpu(), id)
+                self.epoch_pool.addToPool(outputs.detach(), id)
         return outputs[..., 3:6], targets
 
     def initialize_epoch(self):

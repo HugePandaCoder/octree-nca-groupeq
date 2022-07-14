@@ -78,15 +78,12 @@ class BaseAgent():
         self.optimizer.zero_grad()
         #targets = targets.int()
         loss = 0
-        loss_ret = {}
         for m in range(outputs.shape[-1]):
-            loss_loc = loss_f(outputs[..., m], targets[..., m])
-            loss = loss + loss_loc
-            loss_ret[m] = loss_loc.item()
+            loss = loss + loss_f(outputs[..., m], targets[..., m])
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()
-        return loss_ret
+        return loss.item()
 
     def intermediate_results(self, epoch, loss_log):
         r"""Write intermediate results to tensorboard
@@ -94,13 +91,9 @@ class BaseAgent():
                 epoch (int): Current epoch
                 los_log ([loss]): Array of losses
         """
-        for key in loss_log.keys():
-            #print(loss_log)
-            #print(sum(loss_log[key]))
-            #print(len(loss_log[key]))
-            average_loss = sum(loss_log[key]) / len(loss_log[key])
-            print(epoch, "loss =", average_loss)
-            self.exp.write_scalar('Loss/train/' + str(key), average_loss, epoch)
+        average_loss = sum(loss_log) / len(loss_log)
+        print(epoch, "loss =", average_loss)
+        self.exp.write_scalar('Loss/train', average_loss, epoch)
 
     def plot_results_byPatient(self, loss_log):
         r"""Plot losses in a per patient fashion with seaborn to display in tensorboard.
@@ -124,11 +117,10 @@ class BaseAgent():
         """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
-        for key in loss_log.keys():
-            img_plot = self.plot_results_byPatient(loss_log[key])
-            self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
-            self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-            self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
+        img_plot = self.plot_results_byPatient(loss_log)
+        self.exp.write_figure('Patient/dice', img_plot, epoch)
+        self.exp.write_scalar('Dice/test', sum(loss_log.values())/len(loss_log), epoch)
+        self.exp.write_histogram('Dice/test/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
         param_lst = []
         # ADD AGAIN TODO
         #for param in self.model.parameters():
@@ -141,7 +133,7 @@ class BaseAgent():
                 return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=[])
-        #return sum(loss_log.values())/len(loss_log)
+        return sum(loss_log.values())/len(loss_log)
 
     def save_state(self, model_path):
         r"""Save state of current model
@@ -165,22 +157,19 @@ class BaseAgent():
                 loss_f (nn.Model): The loss for training"""
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
             print("Epoch: " + str(epoch))
-            loss_log = {}
-            for m in range(3):
-                loss_log[m] = []
+            loss_log = []
             self.initialize_epoch()
             print('Dataset size: ' + str(len(dataloader)))
             for i, data in enumerate(dataloader):
                 loss_item = self.batch_step(data, loss_f)
-                for key in loss_item.keys():
-                    loss_log[key].append(loss_item[key])
+                loss_log.append(loss_item)
             self.intermediate_results(epoch, loss_log)
             if epoch % self.exp.get_from_config('evaluate_interval') == 0:
                 print("Evaluate model")
                 self.intermediate_evaluation(dataloader, epoch)
-            #if epoch % self.exp.get_from_config('ood_interval') == 0:
-            #    print("Evaluate model in OOD cases")
-            #    self.ood_evaluation(epoch=epoch)
+            if epoch % self.exp.get_from_config('ood_interval') == 0:
+                print("Evaluate model in OOD cases")
+                self.ood_evaluation(epoch=epoch)
             if epoch % self.exp.get_from_config('save_interval') == 0:
                 print("Model saved")
                 self.save_state(os.path.join(self.exp.get_from_config('model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
@@ -204,9 +193,8 @@ class BaseAgent():
             loss_log = self.test(diceLoss, tag='ood/' + str(augmentation) + '/')
             #img_plot = self.plot_results_byPatient(loss_log)
             #self.exp.write_figure('Patient/dice', img_plot, epoch)
-            for key in loss_log.keys():
-                self.exp.write_scalar('ood/Dice/' + str(key) + ", " + str(augmentation), sum(loss_log[key].values())/len(loss_log)[key], epoch)
-                self.exp.write_histogram('ood/Dice/' + str(key) + ", " + str(augmentation) + '/byPatient', np.fromiter(loss_log[key].values(), dtype=float), epoch)
+            self.exp.write_scalar('ood/Dice/' + str(augmentation), sum(loss_log.values())/len(loss_log), epoch)
+            self.exp.write_histogram('ood/Dice/' + str(augmentation) + '/byPatient', np.fromiter(loss_log.values(), dtype=float), epoch)
         self.exp.dataset = dataset_train
 
 
@@ -223,8 +211,6 @@ class BaseAgent():
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         loss_log = {}
-        for m in range(3):
-            loss_log[m] = {}
 
         if save_img == None:
             save_img = [5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
@@ -246,10 +232,8 @@ class BaseAgent():
 
             #print(id)
             if id != patient_id and patient_id != None:
-                for m in range(patient_3d_image.shape[3]):
-                    loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
-                    #print(loss_log[m])
-                    print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+                loss_log[patient_id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+                print(patient_id + ", " + str(loss_log[patient_id]))
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
 
             if patient_3d_image == None:
@@ -267,11 +251,9 @@ class BaseAgent():
                 self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
                 encode_image=False), self.exp.currentStep)
 
-        for m in range(patient_3d_image.shape[3]):
-            loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
-            print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
-        for key in loss_log.keys():
-            print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
+        loss_log[patient_id] = 1 - loss_f(patient_3d_image, patient_3d_label, smooth = 0).item()
+        print(patient_id + ", " + str(loss_log[patient_id]))
+        print("Average Dice Loss: " + str(sum(loss_log.values())/len(loss_log)))
 
         self.exp.set_model_state('train')
         return loss_log

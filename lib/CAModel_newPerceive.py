@@ -25,5 +25,3 @@ class CAModel_Noise(CAModel):
             y2 = _perceive_with(x, w2)
             y = torch.cat((x,y1,y2),1)
             return y
-
-
