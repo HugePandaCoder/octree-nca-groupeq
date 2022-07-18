@@ -3,6 +3,7 @@ import os
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.png_Dataset import png_Dataset
+from src.datasets.Cityscapes_Dataset import Cityscapes_Dataset
 from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.utils.Experiment import Experiment
 from lib.CAModel import CAModel
@@ -27,8 +28,8 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_normal_full_LP35_reflectPad_learntPerceive_deeper2/',
-    'device':"cpu",
+    'model_path': r'M:/Models/TestNCA_normal_Cityscapes1',
+    'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
     'lr': 16e-4,
@@ -39,7 +40,7 @@ config = [{
     'save_interval': 10,
     'evaluate_interval': 10,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
@@ -50,17 +51,18 @@ config = [{
     'input_fixed': True,
     'output_channels': 3,
     # Data
-    'input_size': (64, 64),
+    'input_size': (200, 200),
     'data_split': [0.6, 0, 0.4], 
     'pool_chance': 0.5,
     'Persistence': False,
+    'unlock_CPU': True,
 }]
 
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D(slice=2)
-model = CAModel_Deeper(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
+dataset = Cityscapes_Dataset()
+model = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cuda:0')).to(torch.device('cuda:0'))
 print("PARAMETERS")
 print(model.parameters)
 agent = Agent(model)
@@ -138,10 +140,11 @@ def combine_images(img, label):
     return label
 
 def update_image(output, label):
-    output_vis = torch.Tensor.numpy(output.clone().detach())
-    label_vis = torch.Tensor.numpy(label.clone().detach())
-    overlayed_img = convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis, encode_image=False)
-    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]))#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
+    output_vis = torch.Tensor.numpy(output.clone().detach().cpu())
+    label_vis = torch.Tensor.numpy(label.clone().detach().cpu())
+    overlayed_img = convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis[...,:3], encode_image=False)
+    
+    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis)#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
     window["-IMAGE-"].update(data=out_img)
 
 def update_ImageList():
@@ -169,6 +172,7 @@ while True:
         start = time.time()
         output = model(output, 1)
         update_image(output, label)
+        output = output.detach()
         end = time.time()
         time_passed = end-start
         if(time_passed < speed_levels[int(values["-SPEED_SLIDER-"])]):

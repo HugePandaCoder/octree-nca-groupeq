@@ -62,7 +62,7 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
 
         img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
 
-        tile_pos_lab = tile_pos -2
+        tile_pos_lab = tile_pos -3
         if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
             tile_label = labels[:,:,tile_pos_lab]
             print(tile_label.shape)
