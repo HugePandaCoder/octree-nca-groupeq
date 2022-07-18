@@ -79,6 +79,8 @@ class PascalVOC_Dataset(Dataset_Base):
 
         label_mask = np.zeros((label.shape[0], label.shape[1], 24))
 
+        #label_mask[0:64, 0:64, label_id]
+
         for ul in unique_labels:
             #ul = tuple(map(tuple, ul))
             if str(ul) not in self.color_label_dic:
@@ -90,7 +92,9 @@ class PascalVOC_Dataset(Dataset_Base):
             label_mask[mask, label_id] = 1
             #print(label_id)
             #print(np.sum(label_mask[:,:, label_id]))
+            #label_mask[mask, 0] = 1
 
+        
 
         return img, label_mask
    

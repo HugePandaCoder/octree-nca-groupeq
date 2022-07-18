@@ -9,6 +9,7 @@ from src.utils.helper import convert_image
 from src.losses.LossFunctions import DiceLoss
 import seaborn as sns
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
+import math
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -80,9 +81,13 @@ class BaseAgent():
         loss = 0
         loss_ret = {}
         for m in range(outputs.shape[-1]):
-            loss_loc = loss_f(outputs[..., m], targets[..., m])
-            loss = loss + loss_loc
-            loss_ret[m] = loss_loc.item()
+            if 1 in targets[..., m]:
+                loss_loc = loss_f(outputs[..., m], targets[..., m])
+                #if m == 0:
+                #    loss_loc = loss_loc * 100
+                loss = loss + loss_loc
+                loss_ret[m] = loss_loc.item()
+
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()
@@ -98,7 +103,10 @@ class BaseAgent():
             #print(loss_log)
             #print(sum(loss_log[key]))
             #print(len(loss_log[key]))
-            average_loss = sum(loss_log[key]) / len(loss_log[key])
+            if len(loss_log[key]) != 0:
+                average_loss = sum(loss_log[key]) / len(loss_log[key])
+            else:
+                aveage_loss = 0
             print(epoch, "loss =", average_loss)
             self.exp.write_scalar('Loss/train/' + str(key), average_loss, epoch)
 
@@ -223,7 +231,7 @@ class BaseAgent():
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         loss_log = {}
-        for m in range(3):
+        for m in range(self.output_channels):
             loss_log[m] = {}
 
         if save_img == None:
@@ -248,6 +256,8 @@ class BaseAgent():
             if id != patient_id and patient_id != None:
                 for m in range(patient_3d_image.shape[3]):
                     loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
+                    if math.isnan(loss_log[m][patient_id]):
+                        loss_log[m][patient_id] = 0
                     #print(loss_log[m])
                     print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
                 patient_id, patient_3d_image, patient_3d_label = id, None, None

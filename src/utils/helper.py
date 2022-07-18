@@ -1,3 +1,4 @@
+from cProfile import label
 import pickle
 import json
 import cv2
@@ -33,9 +34,11 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
-def visualize_all_channels(img, replace_firstImage = None, divide_by=3):
+def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels = None):
     if img.shape[0] == 1:
         img = img[0]
+    if labels is not None and labels.shape[0] == 1:
+        labels = labels[0]
 
     tiles = int(math.ceil(math.sqrt(img.shape[2])))
     img_x = img.shape[0]
@@ -58,6 +61,18 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3):
                 tile = tile-min / (-min+max)
 
         img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
+
+        tile_pos_lab = tile_pos -2
+        if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
+            tile_label = labels[:,:,tile_pos_lab]
+            print(tile_label.shape)
+            print(labels.shape)
+
+            gx_m1, gy_m1 = np.gradient(tile_label)
+            #gx_m2, gy_m2 = np.gradient(label[:,:, 1])
+            tile_label = gy_m1 * gy_m1 + gx_m1 * gx_m1
+            tile_label[tile_label != 0.0] = 1
+            img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y][tile_label == 1] = 1000
     
     output_log = False
 
@@ -122,6 +137,9 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3):
         img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
 
 
+    img_all_channels = cv2.resize(img_all_channels, (1024, 1024), interpolation=cv2.INTER_NEAREST)
+
+
     return encode(img_all_channels)
 
 def convert_image(img, prediction, label=None, encode_image=True):
@@ -158,7 +176,7 @@ def convert_image(img, prediction, label=None, encode_image=True):
 def encode(img_rgb):
     img_rgb = img_rgb * 255
     img_rgb[img_rgb > 255] = 255
-    img_rgb = cv2.resize(img_rgb, dsize=(512, 512), interpolation=cv2.INTER_NEAREST)
+    img_rgb = cv2.resize(img_rgb, dsize=(1024, 1024), interpolation=cv2.INTER_NEAREST)
     img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
     return img_rgb
 
