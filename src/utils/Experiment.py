@@ -44,6 +44,7 @@ class Experiment():
         print("WARNING: NEVER USE \'temporarly_overwrite_config\' FUNCTION DURING TRAINING.")
         self.projectConfig = config
         self.set_current_config()
+        self.data_split = self.new_datasplit()
 
     def get_max_steps(self):
         r"""Get max defined training steps of experiment

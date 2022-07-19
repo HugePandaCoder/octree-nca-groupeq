@@ -213,7 +213,7 @@ class BaseAgent():
             #img_plot = self.plot_results_byPatient(loss_log)
             #self.exp.write_figure('Patient/dice', img_plot, epoch)
             for key in loss_log.keys():
-                self.exp.write_scalar('ood/Dice/' + str(key) + ", " + str(augmentation), sum(loss_log[key].values())/len(loss_log)[key], epoch)
+                self.exp.write_scalar('ood/Dice/' + str(key) + ", " + str(augmentation), sum(loss_log[key].values())/len(loss_log[key]), epoch)
                 self.exp.write_histogram('ood/Dice/' + str(key) + ", " + str(augmentation) + '/byPatient', np.fromiter(loss_log[key].values(), dtype=float), epoch)
         self.exp.dataset = dataset_train
 

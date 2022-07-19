@@ -19,12 +19,14 @@ import torchio
 class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
     r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""
 
-    def __init__(self, filter="lowpass", aug_type=None): 
+    def __init__(self, filter="lowpass", aug_type=None, e_x = 10, e_y = 10): 
         self.size = (64, 64)
         self.data = Data_Container()
         self.filter = filter
         self.aug_type = aug_type
         torch.manual_seed(42)
+        self.e_x = e_x
+        self.e_y = e_y
 
     def lowpass_filter(self, image):
         #image = image.numpy()
@@ -32,7 +34,7 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         x,y = image.shape[0], image.shape[1]
         #size of circle
-        e_x,e_y=10,10
+        e_x,e_y=self.e_x, self.e_y
         #create a box 
         bbox=((x/2)-(e_x/2),(y/2)-(e_y/2),(x/2)+(e_x/2),(y/2)+(e_y/2))
         low_pass=Image.new("L",(image.shape[0],image.shape[1]),color=0)
@@ -63,7 +65,7 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
 
         x,y = image.shape[0], image.shape[1]
         #size of circle
-        e_x,e_y=10,10
+        e_x,e_y=self.e_x, self.e_y
         #create a box 
         bbox=((x/2)-(e_x/2),(y/2)-(e_y/2),(x/2)+(e_x/2),(y/2)+(e_y/2))
         low_pass=Image.new("L",(image.shape[0],image.shape[1]),color=0)

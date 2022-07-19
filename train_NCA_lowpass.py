@@ -12,6 +12,7 @@ from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from src.models.Model_BasicNCA import BasicNCA
+from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
@@ -26,10 +27,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
+    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_lowpass_full_filter1010',
+    'model_path': r'M:\Models\TestNCA_normal_full_LP35_reflectPad_learntPerceive',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -64,20 +65,25 @@ config = [{
 ]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_lowPass()
+dataset = Nii_Gz_Dataset_lowPass(e_x = 20, e_y = 20)
 device = torch.device(config[0]['device'])
-ca = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
+ca = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device).to(device)
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
+
+exp.temporarly_overwrite_config(config)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
-with torch.autograd.set_detect_anomaly(True):
-    agent.train(data_loader, loss_function)
 
-#exp.temporarly_overwrite_config(config)
+#with torch.autograd.set_detect_anomaly(True):
+#    agent.train(data_loader, loss_function)
+
+
+
 #agent.getAverageDiceScore()
+agent.ood_evaluation()
 #agent.test(data_loader, loss_function)
