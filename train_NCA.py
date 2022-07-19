@@ -16,6 +16,7 @@ from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from src.models.Model_BasicNCA import BasicNCA
 from src.models.Model_BasicNCA_noAddUp import BasicNCA_noAddUp
+from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
@@ -33,7 +34,7 @@ config = [{
     'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/imagesTr/",
     'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/TestNCA_normal_allPass',
+    'model_path': r'M:/Models/TestNCA_normal_LP_TEST',
     'device':"cuda:0",
     'n_epoch': 200,
     # Learning rate
@@ -72,7 +73,7 @@ config = [{
 # Define Experiment
 dataset = Nii_Gz_Dataset_allPass()
 device = torch.device(config[0]['device'])
-ca = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=8).to(device)
+ca = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=8).to(device)
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
