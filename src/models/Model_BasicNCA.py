@@ -59,7 +59,7 @@ class BasicNCA(nn.Module):
 
         return x
 
-    def forward(self, x, steps=1, fire_rate=None, angle=0.0):
+    def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
         for step in range(steps):
             x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
             x = torch.concat((x[...,:3], x2[...,3:]), 3)

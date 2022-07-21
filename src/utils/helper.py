@@ -6,6 +6,10 @@ import numpy as np
 import seaborn as sns
 import bz2
 import math
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import io
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -34,11 +38,38 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
-def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels = None):
+# https://stackoverflow.com/questions/7821518/matplotlib-save-plot-to-numpy-array
+def get_img_from_fig(fig, dpi=400, size = (1700, 1700)):
+    buf = io.BytesIO()
+
+    #min_size = min(size)
+    size_inch = fig.get_size_inches()
+    size_inch = size / size_inch
+    print(size_inch)
+    print(size)
+    dpi = int(min(size_inch))
+    print(dpi)
+    #print(size_min)
+    fig.savefig(buf, format="png", dpi=dpi)
+    buf.seek(0)
+    #buf = buf[1].tobytes()
+    #img_arr = np.frombuffer(buf.getvalue(), dtype=np.uint8)
+    #buf.close()
+    img = buf
+    #img = cv2.imdecode(img_arr, 1)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #print(img.read())
+    return img.read()
+
+def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels = None, color_map="nipy_spectral", size = (1700, 1700)):
+    print(size)
     if img.shape[0] == 1:
         img = img[0]
     if labels is not None and labels.shape[0] == 1:
         labels = labels[0]
+
+    #tiles = int(math.ceil(math.sqrt(img.shape[2])))
+    #img_all_channels = img.reshape(3,-1)#np.reshape(img, (img.shape[0]*tiles, img.shape[1]*tiles))
 
     tiles = int(math.ceil(math.sqrt(img.shape[2])))
     img_x = img.shape[0]
@@ -65,82 +96,33 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
         tile_pos_lab = tile_pos -3
         if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
             tile_label = labels[:,:,tile_pos_lab]
-            print(tile_label.shape)
-            print(labels.shape)
 
             gx_m1, gy_m1 = np.gradient(tile_label)
-            #gx_m2, gy_m2 = np.gradient(label[:,:, 1])
             tile_label = gy_m1 * gy_m1 + gx_m1 * gx_m1
             tile_label[tile_label != 0.0] = 1
             img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y][tile_label == 1] = 1000
+        
     
-    output_log = False
-
-    if output_log:
-        print(np.max(img_all_channels))
-        print(np.min(img_all_channels))
-
-
-    img_all_channels_blue = img_all_channels.copy()
-    img_all_channels_blue[img_all_channels_blue >= 1] = 0
-    img_all_channels_blue[img_all_channels_blue <= 0] = 0
-    if output_log:
-        print(np.max(img_all_channels_blue))
-        print(np.min(img_all_channels_blue))
-
-    img_all_channels_red = img_all_channels.copy()
-    img_all_channels_red[img_all_channels_red > 0] = 0
-
-    img_all_channels_green = img_all_channels.copy()
-    img_all_channels_green[img_all_channels_green < 0] = 0
-
-    if output_log:
-        print("REEED")
-        print(np.max(img_all_channels_red))
-        print(np.min(img_all_channels_red))
-    #img_all_channels_red = img_all_channels_red * -1
-    #img_all_channels_red = img_all_channels_red / 20
-    img_all_channels_red = img_all_channels_red * -1
-    img_all_channels_red = np.log(img_all_channels_red) 
-    img_all_channels_red = (img_all_channels_red) / np.log(divide_by)
-    if output_log:
-        print(np.max(img_all_channels_red))
-        print(np.min(img_all_channels_red))
-
-        print("GREEEN")
-        print(np.max(img_all_channels_green))
-        print(np.min(img_all_channels_green))
-    #img_all_channels_green = img_all_channels_green / 20
-    img_all_channels_green = np.log(img_all_channels_green) 
-    img_all_channels_green = (img_all_channels_green) / np.log(divide_by)
-    if output_log:
-        print(np.max(img_all_channels_green))
-        print(np.min(img_all_channels_green))
-
-        print("TEEESTST")
+    #plt.tight_layout()
+    fig, axes = plt.subplots(figsize=(20, 10))
+    pos = axes.imshow(img_all_channels, norm=colors.SymLogNorm(linthresh=0.3, linscale=0.3,
+                                              vmin=-10.0, vmax=10.0), cmap=color_map)#cmap='RdBu', aspect='auto', vmin=-100, vmax=100)
     
-    img_all_channels = np.stack([img_all_channels_blue, img_all_channels_green, img_all_channels_red], axis=2)
+    divider = make_axes_locatable(axes)
+    cax = divider.append_axes("right", size="5%", pad = 0.05)
+
+    axes.margins(x= 0, y=0)
+
+    fig.colorbar(pos, cax=cax)
+    #fig.subplots_adjust(bottom=0, top=1, left=0.1, right=0.9)
+    #fig.tight_layout()
+    #plt.show()
+    #fig.subplots_adjust(top=1) #, bottom=0.05
     
-    #img_all_channels = np.stack([img_all_channels for _ in range(3)], axis=2)
+    fig.canvas.draw()
+    img_all_channels = get_img_from_fig(fig, size=size)
 
-    max = np.max(img_all_channels)    
-    min = np.min(img_all_channels)
-    #print(max)
-    #print(min)
-    #img_all_channels = np.log(img_all_channels)
-    #img_all_channels = (img_all_channels - min) / (-min+max)
-
-    #print(img_all_channels.shape)
-    if replace_firstImage is not None:
-        print("YES")
-        print(replace_firstImage.shape)
-        img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
-
-
-    img_all_channels = cv2.resize(img_all_channels, (1024, 1024), interpolation=cv2.INTER_NEAREST)
-
-
-    return encode(img_all_channels)
+    return img_all_channels 
 
 def convert_image(img, prediction, label=None, encode_image=True):
     r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
@@ -174,9 +156,10 @@ def convert_image(img, prediction, label=None, encode_image=True):
     return img_rgb 
 
 def encode(img_rgb):
-    img_rgb = img_rgb * 255
-    img_rgb[img_rgb > 255] = 255
-    img_rgb = cv2.resize(img_rgb, dsize=(1024, 1024), interpolation=cv2.INTER_NEAREST)
+    #img_rgb = img_rgb * 255
+    #img_rgb[img_rgb > 255] = 255
+    factor_y = img_rgb.shape[0] / img_rgb.shape[1] 
+    img_rgb = cv2.resize(img_rgb, dsize=(1700, int(1700*factor_y)), interpolation=cv2.INTER_NEAREST)
     img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
     return img_rgb
 

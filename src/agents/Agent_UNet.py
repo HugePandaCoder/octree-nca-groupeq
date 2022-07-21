@@ -8,6 +8,11 @@ from src.losses.LossFunctions import DiceLoss
 
 class Agent(BaseAgent):
 
+    def initialize(self):
+        super().initialize()
+        self.input_channels = self.exp.get_from_config('input_channels')
+        self.output_channels = self.exp.get_from_config('output_channels')
+
     def prepare_data(self, data, eval=False):
         r"""Prepare the data to be used with the model
             Args:

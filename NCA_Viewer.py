@@ -51,7 +51,7 @@ config = [{
     'input_fixed': True,
     'output_channels': 3,
     # Data
-    'input_size': (200, 200),
+    'input_size': (200, 400),
     'data_split': [0.6, 0, 0.4], 
     'pool_chance': 0.5,
     'Persistence': False,
@@ -97,7 +97,7 @@ file_list_column = [
 image_viewer_column = [
     [sg.Text("Choose an image from list on left:")],
     [sg.Text(size=(40, 1), key="-TOUT-")],
-    [sg.Image(key="-IMAGE-")],
+    [sg.Image(key="-IMAGE-", expand_x=True, expand_y=True)],
     [sg.Button("Play"),
     sg.Text("Speed:"),
     sg.Slider(key="-SPEED_SLIDER-",
@@ -113,14 +113,15 @@ image_viewer_column = [
          size=(20,15),
          orientation='horizontal',
          font=('Helvetica', 12),
-         enable_events=True)],
+         enable_events=True),
+    sg.Combo(['nipy_spectral', 'coolwarm', 'gnuplot', 'inferno', 'magma', 'viridis'],default_value='nipy_spectral',key='-ColorMap-', readonly=True, enable_events=True)],
 ]
 
 layout = [
     [
-        sg.Column(file_list_column),
+        sg.Column(file_list_column, expand_x=True, expand_y=True),
         sg.VSeperator(),
-        sg.Column(image_viewer_column),
+        sg.Column(image_viewer_column,key="-RIGHT_COLUMN-", expand_x=True, expand_y=True),
     ]
 ]
 
@@ -144,7 +145,7 @@ def update_image(output, label):
     label_vis = torch.Tensor.numpy(label.clone().detach().cpu())
     overlayed_img = convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis[...,:3], encode_image=False)
     
-    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis)#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
+    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis, color_map=values['-ColorMap-'], size = window['-IMAGE-'].get_size())#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
     window["-IMAGE-"].update(data=out_img)
 
 def update_ImageList():
@@ -155,7 +156,8 @@ def update_ImageList():
 
 output = None
 label = None
-window = sg.Window("NCA Viewer", layout)
+window = sg.Window("NCA Viewer", layout, resizable=True, finalize=True)
+window.bind('<Configure>', "Configure")
 
 playActive = False
 i = 0
@@ -182,13 +184,6 @@ while True:
         print(steps_left)
 
     if event == "-Images-":
-        #folder = values["-Images-"]
-        #try:
-        #    # Get list of files in folder
-        #    file_list = os.listdir(folder)
-        #except:
-        #    file_list = []
-
         update_ImageList()
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         try:
@@ -200,36 +195,16 @@ while True:
             pass
     elif event == "Play":
         steps_left = steps_left + 64
-    elif event == "-DIVIDE_SLIDER-":
+    elif event == 'Configure':
+        if output is not None:
+            update_image(output, label)
+    elif event == "-DIVIDE_SLIDER-" or event == "-ColorMap":
         update_image(output, label)
     elif event== '-DataType-':
         print(values['-DataType-'])
         exp.set_model_state(values['-DataType-'])
         update_ImageList()
+    
 
 
 window.close()
-
-
-def convert_image_old(img, label=None):
-    img_rgb = to_rgb2(img.detach().numpy()[0][..., :3]) #+ label[0:3]
-    label = label[:,:,:3]#.astype(np.float32)
-    label_pred = to_rgb2(img.detach().numpy()[0][..., 3:6])
-
-    if label is not None:
-        sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
-        sobel_y = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=0, dy=1, ksize=3)
-        sobel = sobel_x + sobel_y
-        sobel[:,:,2] = sobel[:,:,0]
-        sobel[:,:,0] = 0
-
-        sobel = np.abs(sobel)
-        img_rgb[img_rgb < 0] = 0
-        label_pred[label_pred < 0] = 0
-
-        img_rgb = sobel * 0.7 + img_rgb * 1 + label_pred#combine_images(img, sobel)#sobel + img * 0.7
-    img_rgb = img_rgb * 256
-    img_rgb[img_rgb > 256] = 256
-    img_rgb = cv2.resize(img_rgb, dsize=(512, 512), interpolation=cv2.INTER_NEAREST)
-    img_rgb = cv2.imencode(".png", img_rgb)[1].tobytes()
-    return img_rgb
