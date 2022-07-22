@@ -18,18 +18,18 @@ import io
 import time
 import matplotlib.pyplot as plt
 from src.agents.Agent_NCA import Agent
-from src.utils.helper import convert_image, visualize_all_channels
+from src.utils.helper import convert_image, visualize_all_channels, get_img_from_fig, encode, visualize_all_channels_fast
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
 from lib.CAModel_deeper import CAModel_Deeper
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
+    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
     'model_path': r'M:/Models/TestNCA_normal_Cityscapes1',
-    'device':"cuda:0",
+    'device':"cpu",
     'n_epoch': 200,
     # Learning rate
     'lr': 16e-4,
@@ -62,27 +62,29 @@ speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
 dataset = Cityscapes_Dataset()
-model = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cuda:0')).to(torch.device('cuda:0'))
+model = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 print("PARAMETERS")
 print(model.parameters)
 agent = Agent(model)
 exp = Experiment(config, dataset, model, agent)
+#exp.temporarly_overwrite_config(config)
 exp.set_model_state('test')
 
 
 file_list_column = [
+    [sg.Image(key="-IMAGE_COMBINED-")],
     [
-        sg.Text("Choose Model"),
+        sg.Text("Choose Model", background_color='#7B7B7B'),
         sg.In(size=(25, 1), enable_events=True, key="-Model-"),
         sg.FileBrowse(),
     ],
     [
-        sg.Text("Image Folder"),
+        sg.Text("Image Folder", background_color='#7B7B7B'),
         sg.In(size=(25, 1), enable_events=True, key="-Images-"),
         sg.FolderBrowse(),
     ],
     [
-        sg.Text("Label Folder"),
+        sg.Text("Label Folder", background_color='#7B7B7B'),
         sg.In(size=(25, 1), enable_events=True, key="-Labels-"),
         sg.FolderBrowse(),
     ],
@@ -95,40 +97,47 @@ file_list_column = [
 ]
 
 image_viewer_column = [
-    [sg.Text("Choose an image from list on left:")],
-    [sg.Text(size=(40, 1), key="-TOUT-")],
-    [sg.Image(key="-IMAGE-", expand_x=True, expand_y=True)],
+    [sg.Text("Choose an image from list on left:", background_color='#7B7B7B')],
+    [sg.Text(size=(40, 1), key="-TOUT-", background_color='#7B7B7B')],
+    [sg.Image(key="-IMAGE-", expand_x=True, expand_y=True, background_color='#7B7B7B')],
     [sg.Button("Play"),
-    sg.Text("Speed:"),
+    sg.Text("Speed:", background_color='#7B7B7B'),
     sg.Slider(key="-SPEED_SLIDER-",
         range=(0,4),
          default_value=2,
          size=(20,15),
          orientation='horizontal',
-         font=('Helvetica', 12)),
-    sg.Text("Log:"),
+         font=('Helvetica', 12), 
+         background_color='#7B7B7B'),
+    sg.Text("Log:", background_color='#7B7B7B'),
     sg.Slider(key="-DIVIDE_SLIDER-",
         range=(1,10000),
          default_value=1,
          size=(20,15),
          orientation='horizontal',
          font=('Helvetica', 12),
-         enable_events=True),
+         enable_events=True, 
+         background_color='#7B7B7B'),
     sg.Combo(['nipy_spectral', 'coolwarm', 'gnuplot', 'inferno', 'magma', 'viridis'],default_value='nipy_spectral',key='-ColorMap-', readonly=True, enable_events=True)],
 ]
 
 layout = [
     [
-        sg.Column(file_list_column, expand_x=True, expand_y=True),
+        sg.Column(file_list_column, expand_x=True, expand_y=True, background_color='#5A5A5A'), #7B7B7B
         sg.VSeperator(),
-        sg.Column(image_viewer_column,key="-RIGHT_COLUMN-", expand_x=True, expand_y=True),
+        sg.Column(image_viewer_column,key="-RIGHT_COLUMN-", expand_x=True, expand_y=True, background_color='#5A5A5A'),
     ]
 ]
+
+fast = True
+out_img = None
+overlayed_img = []
 
 def init_input(name):
     _, target_img, target_label = dataset.getItemByName(name)
     target_img, target_label = torch.from_numpy(target_img), torch.from_numpy(target_label)
 
+    print(target_img)
     data = 0, torch.unsqueeze(target_img, 0), torch.unsqueeze(target_label, 0)
 
     data = agent.prepare_data(data, eval=True)
@@ -140,13 +149,33 @@ def combine_images(img, label):
     #print(label[label == 0])
     return label
 
-def update_image(output, label):
+def update_image():
+
+    if out_img is not None:
+        if fast == True:
+            fig_drawn = encode(out_img, size = window['-IMAGE-'].get_size())
+        else:
+            fig_drawn = get_img_from_fig(out_img, size = window['-IMAGE-'].get_size())
+        window["-IMAGE-"].update(data=fig_drawn)
+    if len(overlayed_img) != 0:
+        combine_image_drawn = encode(overlayed_img, size = (400, 400))
+        window["-IMAGE_COMBINED-"].update(data=combine_image_drawn)
+
+
+
+def update_content(output, label):
     output_vis = torch.Tensor.numpy(output.clone().detach().cpu())
     label_vis = torch.Tensor.numpy(label.clone().detach().cpu())
+    global overlayed_img
     overlayed_img = convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis[...,:3], encode_image=False)
     
-    out_img = visualize_all_channels(output_vis, replace_firstImage=overlayed_img, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis, color_map=values['-ColorMap-'], size = window['-IMAGE-'].get_size())#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
-    window["-IMAGE-"].update(data=out_img)
+    global out_img
+    if fast == True:
+        out_img = visualize_all_channels_fast(output_vis, replace_firstImage=None, labels=label_vis)
+    else:
+        out_img = visualize_all_channels(output_vis, replace_firstImage=None, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis, color_map=values['-ColorMap-'], size = window['-IMAGE-'].get_size())#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
+   
+    update_image()
 
 def update_ImageList():
     fnames = dataset.getImagePaths()
@@ -156,7 +185,8 @@ def update_ImageList():
 
 output = None
 label = None
-window = sg.Window("NCA Viewer", layout, resizable=True, finalize=True)
+window = sg.Window("NCA Viewer", layout, resizable=True, finalize=True, background_color='#323232')
+
 window.bind('<Configure>', "Configure")
 
 playActive = False
@@ -173,7 +203,7 @@ while True:
     if steps_left > 0:
         start = time.time()
         output = model(output, 1)
-        update_image(output, label)
+        update_content(output, label)
         output = output.detach()
         end = time.time()
         time_passed = end-start
@@ -188,8 +218,9 @@ while True:
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         try:
             filename = ""
+            print("TESTTSTTS")
             output, label = init_input(values["-FILE LIST-"][0])
-            update_image(output, label)
+            update_content(output, label)
             window["-TOUT-"].update(filename)
         except:
             pass
@@ -197,9 +228,9 @@ while True:
         steps_left = steps_left + 64
     elif event == 'Configure':
         if output is not None:
-            update_image(output, label)
+            update_image()
     elif event == "-DIVIDE_SLIDER-" or event == "-ColorMap":
-        update_image(output, label)
+        update_content(output, label)
     elif event== '-DataType-':
         print(values['-DataType-'])
         exp.set_model_state(values['-DataType-'])
