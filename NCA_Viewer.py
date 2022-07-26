@@ -18,17 +18,17 @@ import io
 import time
 import matplotlib.pyplot as plt
 from src.agents.Agent_NCA import Agent
-from src.utils.helper import convert_image, visualize_all_channels, get_img_from_fig, encode, visualize_all_channels_fast
+from src.utils.helper import convert_image, visualize_all_channels, get_img_from_fig, encode, visualize_all_channels_fast, visualize_perceptive_range
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
 from lib.CAModel_deeper import CAModel_Deeper
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
-    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'img_path': r"D:\Cityscape\cityscape_smaller\images\train",
+    'label_path': r"D:\Cityscape\cityscape_smaller\labels\train",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/TestNCA_normal_Cityscapes1',
+    'model_path': r'M:/Models/TestNCA_normal_Cityscapes2',
     'device':"cpu",
     'n_epoch': 200,
     # Learning rate
@@ -58,21 +58,59 @@ config = [{
     'unlock_CPU': True,
 }]
 
+config = [{
+    'out_path': r"D:\PhD\NCA_Experiments",
+    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
+    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'data_type': '.nii.gz', # .nii.gz, .jpg
+    'model_path': r'M:/Models/TestNCA_normal_full_LP35_reflectPad_learntPerceive',
+    'device':"cpu",
+    'n_epoch': 200,
+    # Learning rate
+    'lr': 16e-4,
+    'lr_gamma': 0.9999,
+    'betas': (0.5, 0.5),
+    'inference_steps': [128],
+    # Training config
+    'save_interval': 10,
+    'evaluate_interval': 10,
+    # Model config
+    'channel_n': 16,        # Number of CA state channels
+    'target_padding': 0,    # Number of pixels used to pad the target image border
+    'target_size': 64,
+    'cell_fire_rate': 0.99,
+    'cell_fire_interval':None,
+    'batch_size': 8,
+    'repeat_factor': 1,
+    'input_channels': 3,
+    'input_fixed': True,
+    'output_channels': 3,
+    # Data
+    'input_size': (64, 64),
+    'data_split': [0.6, 0, 0.4], 
+    'pool_chance': 0.5,
+    'Persistence': False,
+    'unlock_CPU': True,
+}]
+
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Cityscapes_Dataset()
+dataset = Nii_Gz_Dataset_lowPass()
 model = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 print("PARAMETERS")
 print(model.parameters)
 agent = Agent(model)
 exp = Experiment(config, dataset, model, agent)
-#exp.temporarly_overwrite_config(config)
+exp.temporarly_overwrite_config(config)
 exp.set_model_state('test')
 
 
 file_list_column = [
-    [sg.Image(key="-IMAGE_COMBINED-")],
+    [sg.Text("Combined Image:", background_color='#7B7B7B')],
+    [sg.Image(key="-IMAGE_COMBINED-")], 
+    [sg.Text("Simulated Perceptive Range:", background_color='#7B7B7B')],
+    [sg.Image(key="-PERCEPTIVE_RANGE-")],
     [
         sg.Text("Choose Model", background_color='#7B7B7B'),
         sg.In(size=(25, 1), enable_events=True, key="-Model-"),
@@ -100,8 +138,8 @@ image_viewer_column = [
     [sg.Text("Choose an image from list on left:", background_color='#7B7B7B')],
     [sg.Text(size=(40, 1), key="-TOUT-", background_color='#7B7B7B')],
     [sg.Image(key="-IMAGE-", expand_x=True, expand_y=True, background_color='#7B7B7B')],
-    [sg.Button("Play"),
-    sg.Text("Speed:", background_color='#7B7B7B'),
+    [sg.Button("Play"), sg.Button("Pause"), sg.Text('Current step: '), sg.Text('0', key="-CURRENT_STEP-")],
+    [sg.Text("Speed:", background_color='#7B7B7B'),
     sg.Slider(key="-SPEED_SLIDER-",
         range=(0,4),
          default_value=2,
@@ -132,6 +170,7 @@ layout = [
 fast = True
 out_img = None
 overlayed_img = []
+perceptive_range = []
 
 def init_input(name):
     _, target_img, target_label = dataset.getItemByName(name)
@@ -160,6 +199,9 @@ def update_image():
     if len(overlayed_img) != 0:
         combine_image_drawn = encode(overlayed_img, size = (400, 400))
         window["-IMAGE_COMBINED-"].update(data=combine_image_drawn)
+    if len(perceptive_range) != 0:
+        perceptive_image_drawn = encode(np.log(perceptive_range+1)/3, size = (400, 400))
+        window["-PERCEPTIVE_RANGE-"].update(data=perceptive_image_drawn)
 
 
 
@@ -174,11 +216,17 @@ def update_content(output, label):
         out_img = visualize_all_channels_fast(output_vis, replace_firstImage=None, labels=label_vis)
     else:
         out_img = visualize_all_channels(output_vis, replace_firstImage=None, divide_by=int(values["-DIVIDE_SLIDER-"]), labels=label_vis, color_map=values['-ColorMap-'], size = window['-IMAGE-'].get_size())#convert_image(output_vis[...,:3], output_vis[...,3:6], label_vis)
-   
+    
+    global perceptive_range
+    print("AAAAAAAAAAAAAAAAA")
+    print(perceptive_range.shape)
+    perceptive_range = visualize_perceptive_range(perceptive_range, cell_fire_rate=exp.get_from_config('cell_fire_rate'))
+
     update_image()
 
 def update_ImageList():
     fnames = dataset.getImagePaths()
+    window["-FILE LIST-"].update(fnames)
     window["-FILE LIST-"].update(fnames)
 
 
@@ -193,6 +241,8 @@ playActive = False
 i = 0
 
 steps_left = 0
+step = 0
+pause = 0
 
 while True:
     event, values = window.Read(timeout = 1)
@@ -200,7 +250,9 @@ while True:
         break
 
     # Do Step
-    if steps_left > 0:
+    if step != pause:
+        step = step +1
+        window["-CURRENT_STEP-"].update(str(step))
         start = time.time()
         output = model(output, 1)
         update_content(output, label)
@@ -217,15 +269,23 @@ while True:
         update_ImageList()
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         try:
+            step = 0
+            window["-CURRENT_STEP-"].update(str(step))
+            pause = 0
             filename = ""
             print("TESTTSTTS")
             output, label = init_input(values["-FILE LIST-"][0])
+            perceptive_range = np.zeros((output.shape[1],output.shape[2],3))
+            print(perceptive_range.shape)
             update_content(output, label)
             window["-TOUT-"].update(filename)
         except:
             pass
     elif event == "Play":
+        pause = pause -1
         steps_left = steps_left + 64
+    elif event == "Pause":
+        pause = step
     elif event == 'Configure':
         if output is not None:
             update_image()

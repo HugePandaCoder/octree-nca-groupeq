@@ -1,6 +1,7 @@
 from cProfile import label
 import pickle
 import json
+from re import A
 import cv2
 import numpy as np
 import seaborn as sns
@@ -11,6 +12,7 @@ import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import io
 import datetime
+import random
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -58,6 +60,26 @@ def get_img_from_fig(fig, dpi=400, size = (1700, 1700)):
     #print(img.read())
     return img.read()
 
+def visualize_perceptive_range(img, cell_fire_rate=0.5):
+
+    if np.max(img) == 0:
+        img[int(img.shape[0] / 2), int(img.shape[1] / 2), :] = 1
+    else:
+        img = img[:, :, 0]
+
+        x_roll = np.roll(img, 1, axis= 0) + np.roll(img, -1, axis= 0)
+        y_roll = np.roll(x_roll, 1, axis= 1) + np.roll(x_roll, -1, axis= 1)
+        img_new = (img + np.clip(x_roll + y_roll, 0, 1)) 
+
+        random_array = np.random.rand(img.shape[0], img.shape[1])
+        img_new[random_array < cell_fire_rate] = 0
+        img_new = img + img_new
+
+        img = np.dstack((img_new, img_new, img_new))
+
+    return img
+
+
 def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, labels = None):
    if img.shape[0] == 1:
        img = img[0]
@@ -69,8 +91,6 @@ def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, 
    img_y = img.shape[1]
  
    img_all_channels = np.zeros((img_x*tiles, img_y*tiles))
-   print("SHAPE")
-   print(img_all_channels.shape)
    for tile_pos in range(img.shape[2]):
        tile = img[:,:,tile_pos]
        x = tile_pos%tiles
