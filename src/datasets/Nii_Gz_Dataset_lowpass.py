@@ -115,6 +115,12 @@ class Nii_Gz_Dataset_lowPass(Nii_Gz_Dataset):
         img = self.torchio_augmentation(img, aug_type=self.aug_type)
         if self.filter == "lowpass":
             img = self.lowpass_filter(img)
+        elif self.filter == "random":
+            #print(np.random.randint(0, 2))
+            if np.random.randint(0, 2) == 1:
+                img = self.highpass_filter(img)
+            else:
+                img = self.lowpass_filter(img)
         else:
             img = self.highpass_filter(img)
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)

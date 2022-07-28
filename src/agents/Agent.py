@@ -88,9 +88,10 @@ class BaseAgent():
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
 
-        loss.backward()
-        self.optimizer.step()
-        self.scheduler.step()
+        if loss != 0:
+            loss.backward()
+            self.optimizer.step()
+            self.scheduler.step()
         return loss_ret
 
     def intermediate_results(self, epoch, loss_log):

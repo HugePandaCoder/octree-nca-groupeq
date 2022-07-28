@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 #import torchmetrics as tm
 
 # TODO: License -> https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
@@ -87,10 +88,10 @@ class FocalLoss(torch.nn.Module):
         return loss
 
 
-class DiceFocalLoss(torch.nn.Module):
+class DiceFocalLoss(FocalLoss):
 
     def __init__(self, gamma=2, eps=1e-7):
-        super(FocalLoss, self).__init__()
+        super(DiceFocalLoss, self).__init__()
         self.gamma = gamma
         self.eps = eps
 
