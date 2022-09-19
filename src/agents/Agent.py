@@ -27,8 +27,16 @@ class BaseAgent():
 
     def initialize(self):
         self.device = torch.device(self.exp.get_from_config('device'))
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
+        # If stacked NCAs
+        if isinstance(self.model, list):
+            self.optimizer = []
+            self.scheduler = []
+            for m in range(len(self.model)):
+                self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
+                self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
+        else:
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+            self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
 
     def printIntermediateResults(self, loss, epoch):
         r"""Prints intermediate results of training and adds it to tensorboard
@@ -242,7 +250,7 @@ class BaseAgent():
             #data = dataset.__getitem__(i)
             data = self.prepare_data(data, eval=True)
             data_id, inputs, _ = data
-            outputs, targets = self.get_outputs(data)
+            outputs, targets = self.get_outputs(data, full_img=True)
 
             #if type(data_id) is tuple:
             #    id = data_id[0]

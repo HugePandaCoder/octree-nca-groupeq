@@ -3,6 +3,7 @@ import nibabel as nib
 import torch
 import os
 import numpy as np
+import cv2
 
 class Dataset_NiiGz_3D(Dataset_3D):
     """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
@@ -71,4 +72,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
             self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
             img = self.data.get_data(key=self.images_list[idx])
 
-        return img
+        id, img, label = img
+
+        #img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
+        #label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
+
+        return (id, img, label)
