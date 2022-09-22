@@ -60,10 +60,10 @@ config = [{
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/imagesTr/",
-    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train/labelsTr/",
+    'img_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/imagesTr/",
+    'label_path': r"M:/MasterThesis/Datasets/Hippocampus/preprocessed_dataset_train_tiny/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/TestNCA_normal_full_LP35_reflectPad_learntPerceive',
+    'model_path': r'M:/Models/TestNCA_hippocampus_full_focalDiceLoss_randomPass',
     'device':"cpu",
     'n_epoch': 200,
     # Learning rate
@@ -78,7 +78,7 @@ config = [{
     'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
-    'cell_fire_rate': 0.99,
+    'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
     'batch_size': 8,
     'repeat_factor': 1,
@@ -96,7 +96,7 @@ config = [{
 speed_levels = [0, 0.025, 0.05, 0.1, 0.2]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_lowPass()
+dataset = Nii_Gz_Dataset_lowPass(filter="random", e_x=20, e_y=20)
 model = CAModel_learntPerceive(config[0]['channel_n'], config[0]['cell_fire_rate'], torch.device('cpu')).to(torch.device('cpu'))
 print("PARAMETERS")
 print(model.parameters)

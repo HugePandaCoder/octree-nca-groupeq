@@ -6,6 +6,7 @@ from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.agents.Agent_UNet import Agent
+from medcam import medcam
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -38,12 +39,15 @@ config = [{
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.7,
     'Persistence': True,
+    'output_channels': 3,
 }]
 
 # Define Experiment
 dataset = Nii_Gz_Dataset_lowPass()
 device = torch.device(config[0]['device'])
 ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
+ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
+
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
@@ -54,9 +58,9 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 
-exp.temporarly_overwrite_config(config)
-agent.ood_evaluation(epoch=exp.currentStep)
-#agent.getAverageDiceScore()
+#exp.temporarly_overwrite_config(config)
+#agent.ood_evaluation(epoch=exp.currentStep)
+agent.getAverageDiceScore()
 #agent.train(data_loader, loss_function)
 
 exit()

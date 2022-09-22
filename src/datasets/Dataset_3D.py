@@ -45,10 +45,7 @@ class Dataset_3D(Dataset_Base):
             .. warning:: Likely there is a preprocessing problem since performance is worse than the already preprocessed slices. ( I imagine the scaling functionality of the mask is at fault)
         """
         if not isLabel:
-            img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
             img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        else:
-            img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
         
         # TODO: REMOVE
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)

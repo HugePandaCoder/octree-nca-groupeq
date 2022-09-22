@@ -21,6 +21,7 @@ class Experiment():
         else:
             self.setup()
         self.currentStep = self.currentStep+1
+        self.set_current_config()
 
     def setup(self):
         r"""Initial experiment setup when first started

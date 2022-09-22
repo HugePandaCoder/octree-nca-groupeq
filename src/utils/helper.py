@@ -295,6 +295,13 @@ def convert_image(img, prediction, label=None, encode_image=True):
         img_rgb[img_rgb < 0] = 0
         label_pred[label_pred < 0] = 0
 
+        #if label_pred.shape != img_rgb.shape:
+        sobel = cv2.resize(sobel, dsize=(label_pred.shape[0], label_pred.shape[1])) 
+        img_rgb = cv2.resize(img_rgb, dsize=(label_pred.shape[0], label_pred.shape[1]), interpolation=cv2.INTER_NEAREST) 
+
+        print(sobel.shape)
+        print(img_rgb.shape)
+        print(label_pred.shape)
         img_rgb = np.clip((sobel * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
 
     if encode_image:
