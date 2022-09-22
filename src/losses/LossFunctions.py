@@ -1,5 +1,8 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
+from matplotlib import pyplot as plt
+import math
 #import torchmetrics as tm
 
 # TODO: License -> https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
@@ -18,6 +21,25 @@ class DiceLoss(torch.nn.Module):
 
         return 1 - dice
 
+class DiceLoss_mask(torch.nn.Module):
+    def __init__(self, useSigmoid = True):
+        self.useSigmoid = useSigmoid
+        super(DiceLoss_mask, self).__init__()
+
+    def forward(self, input, target, mask = None, smooth=1):
+        if self.useSigmoid:
+            input = torch.sigmoid(input)  
+        input = torch.flatten(input)
+        target = torch.flatten(target)
+        mask = torch.flatten(mask)
+
+        input = input[~mask]  
+        target = target[~mask]  
+        intersection = (input * target).sum()
+        dice = (2.*intersection + smooth)/(input.sum() + target.sum() + smooth)
+
+        return 1 - dice
+
 class DiceLossV2(torch.nn.Module):
     def __init__(self, useSigmoid = True):
         self.useSigmoid = useSigmoid
@@ -29,6 +51,50 @@ class DiceLossV2(torch.nn.Module):
 
         return 1 - tm.functional.dice(input, target)
 
+
+
+class DiceBCELoss_Distance(torch.nn.Module):
+    def __init__(self, useSigmoid = True):
+        self.useSigmoid = useSigmoid
+        self.gradientScaling = None
+        super(DiceBCELoss_Distance, self).__init__()
+
+    def gradient(self, size):
+        img_gr = np.zeros((size[1], size[2]))
+
+        a = np.array((0,0))
+        b = np.array((size[1]/2, size[2]/2))        
+        max_distance = np.linalg.norm(a - b)
+
+        for x in range(size[1]):
+            for y in range(size[2]):
+                a = np.array((x, y))
+                img_gr[x, y] =  np.linalg.norm(a - b) / max_distance#1 - math.sqrt(math.pow(((size[1]/2) - x) / (size[1]/2) + ((size[2]/2) - y) / (size[2]/2), 2)) /2
+        #plt.imshow(img_gr)
+        #plt.show()
+
+        return img_gr
+
+    def forward(self, input, target, smooth=1):
+
+        if self.gradientScaling is None:
+            self.gradientScaling = self.gradient(input.shape)
+
+        img_gr = np.stack([self.gradientScaling] * input.shape[0], axis=0)  
+        img_gr = torch.Tensor(img_gr).to(input.get_device())
+
+        input = torch.sigmoid(input)       
+        input = torch.flatten(input) 
+        target = torch.flatten(target)
+        distance = torch.flatten(img_gr)
+        
+        intersection = (input * target * distance).sum()                            
+        dice_loss = 1 - (2.*intersection + smooth)/(input.sum() + target.sum() + smooth)  
+        BCE = torch.mean((torch.nn.functional.binary_cross_entropy(input, target, reduction='none') * distance))
+        Dice_BCE = BCE + dice_loss
+        Dice_BCE = dice_loss
+
+        return Dice_BCE
 
 
 class DiceBCELoss(torch.nn.Module):

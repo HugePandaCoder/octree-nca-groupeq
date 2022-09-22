@@ -107,7 +107,7 @@ class BaseAgent():
             if len(loss_log[key]) != 0:
                 average_loss = sum(loss_log[key]) / len(loss_log[key])
             else:
-                aveage_loss = 0
+                average_loss = 0
             print(epoch, "loss =", average_loss)
             self.exp.write_scalar('Loss/train/' + str(key), average_loss, epoch)
 
@@ -136,8 +136,9 @@ class BaseAgent():
         for key in loss_log.keys():
             img_plot = self.plot_results_byPatient(loss_log[key])
             self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
-            self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-            self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
+            if len(loss_log[key]) > 0:
+                self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
+                self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
         # ADD AGAIN TODO
         #for param in self.model.parameters():
@@ -255,12 +256,18 @@ class BaseAgent():
 
             #print(id)
             if id != patient_id and patient_id != None:
+                out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
-                    loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
-                    if math.isnan(loss_log[m][patient_id]):
-                        loss_log[m][patient_id] = 0
-                    #print(loss_log[m])
-                    print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+                    if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
+                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0, mask = patient_3d_label[...,4].bool()).item() #,
+                        if math.isnan(loss_log[m][patient_id]):
+                            loss_log[m][patient_id] = 0
+                        #print(loss_log[m])
+                        #print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+                        out = out + str(loss_log[m][patient_id]) + ", "
+                    else:
+                        out = out + " , "
+                print(out)
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
 
             if patient_3d_image == None:
@@ -277,12 +284,18 @@ class BaseAgent():
                 self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
                 self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
                 encode_image=False), self.exp.currentStep)
-
+        
+        out = patient_id + ", "
         for m in range(patient_3d_image.shape[3]):
-            loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
-            print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+            if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
+                loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0,  mask = patient_3d_label[...,4].bool()).item() # ,mask = patient_3d_label[...,4].bool()
+                out = out + str(loss_log[m][patient_id]) + ", "
+            else:
+                out = out + " , "
+        print(out)
         for key in loss_log.keys():
-            print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
+            if len(loss_log[key]) > 0:
+                print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
 
         self.exp.set_model_state('train')
         return loss_log
