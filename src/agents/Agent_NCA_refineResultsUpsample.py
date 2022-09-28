@@ -46,7 +46,8 @@ class Agent_RefineResults_Upsample(Agent):
         #print("BBBBBB")
         #print(outputs.shape)
         #print(targets.shape)
-        self.optimizer[0].zero_grad()
+        for m in range(self.exp.get_from_config('train_model')+1):
+            self.optimizer[m].zero_grad()
         #targets = targets.int()
         loss = 0
         loss_ret = {}
@@ -60,8 +61,9 @@ class Agent_RefineResults_Upsample(Agent):
 
         if loss != 0:
             loss.backward()
-            self.optimizer[0].step() #self.exp.get_from_config('train_model')
-            self.scheduler[0].step()
+            for m in range(self.exp.get_from_config('train_model')+1):
+                self.optimizer[m].step() #self.exp.get_from_config('train_model')
+                self.scheduler[m].step()
         return loss_ret
 
     def get_outputs(self, data, full_img=False):
@@ -80,9 +82,9 @@ class Agent_RefineResults_Upsample(Agent):
                 for m in range(self.exp.get_from_config('train_model')+1):
                     if m == self.exp.get_from_config('train_model'):
                         #print("DIHASKDASKLD")
-                        outputs = self.model[0](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     else:
-                        outputs = self.model[0](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
                         
                         #transform = tio.Resize((int(inputs.shape[1]), int(inputs.shape[2]), -1))
                         #outputs = transform(outputs.cpu()) 
@@ -111,9 +113,9 @@ class Agent_RefineResults_Upsample(Agent):
             for m in range(self.exp.get_from_config('train_model')+1):
                 if m == self.exp.get_from_config('train_model'):
                     #print("DIHASKDASKLD")
-                    outputs = self.model[0](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
                 else:
-                    outputs = self.model[0](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     
                     #transform = tio.Resize((int(inputs.shape[1]), int(inputs.shape[2]), -1))
                     #outputs = transform(outputs.cpu()) 
@@ -131,11 +133,19 @@ class Agent_RefineResults_Upsample(Agent):
                     targets_loc = targets
 
                     size = self.exp.get_from_config('input_size')[0]
-                    pos_x = random.randint(0, inputs_loc.shape[1] - size[0])
-                    pos_y = random.randint(0, inputs_loc.shape[2] - size[1])
 
-                    inputs_loc = inputs_loc[:, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
-                    targets_loc = targets_loc[:, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
+                    inputs_loc_temp = inputs_loc
+                    targets_loc_temp = targets_loc
+
+                    inputs_loc = torch.zeros((inputs_loc.shape[0], size[0], size[1], inputs_loc.shape[3])).to(self.exp.get_from_config('device'))
+                    targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], targets_loc_temp.shape[3])).to(self.exp.get_from_config('device'))
+
+                    for b in range(inputs_loc.shape[0]): 
+                        pos_x = random.randint(0, inputs_loc_temp.shape[1] - size[0])
+                        pos_y = random.randint(0, inputs_loc_temp.shape[2] - size[1])
+
+                        inputs_loc[b] = inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
+                        targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
 
                     # NOW CROP
 

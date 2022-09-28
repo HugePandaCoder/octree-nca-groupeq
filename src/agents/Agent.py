@@ -267,7 +267,7 @@ class BaseAgent():
                 out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
-                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0, mask = patient_3d_label[...,4].bool()).item() #,
+                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
                         if math.isnan(loss_log[m][patient_id]):
                             loss_log[m][patient_id] = 0
                         #print(loss_log[m])
@@ -296,7 +296,7 @@ class BaseAgent():
         out = patient_id + ", "
         for m in range(patient_3d_image.shape[3]):
             if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
-                loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0,  mask = patient_3d_label[...,4].bool()).item() # ,mask = patient_3d_label[...,4].bool()
+                loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() # ,mask = patient_3d_label[...,4].bool()
                 out = out + str(loss_log[m][patient_id]) + ", "
             else:
                 out = out + " , "

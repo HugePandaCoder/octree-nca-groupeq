@@ -68,13 +68,20 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img, label = img[:, :, img_id], label[:, :, img_id]
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
             img_id = "_" + str(p_id) + "_" + str(img_id)
+
+            if len(img.shape) == 4:
+                img = img[...,0] 
+
+            self.size = (256, 256) 
+            img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
+            label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
             
             self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
             img = self.data.get_data(key=self.images_list[idx])
 
         id, img, label = img
 
-        #img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
-        #label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
+        # REMOVE
+        label[label > 0] = 1
 
         return (id, img, label)
