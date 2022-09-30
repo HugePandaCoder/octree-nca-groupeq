@@ -72,9 +72,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
             if len(img.shape) == 4:
                 img = img[...,0] 
 
-            self.size = (256, 256) 
-            img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
-            label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
+            size = (256, 256) 
+            img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
+            label = cv2.resize(label, dsize=size, interpolation=cv2.INTER_NEAREST) 
             
             self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
             img = self.data.get_data(key=self.images_list[idx])
