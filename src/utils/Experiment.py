@@ -46,6 +46,7 @@ class Experiment():
         self.projectConfig = config
         self.set_current_config()
         self.data_split = self.new_datasplit()
+        self.set_size()
 
     def get_max_steps(self):
         r"""Get max defined training steps of experiment
@@ -57,6 +58,7 @@ class Experiment():
             TODO: Add functionality to load any previous saved step
         """
         # TODO: Proper reload
+        print(os.path.join(self.config['model_path'], 'data_split.dt'))
         self.data_split = load_pickle_file(os.path.join(self.config['model_path'], 'data_split.dt'))
         self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
         self.config = self.projectConfig[0]
@@ -67,12 +69,19 @@ class Experiment():
             self.agent.load_state(model_path)
 
         #self.setup()
-        
+    
+    def set_size(self):
+        if isinstance(self.config['input_size'][0], tuple):
+            self.dataset.set_size(self.config['input_size'][-1])
+        else:
+            print(self.config['input_size'])
+            self.dataset.set_size(self.config['input_size'])
+
     def general(self):
         r"""General experiment configurations needed after setup or loading
         """
         self.currentStep = self.current_step()
-        self.dataset.set_size(self.config['input_size'])
+        self.set_size()
         self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
         self.set_current_config()
         self.agent.set_exp(self)

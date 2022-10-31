@@ -18,6 +18,9 @@ class Dataset_Base(Dataset):
         """
         self.size = tuple(size)
 
+    def set_experiment(self, experiment):
+        self.exp = experiment
+
     def setPaths(self, images_path, images_list, labels_path, labels_list):
         r"""Set the important image paths
             Args:

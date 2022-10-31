@@ -1,22 +1,27 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss
 from src.agents.Agent_UNet import Agent
-from medcam import medcam
+#from medcam import medcam
 
 import warnings
 warnings.filterwarnings("ignore")
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
-    'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
+    #'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
+    #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/UNet_Test_lowpass_full_filter1010',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Test6',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -35,22 +40,23 @@ config = [{
     'batch_size': 32,
     'persistence_chance':0.5,
     # Data
-    'input_size': (64, 64),
-    'data_split': [0.7, 0, 0.3], 
+    'input_size': (256, 256),
+    'data_split': [0, 0, 1], 
     'pool_chance': 0.7,
-    'Persistence': True,
+    'Persistence': False,
     'output_channels': 3,
 }]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset_lowPass()
+dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
 device = torch.device(config[0]['device'])
 ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
-ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
+#ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
+dataset.set_experiment(exp)
 
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
@@ -60,8 +66,24 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
-agent.getAverageDiceScore()
+#agent.getAverageDiceScore()
 #agent.train(data_loader, loss_function)
+print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+exp.temporarly_overwrite_config(config)
+#agent.getAverageDiceScore()
+
+#exit()
+with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
+    log = {}        
+    for x in range(64, 256, 16): #388
+        config[0]['input_size'] = [(256/4, x/4), (256, x)]
+        config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
+        config[0]['anisotropy'] = x  
+        exp.temporarly_overwrite_config(config)
+        loss_log = agent.getAverageDiceScore()
+        log[x] = loss_log[0]
+    myfile.write(str(log))
+        #return sum(loss_log.values())/len(loss_log)
 
 exit()
 

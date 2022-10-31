@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from src.datasets.Data_Instance import Data_Container
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 import matplotlib.pyplot as plt
-import skfmm
+#import skfmm
 
 class Nii_Gz_Dataset_DistanceField(Nii_Gz_Dataset):
     r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""

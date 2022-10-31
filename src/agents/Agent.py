@@ -57,7 +57,7 @@ class BaseAgent():
         """
         return data
 
-    def get_outputs(self, data):
+    def get_outputs(self, data, **kwargs):
         r"""Get the output of the model.
             Args: 
                 data (torch): The data to be passed to the model.
@@ -88,6 +88,7 @@ class BaseAgent():
         #targets = targets.int()
         loss = 0
         loss_ret = {}
+        #print(outputs.shape)
         for m in range(outputs.shape[-1]):
             if 1 in targets[..., m]:
                 loss_loc = loss_f(outputs[..., m], targets[..., m])
@@ -153,13 +154,14 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, useSigmoid=True):
+    def getAverageDiceScore(self, useSigmoid=True, tag = ""):
         r"""Get the average Dice test score.
             Returns:
                 return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=[])
-        #return sum(loss_log.values())/len(loss_log)
+
+        return loss_log
 
     def save_state(self, model_path):
         r"""Save state of current model

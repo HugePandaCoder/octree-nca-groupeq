@@ -74,8 +74,11 @@ class Agent_RefineResults_Upsample(Agent):
         id, inputs, targets = data
 
         #print(self.exp.get_from_config('input_size'))
-        inputs_loc = self.resize4d(inputs.cpu(), size=self.exp.get_from_config('input_size')[0]).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
-        targets_loc = self.resize4d(targets.cpu(), size=self.exp.get_from_config('input_size')[0]).to(self.exp.get_from_config('device'))#torch.from_numpy(zoom(targets.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+        down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4))
+        inputs_loc = self.resize4d(inputs.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+        targets_loc = self.resize4d(targets.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device'))#torch.from_numpy(zoom(targets.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+        #inputs_loc = self.resize4d(inputs.cpu(), size=self.exp.get_from_config('input_size')[0]).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+        #targets_loc = self.resize4d(targets.cpu(), size=self.exp.get_from_config('input_size')[0]).to(self.exp.get_from_config('device'))#torch.from_numpy(zoom(targets.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
         
         if full_img == True:
             with torch.no_grad():

@@ -16,13 +16,13 @@ class DiceLoss(torch.nn.Module):
             input = torch.sigmoid(input)  
         input = torch.flatten(input)
         target = torch.flatten(target)
-        print(target.unique())
+        #print(target.unique())
         intersection = (input * target).sum()
-        print(2.*intersection)
-        print(input.sum())
-        print(target.sum())
+        #print(2.*intersection)
+        #print(input.sum())
+        #print(target.sum())
         dice = (2.*intersection + smooth)/(input.sum() + target.sum() + smooth)
-        print(dice)
+        #print(dice)
 
         return 1 - dice
 

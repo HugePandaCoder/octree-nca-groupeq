@@ -66,16 +66,23 @@ class Nii_Gz_Dataset(Dataset_Base):
                 label (numpy): Label to preprocess
         """
         
-        img = np.array(img) #cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC) 
+        img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
+        #img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)  #np.array(img) #
         img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         img[np.isnan(img)] = 1
 
-        label = np.squeeze(np.array(label)) #cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) 
+        #plt.imshow(img)
+        #plt.show()
+
+        label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST)
+        #label = cv2.resize(label, dsize=self.size, interpolation=cv2.INTER_NEAREST) #np.squeeze(np.array(label)) #
         label = np.repeat(label[:, :, np.newaxis], 3, axis=2)
 
         label[:,:, 0] = label[:,:, 0] != 0
-        label[:,:, 1] = label[:,:, 1] != 0
+        
+        #label[:,:, 1] = label[:,:, 1] != 0
+        label[:,:, 1] = 0
 
         # Edges as second mask
         #gx, gy = np.gradient(label[:,:, 0])

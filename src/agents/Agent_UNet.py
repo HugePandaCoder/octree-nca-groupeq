@@ -26,10 +26,10 @@ class Agent(BaseAgent):
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         return id, inputs.permute(0, 3, 1, 2), targets.permute(0, 3, 1, 2)
 
-    def get_outputs(self, data):
+    def get_outputs(self, data, **kwargs):
         _, inputs, targets = data
         #print(inputs.shape)
-        return self.model(inputs), targets
+        return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
 
     def prepare_image_for_display(self, image):
-        return image.permute(0, 2, 3, 1)
+        return image #.permute(0, 2, 3, 1)

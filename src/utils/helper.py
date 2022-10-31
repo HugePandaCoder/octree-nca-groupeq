@@ -282,7 +282,7 @@ def convert_image(img, prediction, label=None, encode_image=True):
     img_rgb = img_rgb / np.amax(img_rgb)
     label_pred = prediction
 
-    img_rgb, label, label_pred = [v.squeeze() for v in [img_rgb, label, label_pred]]
+    img_rgb, label, label_pred = [orderArray(v.squeeze()) for v in [img_rgb, label, label_pred]]
 
     # Overlay Label on Image
     if label is not None:
@@ -307,6 +307,15 @@ def convert_image(img, prediction, label=None, encode_image=True):
     if encode_image:
         img_rgb = encode(img_rgb)
     return img_rgb 
+
+def orderArray(array):
+    if array.shape[0] < array.shape[2]:
+        return np.transpose(array, (1, 2, 0))
+    if array.shape[1] < array.shape[2]:
+        return np.transpose(array, (0, 2, 1))
+    else:
+         return array
+
 
 def encode(img_rgb, size=(150, 100)):
 

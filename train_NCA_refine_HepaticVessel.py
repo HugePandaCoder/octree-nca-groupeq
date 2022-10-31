@@ -15,7 +15,7 @@ from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 #from lib.CAModel import CAModel
 #from lib.utils_vis import SamplePool, to_alpha, to_rgb, get_living_mask, make_seed, make_circle_masks
-from src.losses.LossFunctions import DiceLoss, DiceBCELoss
+from src.losses.LossFunctions import DiceLoss, DiceBCELoss, FocalLoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA_refineResultsUpsample import Agent_RefineResults_Upsample
 from src.models.Model_BasicNCA import BasicNCA
@@ -33,12 +33,10 @@ def main():
 
     config = [{
         'out_path': r"D:\PhD\NCA_Experiments",
-        #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-        #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr",
-        'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTr/",
-        'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTr/",
+        'img_path': r"/home/jkalkhof_locale/Documents/Data/HepaticVessel_Small/imagesTr/",
+        'label_path': r"/home/jkalkhof_locale/Documents/Data/HepaticVessel_Small/labelsTr/",
         'data_type': '.nii.gz', # .nii.gz, .jpg
-        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_ProstateFull_Slices_refine_optLayer_5',
+        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_HepaticVessel_v2',
         'device':"cuda:0",
         'n_epoch': 4000,
         # Learning rate
@@ -47,15 +45,15 @@ def main():
         'betas': (0.5, 0.5),
         'inference_steps': [64],
         # Training config
-        'save_interval': 10,
+        'save_interval': 1,
         'evaluate_interval': 10,
         # Model config
-        'channel_n': 32,        # Number of CA state channels
+        'channel_n': 16,        # Number of CA state channels
         'target_padding': 0,    # Number of pixels used to pad the target image border
         'target_size': 64,
         'cell_fire_rate': 0.5,
         'cell_fire_interval':None,
-        'batch_size': 20,
+        'batch_size': 16,
         'repeat_factor': 1,
         'input_channels': 3,
         'input_fixed': True,
@@ -64,16 +62,14 @@ def main():
         'scaling_factor': 4, # each axis
         'train_model': 1,
         # Data
-        'input_size': [(64, 64), (256, 256)],
-        #'data_split': [0.7, 0, 0.3], 
-        'data_split': [0, 0, 1], 
+        'input_size': [(100, 100), (400, 400)],
+        'data_split': [0.7, 0, 0.3], 
         'pool_chance': 0.5,
         'Persistence': False,
         'unlock_CPU': True,
     }
     ]
     # Define Experiment
-    #dataset = Nii_Gz_Dataset() #Dataset_NiiGz_3D(slice=2)
     dataset = Dataset_NiiGz_3D(slice=2)
     device = torch.device(config[0]['device'])
 
@@ -85,33 +81,14 @@ def main():
     agent = Agent_RefineResults_Upsample(ca)
     exp = Experiment(config, dataset, ca, agent)
     exp.set_model_state('train')
-    dataset.set_experiment(exp)
     data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size')) #, collate_fn=collate_variable_size
 
-    loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
+    #loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
+    loss_function = FocalLoss()
     #loss_function = F.mse_loss
     #loss_function = DiceLoss()
-    #agent.train(data_loader, loss_function)
-    
-    exp.temporarly_overwrite_config(config)
-    
-    #print(sum(p.numel() for p in ca_lvl0.parameters() if p.requires_grad))
-    
-    #loss_log = agent.getAverageDiceScore()
-
-
-    #exit()
-    with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
-        log = {}        
-        for x in range(0, 260, 4): #388
-            #config[0]['input_size'] = [(256/4, x/4), (256, x)]
-            #config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
-            config[0]['anisotropy'] = x  
-            exp.temporarly_overwrite_config(config)
-            loss_log = agent.getAverageDiceScore()
-            log[x] = loss_log[0]
-        myfile.write(str(log))
-            #return sum(loss_log.values())/len(loss_log)
+    agent.train(data_loader, loss_function)
+    #agent.getAverageDiceScore()
 
 if __name__ == '__main__':
     main()
