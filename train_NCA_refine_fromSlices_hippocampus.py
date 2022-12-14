@@ -33,12 +33,12 @@ def main():
 
     config = [{
         'out_path': r"D:\PhD\NCA_Experiments",
-        'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-        'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr",
-        #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
-        #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
+        #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
+        #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr",
+        'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
+        'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
         'data_type': '.nii.gz', # .nii.gz, .jpg
-        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_ProstateFull_Slices_refine_optLayer_5',
+        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_ProstateFull_Slices_refine_hippocampus_v3',
         'device':"cuda:0",
         'n_epoch': 4000,
         # Learning rate
@@ -55,7 +55,7 @@ def main():
         'target_size': 64,
         'cell_fire_rate': 0.5,
         'cell_fire_interval':None,
-        'batch_size': 20,
+        'batch_size': 320,
         'repeat_factor': 1,
         'input_channels': 3,
         'input_fixed': True,
@@ -64,9 +64,9 @@ def main():
         'scaling_factor': 4, # each axis
         'train_model': 1,
         # Data
-        'input_size': [(64, 64), (256, 256)],
+        'input_size': [(16, 16), (64, 64)],
+        #'data_split': [0.7, 0, 0.3], 
         'data_split': [0.7, 0, 0.3], 
-        #'data_split': [0, 0, 1], 
         'pool_chance': 0.5,
         'Persistence': False,
         'unlock_CPU': True,
@@ -93,9 +93,9 @@ def main():
     #loss_function = DiceLoss()
     #agent.train(data_loader, loss_function)
     
-    exp.temporarly_overwrite_config(config)
+    #exp.temporarly_overwrite_config(config)
     
-    print(sum(p.numel() for p in ca_lvl0.parameters() if p.requires_grad))
+    #print(sum(p.numel() for p in ca_lvl0.parameters() if p.requires_grad))
     
     loss_log = agent.getAverageDiceScore()
 
@@ -103,7 +103,7 @@ def main():
     exit()
     with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
         log = {}        
-        for x in range(0, 144, 16): #388
+        for x in range(0, 260, 4): #388
             #config[0]['input_size'] = [(256/4, x/4), (256, x)]
             #config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
             config[0]['anisotropy'] = x  

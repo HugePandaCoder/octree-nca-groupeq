@@ -16,10 +16,10 @@ config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
     #'img_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\imagesTr",
     #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTr/",
-    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
     'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Test6',
     'device':"cuda:0",
@@ -41,14 +41,15 @@ config = [{
     'persistence_chance':0.5,
     # Data
     'input_size': (256, 256),
-    'data_split': [0, 0, 1], 
+    'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.7,
     'Persistence': False,
     'output_channels': 3,
 }]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
+#dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
+dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
 ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
@@ -70,14 +71,15 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #agent.train(data_loader, loss_function)
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 exp.temporarly_overwrite_config(config)
-#agent.getAverageDiceScore()
+agent.getAverageDiceScore()
 
-#exit()
+exit()
 with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
     log = {}        
-    for x in range(64, 256, 16): #388
-        config[0]['input_size'] = [(256/4, x/4), (256, x)]
-        config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
+    for x in range(254, 60, -4): #388
+        print(x)
+        #config[0]['input_size'] = [(256/4, x/4), (256, x)]
+        #config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
         config[0]['anisotropy'] = x  
         exp.temporarly_overwrite_config(config)
         loss_log = agent.getAverageDiceScore()

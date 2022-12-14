@@ -9,6 +9,7 @@ class Dataset_Base(Dataset):
     """
     def __init__(self, resize=True): 
         self.resize = resize
+        self.count = 42
         self.data = Data_Container()
 
     def set_size(self, size):

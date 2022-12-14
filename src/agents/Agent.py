@@ -230,7 +230,7 @@ class BaseAgent():
         self.exp.dataset = dataset_train
 
 
-    def test(self, loss_f, save_img = None, tag='test/img/'):
+    def test(self, loss_f, save_img = None, tag='test/img/', **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             Args:
@@ -242,6 +242,7 @@ class BaseAgent():
         self.exp.set_model_state('test')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
+        patient_real_Img = None
         loss_log = {}
         for m in range(self.output_channels):
             loss_log[m] = {}
@@ -253,7 +254,7 @@ class BaseAgent():
             #data = dataset.__getitem__(i)
             data = self.prepare_data(data, eval=True)
             data_id, inputs, _ = data
-            outputs, targets = self.get_outputs(data, full_img=True)
+            outputs, targets = self.get_outputs(data)#, full_img=True)
 
             #if type(data_id) is tuple:
             #    id = data_id[0]
@@ -270,8 +271,23 @@ class BaseAgent():
                 for m in range(patient_3d_image.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
+
                         if math.isnan(loss_log[m][patient_id]):
                             loss_log[m][patient_id] = 0
+
+                        # save img
+                        label_out = torch.sigmoid(patient_3d_image[..., 0])
+                        label_out[label_out < 0.5] = 0
+                        label_out[label_out > 0.5] = 1
+                        nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + ".nii.gz"))
+
+                        nib_save = nib.Nifti1Image(torch.sigmoid(patient_real_Img[..., 0])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_real.nii.gz"))
+
+                        nib_save = nib.Nifti1Image(patient_3d_label[..., 0]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_ground.nii.gz"))
+
                         #print(loss_log[m])
                         #print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
                         out = out + str(loss_log[m][patient_id]) + ", "
@@ -284,9 +300,11 @@ class BaseAgent():
                 patient_id = id
                 patient_3d_image = outputs.detach().cpu()#[:, :, :, 0] #:4
                 patient_3d_label = targets.detach().cpu()#[:, :, :, 0]
+                patient_real_Img = inputs.detach().cpu()
             else:
                 patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()))#[:, :, :, 0])) #:4
                 patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))#[:, :, :, 0])) #:4
+                patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))#[:, :, :, 0])) #:4
             # Add image to tensorboard
             if i in save_img: #np.random.random() < chance:
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 

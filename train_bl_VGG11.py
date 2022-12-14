@@ -14,12 +14,12 @@ warnings.filterwarnings("ignore")
 
 config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
-    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_vgg11_v1',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_vgg11_v2',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -39,19 +39,17 @@ config = [{
     'persistence_chance':0.5,
     # Data
     'input_size': (256, 256),
-    #'data_split': [0.7, 0, 0.3], 
-    'data_split': [0, 0, 1],
+    'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.7,
     'Persistence': True,
     'output_channels': 3,
 }]
 
 # Define Experiment
-#dataset = Nii_Gz_Dataset()
-dataset = Dataset_NiiGz_3D(slice=2)
+dataset = Nii_Gz_Dataset()# Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
 #ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
-ca = smp.Unet("vgg11", classes=3).to(device)
+ca = smp.Unet("vgg11", classes=3, encoder_weights=None).to(device)
 
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
@@ -68,8 +66,12 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
 
-exp.temporarly_overwrite_config(config)
+#print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+#exp.temporarly_overwrite_config(config)
+agent.getAverageDiceScore()
+#agent.train(data_loader, loss_function)
 
+exit()
 with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
     log = {}        
     for x in range(1, 16, 1): #388

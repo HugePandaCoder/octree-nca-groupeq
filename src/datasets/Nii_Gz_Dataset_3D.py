@@ -47,10 +47,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 path (String): The path to the nib file to be loaded."""
         return nib.load(path).get_fdata()
 
-    def rotate_image(self, image, angle):
+    def rotate_image(self, image, angle, label = False):
         image_center = tuple(np.array(image.shape[1::-1]) / 2)
         rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-        result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+        if label:
+            result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_NEAREST)
+        else:
+            result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
 
     def __getitem__(self, idx):
@@ -102,15 +105,24 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = self.data.get_data(key=self.images_list[idx])
 
         id, img, label = img
-
         size = self.size #(256, 256)#
-        size = (256, 256)
+        #size = (256, 256)
 
         img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
         label = cv2.resize(label, dsize=size, interpolation=cv2.INTER_NEAREST) 
 
-        margin = int((256 - self.size[0]) / 2 )
+        # Random State
+        self.count = self.count + 1
+        torch.manual_seed(self.count)
+        random.seed(self.count)
 
+        img2 = img.copy()
+        mask = label == 1  
+
+        if False:
+            margin = int((256 - self.size[0]) / 2 )
+            img = img[:, margin:-margin, :]
+            label = label[:, margin:-margin, :]
         #img[0:margin, :, :] = 0
         #img[256-margin:256,:,  :] = 0  
         #img[:, 0:margin, :] = 0
@@ -119,8 +131,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #img = img[margin:-margin, :, :] 
         #label = label[margin:-margin, :, :] 
 
-        img = img[:, margin:-margin, :]
-        label = label[:, margin:-margin, :]
+
 
         #img[:,:,:] = 0
         #label[:,:,:] = 0 
@@ -128,8 +139,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #img[:, margin:-margin, :] = img2
         #label[:, margin:-margin, :] = label2
 
-        
-        #img = self.rotate_image(img, 4 5)
+        if False:
+            img = self.rotate_image(img, 45)
+            label = self.rotate_image(label, 45)
 
         #img = np.roll(img, self.exp.get_from_config('anisotropy'), axis=1)
         #label = np.roll(label, self.exp.get_from_config('anisotropy'), axis=1)
@@ -155,34 +167,78 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img[-80:256, 0:256, :] = img2 
 
         if False:
-            transform = torchio.transforms.RandomAnisotropy(axes=1, downsampling=self.exp.get_from_config('anisotropy')) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
+            transform = torchio.transforms.RandomBiasField() #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
 
         if False:
-            torch.manual_seed(42)
-            transform = torchio.transforms.RandomSpike(num_spikes=1, intensity=16) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
+            transform = torchio.transforms.RandomAnisotropy(axes=1, downsampling=8) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
-        
-        
-        img[..., 1] = img[..., 0]
-        img[..., 2] = img[..., 0]
+
+        if False:
+            transform = torchio.transforms.RandomNoise(mean = 0.2, std=0.05)
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            transform = torchio.transforms.RandomGhosting()
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            transform = torchio.transforms.RandomAffine(image_interpolation='linear')
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            transform = torchio.transforms.RandomMotion()#(image_interpolation='linear')
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            transform = torchio.transforms.RandomFlip()#(image_interpolation='linear')
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            #torch_rng_state = torch.random.get_rng_state()
+            #torch.random.set_rng_state(torch_rng_state)
+            transform = torchio.transforms.RandomSpike(intensity=1)#, intensity=0) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
 
         #img = cv2.rectangle(img, (0, 0), (256, 256), (0.8, 0.8, 0.8), 120)
 
-        #for x in range(10):
-        #    posx = random.randrange(256)
-        #    posy = random.randrange(256)
-        #    img = cv2.circle(img, (posx, posy), 10, (1, 1, 1), -1)
+        if False:
+            for x in range(5):
+                posx = random.randrange(256)
+                posy = random.randrange(256)
+                while abs(256/2 - posx) < 40 and abs(256/2 - posy) < 40:
+                    posx = random.randrange(256)
+                    posy = random.randrange(256)              
+                img = cv2.circle(img, (posx, posy), 40, (0, 0, 0), -1)
 
-        #print(np.max(img))
+        
+        #np.place(img, label > 0, img2[label > 0] )
 
-        plt.imshow(img)
-        plt.show()
 
+        img[..., 1] = img[..., 0]
+        img[..., 2] = img[..., 0]
+        img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        #img = np.clip(img, 0, 1)
+
+        if False:
+            plt.imshow(img)
+            plt.show()
         # REMOVE
         label[label > 0] = 1
 

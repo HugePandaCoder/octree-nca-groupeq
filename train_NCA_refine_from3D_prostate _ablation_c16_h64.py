@@ -38,22 +38,22 @@ def main():
         #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
         #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
         'data_type': '.nii.gz', # .nii.gz, .jpg
-        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_ProstateFull_Slices_refine_optLayer_5',
+        'model_path': r'/home/jkalkhof_locale/Documents/Models/TestNCA_ProstateFull_Slices_refine_Ablation_c16_h64',
         'device':"cuda:0",
-        'n_epoch': 4000,
+        'n_epoch': 1350,
         # Learning rate
         'lr': 16e-4,
         'lr_gamma': 0.9999,
         'betas': (0.5, 0.5),
-        'inference_steps': [64],
+        'inference_steps': [32],
         # Training config
         'save_interval': 10,
         'evaluate_interval': 10,
         # Model config
-        'channel_n': 32,        # Number of CA state channels
+        'channel_n': 16,        # Number of CA state channels
         'target_padding': 0,    # Number of pixels used to pad the target image border
         'target_size': 64,
-        'cell_fire_rate': 0.5,
+        'cell_fire_rate': 0,
         'cell_fire_interval':None,
         'batch_size': 20,
         'repeat_factor': 1,
@@ -65,8 +65,8 @@ def main():
         'train_model': 1,
         # Data
         'input_size': [(64, 64), (256, 256)],
+        #'data_split': [0.7, 0, 0.3], 
         'data_split': [0.7, 0, 0.3], 
-        #'data_split': [0, 0, 1], 
         'pool_chance': 0.5,
         'Persistence': False,
         'unlock_CPU': True,
@@ -78,8 +78,8 @@ def main():
     device = torch.device(config[0]['device'])
 
     # Define all model levels
-    ca_lvl0 = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=128).to(device)
-    ca_lvl1 = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=128).to(device)
+    ca_lvl0 = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+    ca_lvl1 = LearntPerceiveNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
     ca = [ca_lvl0, ca_lvl1]
 
     agent = Agent_RefineResults_Upsample(ca)
@@ -91,19 +91,22 @@ def main():
     loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
     #loss_function = F.mse_loss
     #loss_function = DiceLoss()
-    #agent.train(data_loader, loss_function)
     
+    #agent.train(data_loader, loss_function)
+    agent.getAverageDiceScore()
+    exit()
+
     exp.temporarly_overwrite_config(config)
     
     print(sum(p.numel() for p in ca_lvl0.parameters() if p.requires_grad))
     
-    loss_log = agent.getAverageDiceScore()
+    #loss_log = agent.getAverageDiceScore()
 
 
-    exit()
+    #exit()
     with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:
         log = {}        
-        for x in range(0, 144, 16): #388
+        for x in range(0, 9, 1): #388
             #config[0]['input_size'] = [(256/4, x/4), (256, x)]
             #config[0]['input_size'] = [(x/4, 256/4), (x, 256)]
             config[0]['anisotropy'] = x  

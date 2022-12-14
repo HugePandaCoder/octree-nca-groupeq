@@ -12,6 +12,7 @@ class Dataset_3D(Dataset_Base):
     """
     def __init__(self, slice=None, resize=True): 
         self.slice = slice
+        self.count = 42
         super().__init__(resize)
 
     def getImagePaths(self):

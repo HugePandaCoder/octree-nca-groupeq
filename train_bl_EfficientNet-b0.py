@@ -1,6 +1,7 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
 from unet import UNet2D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.utils.Experiment import Experiment, DataSplit
 import torch
@@ -15,8 +16,10 @@ config = [{
     'out_path': r"D:\PhD\NCA_Experiments",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_efficientnet-b0_v1',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_efficientNet_v2',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -43,14 +46,16 @@ config = [{
 }]
 
 # Define Experiment
-dataset = Nii_Gz_Dataset()
+dataset = Nii_Gz_Dataset()# 
+#dataset = Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
 #ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
-ca = smp.Unet("efficientnet-b0", classes=3).to(device)
+ca = smp.Unet("efficientnet-b0", classes=3, encoder_weights=None).to(device)
 
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
+dataset.set_experiment(exp)
 
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
@@ -62,7 +67,9 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
 
-print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+#print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+exp.temporarly_overwrite_config(config)
+agent.getAverageDiceScore()
 
 #agent.train(data_loader, loss_function)
 

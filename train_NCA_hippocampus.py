@@ -35,10 +35,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Hippocampus/preprocessed_dataset_train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/TestNCA_prostate_full_Slices_focalDiceLoss2',
+    'model_path': r'M:/Models/TestNCA_hippocampus_v4',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -47,16 +47,16 @@ config = [{
     'betas': (0.5, 0.5),
     'inference_steps': [64],
     # Training config
-    'save_interval': 1,
-    'evaluate_interval': 1,
-    'ood_interval':100,
+    'save_interval': 10,
+    'evaluate_interval': 10,
+    #'ood_interval':100,
     # Model config
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 32,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 48,
+    'batch_size': 50,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -84,17 +84,19 @@ exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
+#loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
-#loss_function = DiceLoss()
+loss_function = DiceBCELoss()
 #
 
 #with torch.autograd.set_detect_anomaly(True):
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 #exp.temporarly_overwrite_config(config)
 
-#agent.getAverageDiceScore()
+print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+
+agent.getAverageDiceScore()
 
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.test(data_loader, loss_function)
