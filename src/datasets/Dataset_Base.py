@@ -63,3 +63,6 @@ class Dataset_Base(Dataset):
 
     def __getitem__(self, idx):
         raise NotImplementedError("Subclasses should implement this!")
+
+    def setState(self, state):
+        self.state = state

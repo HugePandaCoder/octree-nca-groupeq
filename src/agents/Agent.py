@@ -89,13 +89,21 @@ class BaseAgent():
         loss = 0
         loss_ret = {}
         #print(outputs.shape)
-        for m in range(outputs.shape[-1]):
-            if 1 in targets[..., m]:
-                loss_loc = loss_f(outputs[..., m], targets[..., m])
+        if len(outputs.shape) == 5:
+            for m in range(outputs.shape[-1]):
+                loss_loc = loss_f(outputs[..., m], targets[...])
                 #if m == 0:
                 #    loss_loc = loss_loc * 100
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
+        else:
+            for m in range(outputs.shape[-1]):
+                if 1 in targets[..., m]:
+                    loss_loc = loss_f(outputs[..., m], targets[..., m])
+                    #if m == 0:
+                    #    loss_loc = loss_loc * 100
+                    loss = loss + loss_loc
+                    loss_ret[m] = loss_loc.item()
 
         if loss != 0:
             loss.backward()
@@ -254,7 +262,7 @@ class BaseAgent():
             #data = dataset.__getitem__(i)
             data = self.prepare_data(data, eval=True)
             data_id, inputs, _ = data
-            outputs, targets = self.get_outputs(data)#, full_img=True)
+            outputs, targets = self.get_outputs(data, full_img=True)
 
             #if type(data_id) is tuple:
             #    id = data_id[0]
@@ -263,67 +271,91 @@ class BaseAgent():
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')
             else:
-                _, id, slice = data_id[0].split('_')
+                text = data_id[0].split('_')
+                if len(text) == 3:
+                    _, id, slice = text
+                else:
+                    id = data_id[0]
+                    slice = None
 
             #print(id)
-            if id != patient_id and patient_id != None:
+
+            # --------------- 2D ---------------------
+            if slice is not None:
+                # Calculate Dice
+                if id != patient_id and patient_id != None:
+                    out = patient_id + ", "
+                    for m in range(patient_3d_image.shape[3]):
+                        if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
+                            loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
+
+                            if math.isnan(loss_log[m][patient_id]):
+                                loss_log[m][patient_id] = 0
+
+                            # save img
+                            #label_out = torch.sigmoid(patient_3d_image[..., 0])
+                            #label_out[label_out < 0.5] = 0
+                            #label_out[label_out > 0.5] = 1
+                            #nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + ".nii.gz"))
+
+                            #nib_save = nib.Nifti1Image(torch.sigmoid(patient_real_Img[..., 0])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_real.nii.gz"))
+
+                            #nib_save = nib.Nifti1Image(patient_3d_label[..., 0]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_ground.nii.gz"))
+
+                            #print(loss_log[m])
+                            #print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+                            out = out + str(loss_log[m][patient_id]) + ", "
+                        else:
+                            out = out + " , "
+                    print(out)
+                    patient_id, patient_3d_image, patient_3d_label = id, None, None
+
+                if patient_3d_image == None:
+                    patient_id = id
+                    patient_3d_image = outputs.detach().cpu()#[:, :, :, 0] #:4
+                    patient_3d_label = targets.detach().cpu()#[:, :, :, 0]
+                    patient_real_Img = inputs.detach().cpu()
+                else:
+                    patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()))#[:, :, :, 0])) #:4
+                    patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))#[:, :, :, 0])) #:4
+                    patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))#[:, :, :, 0])) #:4
+                # Add image to tensorboard
+                if i in save_img: #np.random.random() < chance:
+                    self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
+                    convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
+                    self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
+                    self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
+                    encode_image=False), self.exp.currentStep)
+            # --------------------------------- 3D ----------------------------
+            else: 
+                patient_3d_image = outputs.detach().cpu()
+                patient_3d_label = targets.detach().cpu()
+                patient_id = id
+
+                print(patient_3d_image.shape)
+                print(patient_3d_label.shape)
+
+                loss_log[0][patient_id] = 1 - loss_f(patient_3d_image[...,0], patient_3d_label, smooth = 0).item()
+                
+                #if math.isnan(loss_log[m][patient_id]):
+                #    loss_log[m][patient_id] = 0
+
+            if slice is not None:
                 out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
-                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
-
-                        if math.isnan(loss_log[m][patient_id]):
-                            loss_log[m][patient_id] = 0
-
-                        # save img
-                        label_out = torch.sigmoid(patient_3d_image[..., 0])
-                        label_out[label_out < 0.5] = 0
-                        label_out[label_out > 0.5] = 1
-                        nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + ".nii.gz"))
-
-                        nib_save = nib.Nifti1Image(torch.sigmoid(patient_real_Img[..., 0])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_real.nii.gz"))
-
-                        nib_save = nib.Nifti1Image(patient_3d_label[..., 0]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_ground.nii.gz"))
-
-                        #print(loss_log[m])
-                        #print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
+                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() # ,mask = patient_3d_label[...,4].bool()
                         out = out + str(loss_log[m][patient_id]) + ", "
                     else:
                         out = out + " , "
                 print(out)
-                patient_id, patient_3d_image, patient_3d_label = id, None, None
+            for key in loss_log.keys():
+                if len(loss_log[key]) > 0:
+                    print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
 
-            if patient_3d_image == None:
-                patient_id = id
-                patient_3d_image = outputs.detach().cpu()#[:, :, :, 0] #:4
-                patient_3d_label = targets.detach().cpu()#[:, :, :, 0]
-                patient_real_Img = inputs.detach().cpu()
-            else:
-                patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()))#[:, :, :, 0])) #:4
-                patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))#[:, :, :, 0])) #:4
-                patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))#[:, :, :, 0])) #:4
-            # Add image to tensorboard
-            if i in save_img: #np.random.random() < chance:
-                self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
-                convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
-                self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
-                self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
-                encode_image=False), self.exp.currentStep)
-        
-        out = patient_id + ", "
-        for m in range(patient_3d_image.shape[3]):
-            if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
-                loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() # ,mask = patient_3d_label[...,4].bool()
-                out = out + str(loss_log[m][patient_id]) + ", "
-            else:
-                out = out + " , "
-        print(out)
-        for key in loss_log.keys():
-            if len(loss_log[key]) > 0:
-                print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
 
         self.exp.set_model_state('train')
         return loss_log

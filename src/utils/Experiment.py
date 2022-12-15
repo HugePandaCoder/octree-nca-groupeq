@@ -123,6 +123,7 @@ class Experiment():
     def set_model_state(self, state):
         r"""TODO: remove? """
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
+        self.dataset.setState(state)
         
     def get_from_config(self, tag):
         r"""Get from config

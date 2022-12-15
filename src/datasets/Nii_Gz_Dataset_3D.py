@@ -35,7 +35,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             else:
                 if id not in dic:
                     dic[id] = {}
-                dic[id][0] = f           
+                dic[id][0] = (f, f, 0)           
         return dic
 
     def getSlicesOnAxis(self, path, axis):
@@ -56,6 +56,18 @@ class Dataset_NiiGz_3D(Dataset_3D):
             result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
         return result
 
+    def preprocessing3d(self, img, isLabel=False):
+        padded = np.zeros((64,64,52))
+        img_shape = img.shape
+        padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
+        #print(padded.shape)
+
+        # For now single mask
+        if isLabel == True:
+            padded[padded != 0] = 1
+
+        return padded
+
     def __getitem__(self, idx):
         r"""Standard get item function
             Args:
@@ -64,9 +76,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img (numpy): Image data
                 label (numpy): Label data
         """
+        rescale = torchio.RescaleIntensity(out_min_max=(0,1), percentiles=(0.5, 99.5))
+        znormalisation = torchio.ZNormalization()
+        #histogram_stanard = torchio.HistogramStandardization()
 
         img = self.data.get_data(key=self.images_list[idx])
         if not img:
+            #print(self.images_list[idx])
             img_name, p_id, img_id = self.images_list[idx]
 
             label_name, _, _ = self.labels_list[idx]
@@ -79,11 +95,15 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img, label = img[:, img_id, :], label[:, img_id, :]
                 elif self.slice == 2:
                     img, label = img[:, :, img_id], label[:, :, img_id]
+                # Remove 4th dimension
+                if len(img.shape) == 4:
+                    img = img[...,0] 
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
+            else:
+                img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
-            if len(img.shape) == 4:
-                img = img[...,0] 
+
 
             #size = (256, 256) 
             
@@ -96,7 +116,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
             #label = scipy.ndimage.interpolation.zoom(label, resize_factor, order=0)
             
             #print(img.shape)
-            img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            img = np.expand_dims(img, axis=0)
+            img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            img = np.squeeze(img)
             #img =img[20:-20, :, :] 
             #plt.imshow(img)
             #plt.show()
@@ -106,6 +128,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         id, img, label = img
         size = self.size #(256, 256)#
+
+        if len(size) > 2:
+            size = size[0:2] 
         #size = (256, 256)
 
         img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
@@ -233,11 +258,69 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         img[..., 1] = img[..., 0]
         img[..., 2] = img[..., 0]
-        img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+
+        #transform = torchio.transforms.RandomSpike(intensity=1)#torchio.transforms.RandomElasticDeformation()
+        if self.state == "train" and random.randrange(0, 2) == 1:
+            rand = random.randrange(0, 10)
+
+            if rand == 0:
+                #print("TRAIN")
+                transform = torchio.transforms.RandomSpike(intensity=1)
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img)
+            if rand == 1:
+                #print("TRAIN")
+                transform = transform = torchio.transforms.RandomFlip()
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img) #
+            if rand == 2:
+                #print("TRAIN")
+                transform = torchio.transforms.RandomNoise(mean = 0.2, std=0.05)
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img) #            transform = torchio.transforms.RandomBiasField() 
+            if rand == 3:
+                #print("TRAIN")
+                transform = torchio.transforms.RandomBiasField() 
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img)
+            if rand == 4:
+                rnd_seed = random.randint(0, 1000000)
+                transform = torchio.transforms.RandomAffine()
+                random.seed(rnd_seed)
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img)
+                transform = torchio.transforms.RandomAffine(image_interpolation='nearest', label_interpolation='nearest')
+                random.seed(rnd_seed)
+                label = np.expand_dims(label, axis=0)
+                label = transform(label)
+                label = np.squeeze(label)
+            if rand >= 5:
+                rnd_seed = random.randint(0, 1000000)
+                transform = torchio.transforms.RandomElasticDeformation()
+                random.seed(rnd_seed)
+                img = np.expand_dims(img, axis=0)
+                img = transform(img)
+                img = np.squeeze(img)
+                transform = torchio.transforms.RandomElasticDeformation(image_interpolation='nearest', label_interpolation='nearest')
+                random.seed(rnd_seed)
+                label = np.expand_dims(label, axis=0)
+                label = transform(label)
+                label = np.squeeze(label)
+
+        img = np.expand_dims(img, axis=0)
+        img = znormalisation(img)
+        #img = histogram_stanard(img)
+        img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        img = np.squeeze(img)
         #img = np.clip(img, 0, 1)
 
         if False:
-            plt.imshow(img)
+            plt.imshow(img[:,:,26])
             plt.show()
         # REMOVE
         label[label > 0] = 1
