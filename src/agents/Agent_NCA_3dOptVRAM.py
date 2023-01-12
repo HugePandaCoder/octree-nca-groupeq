@@ -14,6 +14,7 @@ import random
 from scipy.ndimage import zoom
 import torchio as tio
 import matplotlib.pyplot as plt
+import math
 
 class Agent_NCA_3dOptVRAM(Agent):
     def initialize(self):
@@ -77,27 +78,47 @@ class Agent_NCA_3dOptVRAM(Agent):
             targets = torch.unsqueeze(targets, 4)
 
         
-        scale_fac = 4
+        scale_fac = 2
 
         down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4), int(inputs.shape[3] / 4))
         #inputs_loc = self.resize4d(inputs.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
         avg_pool = torch.nn.AvgPool3d(3, 2, 1)
+        max_pool = torch.nn.MaxPool3d(3, 2, 1)
         #print(inputs.shape)
         if scale_fac == 4:
             inputs_loc = avg_pool(avg_pool(inputs.transpose(1,4)))
-        else:
-            inputs_loc = avg_pool(inputs.transpose(1,4))
-        inputs_loc = inputs_loc.transpose(1,4)
+        #else:
+        #    inputs_loc = avg_pool(inputs.transpose(1,4))
+        
         #print(inputs_loc.shape)
-        targets_loc = 0 #self.resize4d(targets.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device'))#torch.from_numpy(zoom(targets.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+        targets_loc = targets #self.resize4d(targets.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device'))#torch.from_numpy(zoom(targets.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
+
+        #current_res = full_res
+
+        # Scale Image to Initial Size
+        full_res = inputs
+        full_res_gt = targets
+        inputs_loc = inputs
+        for i in range(self.exp.get_from_config('train_model')):
+            #print(current_res.shape)
+            inputs_loc = inputs_loc.transpose(1,4)
+            inputs_loc = avg_pool(inputs_loc)
+            inputs_loc = inputs_loc.transpose(1,4)
+            targets_loc = targets_loc.transpose(1,4)
+            targets_loc = max_pool(targets_loc)
+            targets_loc = targets_loc.transpose(1,4)
+        
 
         if full_img == True:
             with torch.no_grad():
                 for m in range(self.exp.get_from_config('train_model')+1):
+                    
                     if m == self.exp.get_from_config('train_model'):
-                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        #plt.imshow(outputs[0,:,:,8,1].detach().cpu() - 20*targets_loc[0,:,:,8,0].detach().cpu())
+                        #plt.show()
                     else:
-                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                         
                         up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
 
@@ -107,55 +128,119 @@ class Agent_NCA_3dOptVRAM(Agent):
                         inputs_loc = inputs     
                         outputs = torch.permute(outputs, (0, 2, 3, 4, 1))         
    
-                        inputs_loc = torch.concat((inputs_loc[...,:1], outputs[...,1:]), 4)
+                        # NEXT RES
+                        next_res = full_res
+                        for i in range(self.exp.get_from_config('train_model') - (m +1)):
+                            next_res = next_res.transpose(1,4)
+                            next_res = avg_pool(next_res)
+                            next_res = next_res.transpose(1,4)
+
+                        inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+                        #print(inputs_loc.shape)
                         targets_loc = targets
         else:
+
             for m in range(self.exp.get_from_config('train_model')+1): #range(self.exp.get_from_config('train_model')+1):
+
                 if m == self.exp.get_from_config('train_model'):
-                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    #print("AAAAAA")
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                 else:
-                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    # NEXT RES
+                    next_res = full_res
+                    for i in range(self.exp.get_from_config('train_model') - (m +1)):
+                        next_res = next_res.transpose(1,4)
+                        next_res = avg_pool(next_res)
+                        next_res = next_res.transpose(1,4)
+                    # NEXT RES GT
+                    next_res_gt = full_res_gt
+                    for i in range(self.exp.get_from_config('train_model') - (m +1)):
+                        next_res_gt = next_res_gt.transpose(1,4)
+                        next_res_gt = max_pool(next_res_gt)
+                        next_res_gt = next_res_gt.transpose(1,4)
+
+
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     
 
                     up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
 
                     outputs = torch.permute(outputs, (0, 4, 1, 2, 3))
 
+                    # to full_res
                     outputs = up(outputs)
-                    inputs_loc = inputs     
+   
                     outputs = torch.permute(outputs, (0, 2, 3, 4, 1))        
    
-                    inputs_loc = torch.concat((inputs_loc[...,:1], outputs[...,1:]), 4)
-                    targets_loc = targets
+                    inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+
+                    
+                    targets_loc = next_res_gt
 
                     size = self.exp.get_from_config('input_size')[0]
 
                     inputs_loc_temp = inputs_loc
                     targets_loc_temp = targets_loc
 
-                    #print(inputs_loc.shape)
-                    #print(targets_loc_temp.shape)
+                    inputs_loc = torch.zeros((inputs_loc_temp.shape[0], size[0], size[1], size[2] , inputs_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
+                    targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], size[2] , targets_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
 
-                    inputs_loc = torch.zeros((inputs_loc.shape[0], size[0], size[1], size[2] , inputs_loc.shape[4])).to(self.exp.get_from_config('device'))
-                    
-                    if len(targets_loc_temp.shape) > 4:
-                        targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], size[2] , targets_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
-                    else:
-                        targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], size[2])).to(self.exp.get_from_config('device'))
+                    full_res_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2), full_res.shape[4])).to(self.exp.get_from_config('device'))
+                    full_res_gt_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2), full_res.shape[4])).to(self.exp.get_from_config('device'))
+
+                    factor = self.exp.get_from_config('train_model') - m -1
+                    factor_pow = math.pow(2, factor)
 
                     for b in range(inputs_loc.shape[0]): 
-                        pos_x = random.randint(0, inputs_loc_temp.shape[1] - size[0])
-                        pos_y = random.randint(0, inputs_loc_temp.shape[2] - size[1])
-                        pos_z = random.randint(0, inputs_loc_temp.shape[3] - size[2])
+                        while True:
+                            pos_x = random.randint(0, inputs_loc_temp.shape[1] - size[0])
+                            pos_y = random.randint(0, inputs_loc_temp.shape[2] - size[1])
+                            pos_z = random.randint(0, inputs_loc_temp.shape[3] - size[2])
+                            #print(pos_x)
+                            #print(pos_y)
+                            #print(pos_z)
+
+                            #if not torch.any(targets_loc_temp):
+                            #    break
+
+                            #print(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]))
+                            #if len(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :])) == 2:
+                            break
+                            #else:
+                            #    print("NOOOOOO")
+
+                        # SIZE OF FULL RES
+                        pos_x_full = int(pos_x * factor_pow)
+                        pos_y_full = int(pos_y * factor_pow)
+                        pos_z_full = int(pos_z * factor_pow)
+
+                        size_full = [int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2)]
+
+
+                        
+                        #pos_x = random.randint(0, full_res.shape[1] - size[0])
+                        #pos_y = random.randint(0, full_res.shape[2] - size[1])
+                        #pos_z = random.randint(0, full_res.shape[3] - size[2])
 
                         #print(inputs_loc_temp.shape)
                         #print(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :].shape)
                         #print(size[2] )
+
+                        # ----------- SET
                         inputs_loc[b] = inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]
                         if len(targets_loc.shape) > 4:
                             targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]
                         else:
                             targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]
+                       
+
+                        full_res_new[b] = full_res[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], pos_z_full:pos_z_full+size_full[2], :]
+                        full_res_gt_new[b] = full_res_gt[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], pos_z_full:pos_z_full+size_full[2], :]
+
+                        #full_res = inputs_loc
+                        #full_res_label = targets_loc
+                    full_res = full_res_new
+                    full_res_gt = full_res_gt_new
 
                     # NOW CROP
 

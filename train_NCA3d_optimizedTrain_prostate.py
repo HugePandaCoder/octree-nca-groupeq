@@ -43,17 +43,17 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/NCA3d_optVRAM_prostate_Test1',
+    'model_path': r'M:/Models/NCA3d_optVRAM_prostate_Test6_changedSteps',
     'device':"cuda:0",
     'n_epoch': 5000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [20],
+    'inference_steps': [10, 15, 20, 35],
     # Training config
-    'save_interval': 10,
-    'evaluate_interval': 10,
+    'save_interval': 25,
+    'evaluate_interval': 25,
     'ood_interval':100,
     # Model config
     'channel_n': 8,        # Number of CA state channels
@@ -67,12 +67,12 @@ config = [{
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(25, 25, 2), (50, 50, 4), (100, 100, 8), (200, 200, 16), (400, 400, 32)] ,
+    'input_size': [(50, 50, 8), (100, 100, 16), (200, 200, 32), (400, 400, 64)] ,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
     'unlock_CPU': True,
-    'train_model':4,
+    'train_model':3,
 }#,
 #{
 #    'n_epoch': 2000,
@@ -88,7 +88,7 @@ ca2 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hi
 ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
-ca =[ca1, ca2, ca3, ca4, ca5] 
+ca =[ca1, ca2, ca3, ca4] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 agent = Agent_NCA_3dOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)

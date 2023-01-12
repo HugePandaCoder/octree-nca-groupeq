@@ -37,10 +37,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train_tiny/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train_tiny/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/NCA3d_Test6',
+    'model_path': r'M:/Models/NCA3d_Test7',
     'device':"cuda:0",
     'n_epoch': 10,
     # Learning rate

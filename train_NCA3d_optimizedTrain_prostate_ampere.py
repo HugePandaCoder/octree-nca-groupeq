@@ -8,10 +8,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import torch.distributed as dist
 from src.models.Model_BasicNCA import BasicNCA
 from lib.CAModel_deeper import CAModel_Deeper
 from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.models.Model_BasicNCA3D import BasicNCA3D
+from src.models.Model_BasicNCA3D_Parallel import BasicNCA3D_Parallel
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_distanceField import Nii_Gz_Dataset_DistanceField
@@ -29,6 +31,10 @@ from src.agents.Agent_NCA import Agent
 
 from src.agents.Agent_NCA_3dOptVRAM import Agent_NCA_3dOptVRAM
 
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+
+
 import sys
 import os
 #from medcam import medcam 
@@ -40,20 +46,20 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
+    'img_path': r"/gris/gris-f/homestud/jkalkhof/datasets/Prostate_Full/imagesTr/",
+    'label_path': r"/gris/gris-f/homestud/jkalkhof/datasets/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/NCA3d_optVRAM_Test27',
-    'device':"cuda:0",
-    'n_epoch': 5000,
+    'model_path': r'/gris/gris-f/homestud/jkalkhof/Models/NCA3d_optVRAM_prostate_Test6_ampere',
+    'device': "cuda:0",
+    'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [20],
+    'inference_steps': [1, 1, 1],
     # Training config
-    'save_interval': 10,
-    'evaluate_interval': 10,
+    'save_interval': 25,
+    'evaluate_interval': 25,
     'ood_interval':100,
     # Model config
     'channel_n': 16,        # Number of CA state channels
@@ -61,13 +67,13 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 10,
+    'batch_size': 8,
     'repeat_factor': 1,
     'input_channels': 1,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(16, 16, 13), (32, 32, 26), (64, 64, 52)] , #(16, 16, 13), 
+    'input_size': [(100, 100, 16), (200, 200, 32), (400, 400, 64)] ,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
@@ -79,13 +85,19 @@ config = [{
 #    'Persistence': True,
 #}
 ]
+#rank = 4
+#world_size = 4
+#dist.init_process_group('gloo', rank=rank, world_size=world_size)
+
 
 # Define Experiment
 dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")
 device = torch.device(config[0]['device'])
-ca1 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
-ca2 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
-ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+ca1 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+ca2 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+ca3 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+ca4 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+ca5 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
 ca =[ca1, ca2, ca3] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 agent = Agent_NCA_3dOptVRAM(ca)
@@ -93,7 +105,7 @@ exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceBCELoss() #DiceFocalLoss() #nn.CrossEntropyLoss() #
+loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 #

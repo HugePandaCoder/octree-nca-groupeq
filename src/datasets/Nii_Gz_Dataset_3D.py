@@ -57,7 +57,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return result
 
     def preprocessing3d(self, img, isLabel=False):
-        padded = np.zeros((64,64,52))
+        if len(img.shape) == 4:
+            img = img[..., 0]
+        padded = np.zeros((400,400,64))# ((64, 64, 52)) #(400,400,64))
         img_shape = img.shape
         padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
         #print(padded.shape)
@@ -260,7 +262,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img[..., 2] = img[..., 0]
 
         #transform = torchio.transforms.RandomSpike(intensity=1)#torchio.transforms.RandomElasticDeformation()
-        if self.state == "train" and random.randrange(0, 2) == 1:
+        if self.state == "train" and random.randrange(0, 2) == 1 and False:
             rand = random.randrange(0, 10)
 
             if rand == 0:

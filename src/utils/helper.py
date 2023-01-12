@@ -309,6 +309,10 @@ def convert_image(img, prediction, label=None, encode_image=True):
     return img_rgb 
 
 def orderArray(array):
+
+    if len(array.shape) < 3:
+        array = np.stack((array, array, array), axis=-1)
+
     if array.shape[0] < array.shape[2]:
         return np.transpose(array, (1, 2, 0))
     if array.shape[1] < array.shape[2]:

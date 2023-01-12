@@ -85,10 +85,13 @@ class Agent(BaseAgent):
     def getInferenceSteps(self):
         r"""Get the number of steps for inference, if its set to an array its a random value inbetween
         """
-        if len(self.exp.get_from_config('inference_steps')) == 2:
-            steps = np.random.randint(self.exp.get_from_config('inference_steps')[0], self.exp.get_from_config('inference_steps')[1])
-        else:
+        #if len(self.exp.get_from_config('inference_steps')) > 1:
+        #    steps = np.random.randint(self.exp.get_from_config('inference_steps')[0], self.exp.get_from_config('inference_steps')[1])
+        #else:
+        if len(self.exp.get_from_config('inference_steps')) == 1:
             steps = self.exp.get_from_config('inference_steps')[0]
+        else:
+            steps = self.exp.get_from_config('inference_steps')
         return steps
 
     def prepare_data(self, data, eval=False):

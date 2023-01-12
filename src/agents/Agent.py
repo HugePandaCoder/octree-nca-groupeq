@@ -281,7 +281,7 @@ class BaseAgent():
             #print(id)
 
             # --------------- 2D ---------------------
-            if slice is not None:
+            if dataset.slice is not None:
                 # Calculate Dice
                 if id != patient_id and patient_id != None:
                     out = patient_id + ", "
@@ -333,6 +333,7 @@ class BaseAgent():
             else: 
                 patient_3d_image = outputs.detach().cpu()
                 patient_3d_label = targets.detach().cpu()
+                patient_3d_real_Img = inputs.detach().cpu()
                 patient_id = id
 
                 print(patient_3d_image.shape)
@@ -340,10 +341,20 @@ class BaseAgent():
 
                 loss_log[0][patient_id] = 1 - loss_f(patient_3d_image[...,0], patient_3d_label, smooth = 0).item()
                 
+                # Add image to tensorboard
+                print(patient_3d_image.shape)
+                if i in save_img: #np.random.random() < chance:
+                    
+                    self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
+                    convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                    self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                    self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                    encode_image=False), self.exp.currentStep)
+
                 #if math.isnan(loss_log[m][patient_id]):
                 #    loss_log[m][patient_id] = 0
 
-            if slice is not None:
+            if dataset.slice is not None:
                 out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
@@ -354,7 +365,7 @@ class BaseAgent():
                 print(out)
             for key in loss_log.keys():
                 if len(loss_log[key]) > 0:
-                    print("Average Dice Loss: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
+                    print("Average Dice Loss 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
 
 
         self.exp.set_model_state('train')
