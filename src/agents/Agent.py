@@ -256,7 +256,7 @@ class BaseAgent():
             loss_log[m] = {}
 
         if save_img == None:
-            save_img = [5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
+            save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
         for i, data in enumerate(dataloader):
             #data = dataset.__getitem__(i)
@@ -343,7 +343,7 @@ class BaseAgent():
                 
                 # Add image to tensorboard
                 print(patient_3d_image.shape)
-                if i in save_img: #np.random.random() < chance:
+                if i in save_img and True: #np.random.random() < chance:
                     
                     self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                     convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 

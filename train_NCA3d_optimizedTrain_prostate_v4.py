@@ -12,21 +12,25 @@ from src.models.Model_BasicNCA import BasicNCA
 from lib.CAModel_deeper import CAModel_Deeper
 from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.models.Model_BasicNCA3D import BasicNCA3D
+from src.models.Model_BasicNCA3D_Public import BasicNCA3D_Public
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
-from src.models.Model_BasicNCA3D_Public import BasicNCA3D_Public
 from src.datasets.Nii_Gz_Dataset_distanceField import Nii_Gz_Dataset_DistanceField
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
 from src.datasets.png_Dataset import png_Dataset
 from IPython.display import clear_output
 from src.models.Model_BasicNCA import BasicNCA
+from src.models.Model_BasicNCA3D_Big import BasicNCA3D_Big
 from src.models.Model_BasicNCA_noAddUp import BasicNCA_noAddUp
 from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
 from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss, DiceFocalLoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
+
+from src.agents.Agent_NCA_3dOptVRAM import Agent_NCA_3dOptVRAM
+
 import sys
 import os
 #from medcam import medcam 
@@ -38,38 +42,41 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_Test14_public',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test21',
     'device':"cuda:0",
-    'n_epoch': 30000,
+    'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [20],
+    'inference_steps': [20, 20],
     # Training config
     'save_interval': 10,
     'evaluate_interval': 10,
     'ood_interval':100,
     # Model config
-    'channel_n': 8,        # Number of CA state channels
+    'channel_n': 16,        # Number of CA state channels
     'target_padding': 0,    # Number of pixels used to pad the target image border
     'target_size': 64,
     'cell_fire_rate': 0.5,
+    
     'cell_fire_interval':None,
-    'batch_size': 4,
+    'batch_size': 2,
     'repeat_factor': 1,
     'input_channels': 1,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': (64, 64, 52),
+    'input_size': [(100, 100, 16), (400, 400, 64)] ,
+    'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
     'unlock_CPU': True,
+    'train_model':1,
 }#,
 #{
 #    'n_epoch': 2000,
@@ -80,9 +87,14 @@ config = [{
 # Define Experiment
 dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")
 device = torch.device(config[0]['device'])
-ca = BasicNCA3D_Public(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+ca1 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+ca2 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+#ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+#ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+#ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+ca =[ca1, ca2] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
-agent = Agent(ca)
+agent = Agent_NCA_3dOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))

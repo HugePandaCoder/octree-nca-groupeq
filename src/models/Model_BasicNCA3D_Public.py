@@ -76,7 +76,8 @@ class BasicNCA3D_Public(nn.Module):
         world_kn = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3], self.world_c_size), dtype=torch.float32, device=self.device)
         for step in range(steps):
             #print(world_kn)
-            x_back, world_kn = self.update(x, fire_rate, world_kn) #[...,3:][...,3:]
+            x_back, world_kn_back = self.update(x, fire_rate, world_kn) #[...,3:][...,3:]
             x2 = x_back.clone()
+            world_kn = world_kn_back.clone()
             x = torch.concat((x[...,0:1], x2[...,1:]), 4)
         return x

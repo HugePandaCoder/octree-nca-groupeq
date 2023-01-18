@@ -49,14 +49,14 @@ config = [{
     'img_path': r"/gris/gris-f/homestud/jkalkhof/datasets/Prostate_Full/imagesTr/",
     'label_path': r"/gris/gris-f/homestud/jkalkhof/datasets/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/gris/gris-f/homestud/jkalkhof/Models/NCA3d_optVRAM_prostate_Test6_ampere',
-    'device': "cuda:0",
+    'model_path': r'/gris/gris-f/homestud/jkalkhof/Models/NCA3d_optVRAM_prostate_Test10_ampere',
+    'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [1, 1, 1],
+    'inference_steps': [45, 45],
     # Training config
     'save_interval': 25,
     'evaluate_interval': 25,
@@ -67,18 +67,19 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 8,
+    'batch_size': 4,
     'repeat_factor': 1,
     'input_channels': 1,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(100, 100, 16), (200, 200, 32), (400, 400, 64)] ,
+    'input_size': [(100, 100, 16), (400, 400, 64)] ,
+    'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'Persistence': False,
     'unlock_CPU': True,
-    'train_model':2,
+    'train_model':1,
 }#,
 #{
 #    'n_epoch': 2000,
@@ -93,12 +94,12 @@ config = [{
 # Define Experiment
 dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")
 device = torch.device(config[0]['device'])
-ca1 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
-ca2 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
-ca3 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
-ca4 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
-ca5 = nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
-ca =[ca1, ca2, ca3] 
+ca1 = torch.nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+ca2 = torch.nn.DataParallel(BasicNCA3D_Parallel(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64), device_ids=[0,1,2,3]).cuda()
+#ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64)#, device_ids=[0,1,2,3]).cuda()
+#ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64)#, device_ids=[0,1,2,3]).cuda()
+#ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64)#, device_ids=[0,1,2,3]).cuda()
+ca =[ca1, ca2] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 agent = Agent_NCA_3dOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)

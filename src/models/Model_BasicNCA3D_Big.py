@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
  
-class BasicNCA3D_Parallel(nn.Module):
+class BasicNCA3D_Big(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard"):
-        super(BasicNCA3D_Parallel, self).__init__()
+        super(BasicNCA3D_Big, self).__init__()
 
         self.device = device
         self.channel_n = channel_n
@@ -14,7 +14,7 @@ class BasicNCA3D_Parallel(nn.Module):
         # One Input
         self.fc0 = nn.Linear(channel_n*2, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
-        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
         self.bn = torch.nn.BatchNorm3d(hidden_size)
         
         with torch.no_grad():
@@ -48,10 +48,7 @@ class BasicNCA3D_Parallel(nn.Module):
         if fire_rate is None:
             fire_rate=self.fire_rate
         stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2), dx.size(3),1])>fire_rate
-        #if self.device is None:
-        #    stochastic = stochastic.float().to(self.device)
-        #else:
-        stochastic = stochastic.float().cuda()#.to(self.device)
+        stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
 
         x = x+dx.transpose(1,4)

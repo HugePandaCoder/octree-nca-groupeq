@@ -43,14 +43,14 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test3_SingleBatch',
-    'device':"cuda:0",
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test6_SingleBatch',
+    'device': "cuda:0",
     'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [35, 35, 35],
+    'inference_steps': [30, 30, 30],
     # Training config
     'save_interval': 25,
     'evaluate_interval': 25,
@@ -61,7 +61,7 @@ config = [{
     'target_size': 64,
     'cell_fire_rate': 0.5,
     'cell_fire_interval':None,
-    'batch_size': 2,
+    'batch_size': 1,
     'repeat_factor': 1,
     'input_channels': 1,
     'input_fixed': True,
@@ -73,12 +73,11 @@ config = [{
     'Persistence': False,
     'unlock_CPU': True,
     'train_model':2,
-}#,
+}] #,
 #{
 #    'n_epoch': 2000,
 #    'Persistence': True,
 #}
-]
 
 # Define Experiment
 dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")

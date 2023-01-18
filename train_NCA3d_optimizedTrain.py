@@ -11,7 +11,9 @@ import torch.nn.functional as F
 from src.models.Model_BasicNCA import BasicNCA
 from lib.CAModel_deeper import CAModel_Deeper
 from lib.CAModel_learntPerceive import CAModel_learntPerceive
+from src.models.Model_BasicNCA3D_Public import BasicNCA3D_Public
 from src.models.Model_BasicNCA3D import BasicNCA3D
+from src.models.Model_BasicNCA3D_Public import BasicNCA3D_Public
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_distanceField import Nii_Gz_Dataset_DistanceField

@@ -112,7 +112,7 @@ class Agent(BaseAgent):
             inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('repeat_factor'))
         return id, inputs, targets
 
-    def get_outputs(self, data):
+    def get_outputs(self, data, full_img=False):
         r"""Get the outputs of the model
             Args:
                 data (int, tensor, tensor): id, inputs, targets

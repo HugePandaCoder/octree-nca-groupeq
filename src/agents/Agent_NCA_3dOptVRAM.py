@@ -60,6 +60,10 @@ class Agent_NCA_3dOptVRAM(Agent):
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
 
+        if loss > 1.7:
+            print("SKIP LOSS")
+            return loss_ret
+
         if loss != 0:
             loss.backward()
             for m in range(self.exp.get_from_config('train_model')+1):
@@ -80,13 +84,18 @@ class Agent_NCA_3dOptVRAM(Agent):
         
         scale_fac = 2
 
+        if self.exp.get_from_config('scale_factor') is not None:
+            scale_fac = self.exp.get_from_config('scale_factor')
+
         down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4), int(inputs.shape[3] / 4))
         #inputs_loc = self.resize4d(inputs.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
         avg_pool = torch.nn.AvgPool3d(3, 2, 1)
         max_pool = torch.nn.MaxPool3d(3, 2, 1)
         #print(inputs.shape)
-        if scale_fac == 4:
-            inputs_loc = avg_pool(avg_pool(inputs.transpose(1,4)))
+        #if scale_fac == 4:
+        #    inputs_loc = avg_pool(avg_pool(inputs.transpose(1,4)))
+        #if scale_fac == 8:
+        #    inputs_loc = avg_pool(avg_pool(avg_pool(inputs.transpose(1,4))))
         #else:
         #    inputs_loc = avg_pool(inputs.transpose(1,4))
         
@@ -99,7 +108,8 @@ class Agent_NCA_3dOptVRAM(Agent):
         full_res = inputs
         full_res_gt = targets
         inputs_loc = inputs
-        for i in range(self.exp.get_from_config('train_model')):
+
+        for i in range(self.exp.get_from_config('train_model')*int(math.log2(scale_fac))):
             #print(current_res.shape)
             inputs_loc = inputs_loc.transpose(1,4)
             inputs_loc = avg_pool(inputs_loc)
@@ -159,7 +169,6 @@ class Agent_NCA_3dOptVRAM(Agent):
                         next_res_gt = max_pool(next_res_gt)
                         next_res_gt = next_res_gt.transpose(1,4)
 
-
                     outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     
 
@@ -185,8 +194,8 @@ class Agent_NCA_3dOptVRAM(Agent):
                     inputs_loc = torch.zeros((inputs_loc_temp.shape[0], size[0], size[1], size[2] , inputs_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
                     targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], size[2] , targets_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
 
-                    full_res_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2), full_res.shape[4])).to(self.exp.get_from_config('device'))
-                    full_res_gt_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2), full_res.shape[4])).to(self.exp.get_from_config('device'))
+                    full_res_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac), full_res.shape[4])).to(self.exp.get_from_config('device'))
+                    full_res_gt_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac), full_res.shape[4])).to(self.exp.get_from_config('device'))
 
                     factor = self.exp.get_from_config('train_model') - m -1
                     factor_pow = math.pow(2, factor)
@@ -214,7 +223,7 @@ class Agent_NCA_3dOptVRAM(Agent):
                         pos_y_full = int(pos_y * factor_pow)
                         pos_z_full = int(pos_z * factor_pow)
 
-                        size_full = [int(full_res.shape[1]/2), int(full_res.shape[2]/2), int(full_res.shape[3]/2)]
+                        size_full = [int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac)]
 
 
                         
