@@ -60,9 +60,9 @@ class Agent_NCA_3dOptVRAM(Agent):
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
 
-        if loss > 1.7:
-            print("SKIP LOSS")
-            return loss_ret
+        #if loss > 1.7:
+        #    print("SKIP LOSS")
+        #    return loss_ret
 
         if loss != 0:
             loss.backward()
@@ -214,7 +214,18 @@ class Agent_NCA_3dOptVRAM(Agent):
 
                             #print(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]))
                             #if len(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :])) == 2:
-                            break
+                            
+                            #print(torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0))
+                            #print(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1].shape)
+                            #print(torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) )
+                            if torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0) / torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) < 0.3:
+                                #if 1 in torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]):
+                                break
+                                #else:
+                                #    print("NO MASK")
+                            #else:
+                            #    print("SKIP")
+                                
                             #else:
                             #    print("NOOOOOO")
 

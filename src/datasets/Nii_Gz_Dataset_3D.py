@@ -61,6 +61,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = img[..., 0]
         padded = np.zeros(self.size)# ((64, 64, 52)) #(400,400,64))
         img_shape = img.shape
+        #padded[padded == 0] = 0.5 
         padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
         #print(padded.shape)
 
@@ -69,6 +70,42 @@ class Dataset_NiiGz_3D(Dataset_3D):
             padded[padded != 0] = 1
 
         return padded
+
+    def rescale3d(self, img, isLabel=False):
+        if len(img.shape) == 4:
+            img = img[..., 0]
+        size = (320, 320)
+        img_resized = np.zeros((320, 320, img.shape[2]))
+        for x in range(img.shape[2]):
+            if not isLabel:
+                img_resized[:, :, x] = cv2.resize(img[:, :, x], dsize=size, interpolation=cv2.INTER_CUBIC) 
+            else:
+                img_resized[:, :, x] = cv2.resize(img[:, :, x], dsize=size, interpolation=cv2.INTER_NEAREST) 
+
+        return img_resized
+
+    def patchify(self, img, label):
+        size = self.size
+
+        containsMask = (random.uniform(0, 1) < self.exp.get_from_config('priotize_masks'))
+        while True:
+            pos_x = random.randint(0, img.shape[0] - size[0])
+            pos_y = random.randint(0, img.shape[1] - size[1])
+            pos_z = random.randint(0, img.shape[2] - size[2])
+
+            if containsMask:
+                if 1 in np.unique(label[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]):
+                    break
+                #else: 
+                #    print("Contains Mask")
+                #    print(np.unique(label[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]))
+            else: 
+                break
+        
+        img = img[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]
+        label = label[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]
+
+        return img, label
 
     def __getitem__(self, idx):
         r"""Standard get item function
@@ -102,7 +139,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img = img[...,0] 
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
             else:
-                img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)
+                if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
+                    img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
+                if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale') is True:
+                    img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
 
@@ -130,13 +170,16 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         id, img, label = img
         size = self.size #(256, 256)#
+        
+        if self.exp.get_from_config('patchify') is not None and self.exp.get_from_config('patchify') is True and self.state == "train": 
+            img, label = self.patchify(img, label) 
 
         if len(size) > 2:
             size = size[0:2] 
         #size = (256, 256)
 
-        img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
-        label = cv2.resize(label, dsize=size, interpolation=cv2.INTER_NEAREST) 
+        #img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
+        #label = cv2.resize(label, dsize=size, interpolation=cv2.INTER_NEAREST) 
 
         # Random State
         self.count = self.count + 1
@@ -315,11 +358,15 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 label = np.squeeze(label)
 
         img = np.expand_dims(img, axis=0)
-        img = znormalisation(img)
+        #img = znormalisation(img)
+        
         #img = histogram_stanard(img)
-        img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        #img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         img = np.squeeze(img)
         #img = np.clip(img, 0, 1)
+
+
+        #img[padded == 0] = 0.5 
 
         if False:
             plt.imshow(img[:,:,7])

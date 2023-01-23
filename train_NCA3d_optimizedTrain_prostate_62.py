@@ -43,7 +43,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/NCA3d_optVRAM_prostate_Test6_changedSteos',
+    'model_path': r'M:/Models/NCA3d_optVRAM_prostate_Test6',
     'device':"cuda:0",
     'n_epoch': 5000,
     # Learning rate
