@@ -24,12 +24,19 @@ class Agent(BaseAgent):
         id, inputs, targets = data
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
-        return id, inputs.permute(0, 3, 1, 2), targets.permute(0, 3, 1, 2)
+        inputs, targets = torch.unsqueeze(inputs, 1), torch.unsqueeze(targets, 1) 
+        #print(inputs.shape)
+        if len(inputs.shape) == 4:
+            return id, inputs.permute(0, 3, 1, 2), targets.permute(0, 3, 1, 2)
+        else:
+            return id, inputs, targets
 
     def get_outputs(self, data, **kwargs):
         _, inputs, targets = data
-        #print(inputs.shape)
-        return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
+        if len(inputs.shape) == 4:
+            return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
+        else:
+            return (self.model(inputs)).permute(0, 2, 3, 4, 1), targets.permute(0, 2, 3, 4, 1)
 
     def prepare_image_for_display(self, image):
         return image #.permute(0, 2, 3, 1)

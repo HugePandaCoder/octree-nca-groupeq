@@ -302,7 +302,11 @@ def convert_image(img, prediction, label=None, encode_image=True):
         print(sobel.shape)
         print(img_rgb.shape)
         print(label_pred.shape)
-        img_rgb = np.clip((sobel * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
+        img_rgb = np.clip((sobel  * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
+
+    if sum(img_rgb.shape) > 2000:
+        size = (int(img_rgb.shape[0]/6), int(img_rgb.shape[1]/6))
+        img_rgb = cv2.resize(img_rgb, dsize=size, interpolation=cv2.INTER_CUBIC) 
 
     if encode_image:
         img_rgb = encode(img_rgb)

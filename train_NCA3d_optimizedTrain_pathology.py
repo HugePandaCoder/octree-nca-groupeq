@@ -25,11 +25,14 @@ from src.models.Model_BasicNCA3D_Big import BasicNCA3D_Big
 from src.models.Model_BasicNCA_noAddUp import BasicNCA_noAddUp
 from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
 from src.models.Model_LearntPerceiveNCA import LearntPerceiveNCA
-from src.losses.LossFunctions import DiceLoss, DiceBCELoss, DiceFocalLoss
+from src.losses.LossFunctions import DiceLoss, DiceBCELoss, DiceFocalLoss, DiceLoss_mask
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
 
 from src.agents.Agent_NCA_3dOptVRAM import Agent_NCA_3dOptVRAM
+from src.agents.Agent_NCA_3dOptVRAM_2DRemove import Agent_NCA_2DOptVRAM
+
+from src.datasets.Dataset_BCSS import Dataset_BCSS
 
 import sys
 import os
@@ -42,20 +45,20 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/masks/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test105', #94
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_pathology_test30_single', #94
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
-    'inference_steps': [40, 20, 20, 20],
+    'inference_steps': [20, 20, 20, 20, 20],
     # Training config
     'save_interval': 10,
-    'evaluate_interval': 100,
+    'evaluate_interval': 50,
     'ood_interval':100,
     # Model config
     'channel_n': 16,        # Number of CA state channels
@@ -65,13 +68,13 @@ config = [{
     
     'cell_fire_interval':None,
     'batch_size': 4,
-    'repeat_factor': 6,
-    'input_channels': 1,
+    'repeat_factor': 2,
+    'input_channels': 3,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(40, 40, 3), (80, 80, 6), (160, 160, 12), (320, 320, 24)] ,
-    'scale_factor': 2,
+    'input_size': [(50, 50, 1), (200, 200, 1), (800, 800, 1), (3200, 3200, 1)] ,
+    'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'keep_original_scale': True,
@@ -88,33 +91,33 @@ config = [{
 ]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")
+dataset = Dataset_BCSS()#_lowPass(filter="random")
 device = torch.device(config[0]['device'])
-ca1 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
-ca2 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
-ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
-ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
-#ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
-ca =[ca1, ca2, ca3, ca4] 
+ca1 = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
+ca2 = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
+ca3 = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
+ca4 = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
+ca5 = BasicNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
+ca =[ca1, ca2, ca3, ca4, ca5] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
-agent = Agent_NCA_3dOptVRAM(ca)
+agent = Agent_NCA_2DOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 dataset.set_experiment(exp)
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
+loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 #
 
 #with torch.autograd.set_detect_anomaly(True):
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
-exp.temporarly_overwrite_config(config)
+#exp.temporarly_overwrite_config(config)
 
-agent.getAverageDiceScore()
+#agent.getAverageDiceScore()
 
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.test(data_loader, loss_function)

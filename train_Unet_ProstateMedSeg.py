@@ -1,5 +1,5 @@
 # REMOVE: if you use this code for your research please cite: https://zenodo.org/record/3522306#.YhyO1-jMK70
-from unet import UNet2D
+from unet import UNet3D
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
@@ -18,16 +18,16 @@ config = [{
     #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Slices/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Test8_Scaled',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_9_Scaled',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
     'lr': 1e-4,
     'lr_gamma': 0.9999,
-    'betas': (0.5, 0.5),
+    'betas': (0.9, 0.99),
     'inference_steps': [64],
     # Training config
     'save_interval': 100,
@@ -40,18 +40,20 @@ config = [{
     'batch_size': 1,
     'persistence_chance':0.5,
     # Data
-    'input_size': (256, 256),
-    'data_split': [0.7, 0, 0.3], 
+    'input_size': (320, 320, 24),
+    'keep_original_scale': True,
+    'rescale': True,
+    'data_split': [0.3, 0, 0.7], 
     'pool_chance': 0.7,
     'Persistence': False,
-    'output_channels': 3,
+    'output_channels': 1,
 }]
 
 # Define Experiment
 #dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
-dataset = Nii_Gz_Dataset()
+dataset = Dataset_NiiGz_3D()
 device = torch.device(config[0]['device'])
-ca = UNet2D(in_channels=3, padding=1, out_classes=3).to(device)
+ca = UNet3D(in_channels=1, padding=1, out_classes=1).to(device)
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 
 agent = Agent(ca)
@@ -68,10 +70,11 @@ loss_function = DiceBCELoss() #nn.CrossEntropyLoss() #
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
+
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 exp.temporarly_overwrite_config(config)
-agent.getAverageDiceScore()
+#agent.getAverageDiceScore()
 
 exit()
 with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:

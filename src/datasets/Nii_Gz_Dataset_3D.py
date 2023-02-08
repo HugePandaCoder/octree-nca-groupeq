@@ -59,7 +59,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
     def preprocessing3d(self, img, isLabel=False):
         if len(img.shape) == 4:
             img = img[..., 0]
-        padded = np.zeros(self.size)# ((64, 64, 52)) #(400,400,64))
+        if not isLabel:
+            padded = np.random.rand(*self.size) * 0.01# ((64, 64, 52)) #(400,400,64))
+        else:
+            padded = np.zeros(self.size)
         img_shape = img.shape
         #padded[padded == 0] = 0.5 
         padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
@@ -72,15 +75,22 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return padded
 
     def rescale3d(self, img, isLabel=False):
-        if len(img.shape) == 4:
-            img = img[..., 0]
-        size = (320, 320)
-        img_resized = np.zeros((320, 320, img.shape[2]))
+        size = (self.size[0], self.size[1])
+        size2 = (self.size[2], self.size[0])
+        img_resized = np.zeros((self.size[0], self.size[1], img.shape[2])) #img.shape[2]))
         for x in range(img.shape[2]):
             if not isLabel:
                 img_resized[:, :, x] = cv2.resize(img[:, :, x], dsize=size, interpolation=cv2.INTER_CUBIC) 
             else:
                 img_resized[:, :, x] = cv2.resize(img[:, :, x], dsize=size, interpolation=cv2.INTER_NEAREST) 
+
+        img = img_resized
+        img_resized = np.zeros((self.size[0], self.size[1], self.size[2]))
+        for x in range(img.shape[1]):
+            if not isLabel:
+                img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_CUBIC) 
+            else:
+                img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_NEAREST) 
 
         return img_resized
 
@@ -106,6 +116,44 @@ class Dataset_NiiGz_3D(Dataset_3D):
         label = label[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]
 
         return img, label
+
+    def randomReplaceByNoise(self, img, label):
+        axis = random.randint(0, 2)
+        side = random.randint(0, 2)
+        slides = random.randint(0, int(img.shape[axis]/3)) 
+
+        if side == 0 or side == 2:
+            if axis == 0:
+                img[0:slides, :, :] = np.random.rand(slides, img.shape[1], img.shape[2]) * 0.01
+            if axis == 1:
+                img[:, 0:slides, :] = np.random.rand(img.shape[0], slides, img.shape[2]) * 0.01
+            if axis == 2:
+                img[:, :, 0:slides] = np.random.rand(img.shape[0], img.shape[1], slides) * 0.01
+        if side == 1 or side == 2:
+            if axis == 0:
+                img[-slides-1:-1, :, :] = np.random.rand(slides, img.shape[1], img.shape[2]) * 0.01
+            if axis == 1:
+                img[:, -slides-1:-1, :] = np.random.rand(img.shape[0], slides, img.shape[2]) * 0.01
+            if axis == 2:
+                img[:, :, -slides-1:-1] = np.random.rand(img.shape[0], img.shape[1], slides) * 0.01
+
+        if side == 0 or side == 2:
+            if axis == 0:
+                label[0:slides, :, :] = 0
+            if axis == 1:
+                label[:, 0:slides, :] = 0
+            if axis == 2:
+                label[:, :, 0:slides] = 0
+        if side == 1 or side == 2:
+            if axis == 0:
+                label[-slides-1:-1, :, :] = 0
+            if axis == 1:
+                label[:, -slides-1:-1, :] = 0
+            if axis == 2:
+                label[:, :, -slides-1:-1] = 0
+
+        return img, label
+        
 
     def __getitem__(self, idx):
         r"""Standard get item function
@@ -139,9 +187,14 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img = img[...,0] 
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
             else:
+                if len(img.shape) == 4:
+                    img = img[..., 0]
+                img = np.expand_dims(img, axis=0)
+                img = rescale(img) 
+                img = np.squeeze(img)
                 if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
                     img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
-                if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale') is True:
+                if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
                     img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
@@ -158,9 +211,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             #label = scipy.ndimage.interpolation.zoom(label, resize_factor, order=0)
             
             #print(img.shape)
-            img = np.expand_dims(img, axis=0)
-            img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-            img = np.squeeze(img)
+
             #img =img[20:-20, :, :] 
             #plt.imshow(img)
             #plt.show()
@@ -169,6 +220,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = self.data.get_data(key=self.images_list[idx])
 
         id, img, label = img
+
+        if self.state == "train" and False:
+            img, label = self.randomReplaceByNoise(img, label)
+
         size = self.size #(256, 256)#
         
         if self.exp.get_from_config('patchify') is not None and self.exp.get_from_config('patchify') is True and self.state == "train": 
@@ -305,7 +360,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img[..., 2] = img[..., 0]
 
         #transform = torchio.transforms.RandomSpike(intensity=1)#torchio.transforms.RandomElasticDeformation()
-        if self.state == "train" and random.randrange(0, 4) == 1 and False:
+        if self.state == "train" and random.randrange(0, 4) != 1 and False:
             rand = random.randrange(0, 10)
 
             if rand == 0:
@@ -358,20 +413,29 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 label = np.squeeze(label)
 
         img = np.expand_dims(img, axis=0)
-        #img = znormalisation(img)
+        img = znormalisation(img)
         
         #img = histogram_stanard(img)
-        #img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         img = np.squeeze(img)
         #img = np.clip(img, 0, 1)
 
+        #
 
         #img[padded == 0] = 0.5 
+
+        img[img == 0] = 0.0001 
+
+        #print(np.min(img), np.max(img))
 
         if False:
             plt.imshow(img[:,:,7])
             plt.show()
+            plt.imshow(label[:,:,7])
+            plt.show()
         # REMOVE
         label[label > 0] = 1
+
+        #print(img.shape)
 
         return (id, img, label)

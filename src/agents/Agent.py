@@ -32,7 +32,7 @@ class BaseAgent():
             self.optimizer = []
             self.scheduler = []
             for m in range(len(self.model)):
-                self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
+                self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
         else:
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
@@ -265,7 +265,24 @@ class BaseAgent():
                 data_id, inputs, _ = data
                 outputs, targets = self.get_outputs(data, full_img=True)
 
-                #if type(data_id) is tuple:
+                if False:
+                    outputs2, _ = self.get_outputs(data, full_img=True)
+                    outputs3, _ = self.get_outputs(data, full_img=True)
+                    outputs4, _ = self.get_outputs(data, full_img=True)
+                    outputs5, _ = self.get_outputs(data, full_img=True)
+                    if True:
+                        outputs6, _ = self.get_outputs(data, full_img=True)
+                        outputs7, _ = self.get_outputs(data, full_img=True)
+                        outputs8, _ = self.get_outputs(data, full_img=True)
+                        outputs9, _ = self.get_outputs(data, full_img=True)
+                        outputs10, _ = self.get_outputs(data, full_img=True)
+                        stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
+
+                        outputs, _ = torch.median(stack, dim=0)
+                    else:
+                        outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
+
+                #if type(data_id) is list:
                 #    id = data_id[0]
                 #    slice = 0
                 #else:
@@ -337,14 +354,11 @@ class BaseAgent():
                     patient_3d_real_Img = inputs.detach().cpu()
                     patient_id = id
 
-                    print(patient_3d_image.shape)
-                    print(patient_3d_label.shape)
 
                     loss_log[0][patient_id] = 1 - loss_f(patient_3d_image[...,0], patient_3d_label, smooth = 0).item()
                     
                     # Add image to tensorboard
-                    print(patient_3d_image.shape)
-                    if i in save_img and True: #np.random.random() < chance:
+                    if True: #i in save_img and  #np.random.random() < chance:
                         if len(patient_3d_label.shape) == 4:
                             patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
                         print(patient_3d_label.shape)
@@ -353,6 +367,19 @@ class BaseAgent():
                         self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
                         self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
                         encode_image=False), self.exp.currentStep)
+
+                        if False:
+                            label_out = torch.sigmoid(patient_3d_image[0, ...])
+                            label_out[label_out < 0.5] = 0
+                            label_out[label_out > 0.5] = 1
+                            nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + ".nii.gz"))
+
+                            nib_save = nib.Nifti1Image(torch.sigmoid(patient_3d_real_Img[0, ...])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_real.nii.gz"))
+
+                            nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
+                            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_ground.nii.gz"))
 
                     #if math.isnan(loss_log[m][patient_id]):
                     #    loss_log[m][patient_id] = 0

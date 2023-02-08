@@ -15,6 +15,7 @@ class Dataset_BCSS(Dataset_Base):
 
     def __init__(self):
         super().__init__()
+        self.slice=0
         self.color_label_dic = {
             # id, category
             0: 0,
@@ -50,8 +51,8 @@ class Dataset_BCSS(Dataset_Base):
         }
         self.color_label_dic = {
             # id, category
-            1: 0, 
-            2: 1,
+            1: 0, #1 
+            2: 1, #0
             3: 2,
             4: 3,
             0: 4,
@@ -88,18 +89,17 @@ class Dataset_BCSS(Dataset_Base):
         img_id = self.__getname__(idx)
         out = self.data.get_data(key=img_id)
         if out == False:
+            print("Load New: " + str(img_id))
             #img = cv2.imread(os.path.join(self.images_path, self.images_list[idx]))
             #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             #label = cv2.imread(os.path.join(self.labels_path, self.images_list[idx][:-4] + ".png"))
             #label = cv2.cvtColor(label, cv2.COLOR_BGR2RGB)
             img = Image.open(os.path.join(self.images_path, self.images_list[idx]))
             label = Image.open(os.path.join(self.labels_path, self.images_list[idx]))
-        
-
-            img, label = self.preprocessing(img, label)
 
 
-            img_id = "_" + str(img_id)[:-4].replace("_", "") + "_0"
+
+            #img_id = "_" + str(img_id)[:-4].replace("_", "") + "_0"
             self.data.set_data(key=img_id, data=(img_id, img, label))
 
             out = self.data.get_data(key=img_id)
@@ -108,7 +108,9 @@ class Dataset_BCSS(Dataset_Base):
 
         img_id, img, label = out
 
-        train = False
+        img, label = self.preprocessing(img, label, rescale=False)
+
+        train = True
         while(train):
             pos_x = random.randint(0, img.shape[0] - self.size[0])
             pos_y = random.randint(0, img.shape[1] - self.size[1])
@@ -117,8 +119,8 @@ class Dataset_BCSS(Dataset_Base):
             label2 = label[pos_x:pos_x+self.size[0], pos_y:pos_y+self.size[1], :]
 
             #print(np.unique(label2[:, :, 4]))
-            if 1 not in np.unique(label2[:, :, 4]):
-                break
+            #if 1 not in np.unique(label2[:, :, 4]):
+            break
         
         if train == False:
             img2 = img
@@ -126,18 +128,61 @@ class Dataset_BCSS(Dataset_Base):
 
         return img_id, img2, label2  
     
-    def preprocessing(self, img, label):
+    def preprocessing(self, img, label, rescale=True):
         r"""Preprocessing of image
             Args:
                 img (numpy): Image to preprocess
                 label (numpy): Label to preprocess
         """
+
+        scale = 3200
         
         # RESCALE
-        width = int(img.size[0]/4)
-        height = int(img.size[1]/4)
-        img = np.array(img.resize((width, height), Image.ANTIALIAS))
-        label = np.array(label.resize((width, height), Image.NEAREST))
+        if rescale:
+            width = int(img.size[0]/4)
+            height = int(img.size[1]/4)
+            img = np.array(img.resize((width, height), Image.ANTIALIAS))
+            label = np.array(label.resize((width, height), Image.NEAREST))
+        else:
+            img = np.array(img)
+            label = np.array(label)
+            # Pad Image to Minimum Size
+            if(img.shape[0] < scale):
+                # IMG
+                img_rep = np.zeros((scale, img.shape[1], 3))
+                img_rep[0:img.shape[0],:, :] = img
+                img = img_rep 
+                # LABEL
+                label_rep = np.zeros((scale, label.shape[1]))
+                label_rep[0:label.shape[0], :] = label
+                label = label_rep 
+            if(img.shape[1] < scale):
+                # IMG
+                img_rep = np.zeros((img.shape[0], scale, 3))
+                img_rep[:, 0:img.shape[1], :] = img
+                img = img_rep 
+                # LABEL
+                label_rep = np.zeros((label.shape[0], scale))
+                label_rep[:, 0:label.shape[1]] = label
+                label = label_rep 
+
+            if (img.shape[0] - scale) == 0:
+                pos_x = 0
+            else:
+                pos_x = random.randint(0, img.shape[0] - scale)
+            if (img.shape[1] - scale) == 0:
+                pos_y = 0
+            else:
+                pos_y = random.randint(0, img.shape[1] - scale)
+
+            label = np.array(label)
+            img = img[pos_x:pos_x+scale, pos_y:pos_y+scale, :] 
+            label = label[pos_x:pos_x+scale, pos_y:pos_y+scale] 
+
+            #print(img.shape)
+            #print(label.shape)
+
+        # Random "Patch"
 
         #label = np.stack((label, label, label), axis=2)
 

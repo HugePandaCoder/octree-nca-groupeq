@@ -16,7 +16,7 @@ import torchio as tio
 import matplotlib.pyplot as plt
 import math
 
-class Agent_NCA_3dOptVRAM(Agent):
+class Agent_NCA_2DOptVRAM(Agent):
     def initialize(self):
         super().initialize()
         self.stacked_models = self.exp.get_from_config('stacked_models')
@@ -33,6 +33,17 @@ class Agent_NCA_3dOptVRAM(Agent):
 #        seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
 #        seed[..., :img.shape[3]] = img
 #        return seed       
+
+    def make_seed(self, img):
+        r"""Create a seed for the NCA - TODO: Currently only 0 input
+            Args:
+                shape ([int, int]): height, width shape
+                n_channels (int): Number of channels
+        """
+        # 2D
+        seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
+        seed[..., :img.shape[3]] = img      
+        return seed
 
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step
@@ -54,7 +65,16 @@ class Agent_NCA_3dOptVRAM(Agent):
         loss_ret = {}
         for m in range(outputs.shape[-1]):
             if 1 in targets[..., m]:
-                loss_loc = loss_f(outputs[..., m], targets[..., m])
+                outputs_loc = torch.flatten(outputs[..., m])
+                targets_loc = torch.flatten(targets[..., m])
+                #plt.imshow(targets[0, ..., 4].detach().cpu().numpy())
+                #plt.show()
+                mask_loc = torch.flatten(targets[..., 4])
+                outputs_loc = outputs_loc[mask_loc == 0] 
+                targets_loc = targets_loc[mask_loc == 0] 
+                #if 0 in torch.unique(torch.tensor(mask_loc)):
+                #    print(torch.unique(targets_loc))
+                loss_loc = loss_f(outputs_loc, targets_loc)
                 #if m == 0:
                 #    loss_loc = loss_loc * 100
                 loss = loss + loss_loc
@@ -78,8 +98,8 @@ class Agent_NCA_3dOptVRAM(Agent):
         """
         id, inputs, targets = data
 
-        if len(targets.shape) < 5:
-            targets = torch.unsqueeze(targets, 4)
+        if len(targets.shape) < 4:
+            targets = torch.unsqueeze(targets, 3)
 
         
         scale_fac = 2
@@ -87,11 +107,11 @@ class Agent_NCA_3dOptVRAM(Agent):
         if self.exp.get_from_config('scale_factor') is not None:
             scale_fac = self.exp.get_from_config('scale_factor')
 
-        down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4), int(inputs.shape[3] / 4))
+        down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4))
         #inputs_loc = self.resize4d(inputs.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
         
-        avg_pool = torch.nn.MaxPool3d(2, 2, 0)
-        max_pool = torch.nn.MaxPool3d(2, 2, 0)
+        avg_pool = torch.nn.MaxPool2d(2, 2, 0)
+        max_pool = torch.nn.MaxPool2d(2, 2, 0)
         
         #print(inputs.shape)
         #if scale_fac == 4:
@@ -113,12 +133,12 @@ class Agent_NCA_3dOptVRAM(Agent):
 
         for i in range(self.exp.get_from_config('train_model')*int(math.log2(scale_fac))):
             #print(current_res.shape)
-            inputs_loc = inputs_loc.transpose(1,4)
+            inputs_loc = inputs_loc.transpose(1,3)
             inputs_loc = avg_pool(inputs_loc)
-            inputs_loc = inputs_loc.transpose(1,4)
-            targets_loc = targets_loc.transpose(1,4)
+            inputs_loc = inputs_loc.transpose(1,3)
+            targets_loc = targets_loc.transpose(1,3)
             targets_loc = max_pool(targets_loc)
-            targets_loc = targets_loc.transpose(1,4)
+            targets_loc = targets_loc.transpose(1,3)
 
         #print(inputs_loc.shape)
         #plt.imshow(inputs_loc[0, :, :, 3, 0].detach().cpu().numpy())
@@ -144,20 +164,22 @@ class Agent_NCA_3dOptVRAM(Agent):
                         
                         up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
 
-                        outputs = torch.permute(outputs, (0, 4, 1, 2, 3))
+                        outputs = torch.permute(outputs, (0, 3, 1, 2))
 
                         outputs = up(outputs)
                         inputs_loc = inputs     
-                        outputs = torch.permute(outputs, (0, 2, 3, 4, 1))         
+                        outputs = torch.permute(outputs, (0, 2, 3, 1))         
    
                         # NEXT RES
                         next_res = full_res
-                        for i in range(self.exp.get_from_config('train_model') - (m +1)):
-                            next_res = next_res.transpose(1,4)
+                        for i in range((self.exp.get_from_config('train_model') - (m +1))*int(math.log2(scale_fac))):
+                            next_res = next_res.transpose(1,3)
                             next_res = avg_pool(next_res)
-                            next_res = next_res.transpose(1,4)
+                            next_res = next_res.transpose(1,3)
 
-                        inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+                        print(next_res.shape)
+                        print(outputs.shape)
+                        inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 3)
                         #print(inputs_loc.shape)
                         targets_loc = targets
         else:
@@ -175,30 +197,30 @@ class Agent_NCA_3dOptVRAM(Agent):
                 else:
                     # NEXT RES
                     next_res = full_res
-                    for i in range(self.exp.get_from_config('train_model') - (m +1)):
-                        next_res = next_res.transpose(1,4)
+                    for i in range((self.exp.get_from_config('train_model') - (m +1))*int(math.log2(scale_fac))):
+                        next_res = next_res.transpose(1,3)
                         next_res = avg_pool(next_res)
-                        next_res = next_res.transpose(1,4)
+                        next_res = next_res.transpose(1,3)
                     # NEXT RES GT
                     next_res_gt = full_res_gt
-                    for i in range(self.exp.get_from_config('train_model') - (m +1)):
-                        next_res_gt = next_res_gt.transpose(1,4)
+                    for i in range((self.exp.get_from_config('train_model') - (m +1))*int(math.log2(scale_fac))):
+                        next_res_gt = next_res_gt.transpose(1,3)
                         next_res_gt = max_pool(next_res_gt)
-                        next_res_gt = next_res_gt.transpose(1,4)
+                        next_res_gt = next_res_gt.transpose(1,3)
 
                     outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     
 
                     up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
 
-                    outputs = torch.permute(outputs, (0, 4, 1, 2, 3))
+                    outputs = torch.permute(outputs, (0, 3, 1, 2))
 
                     # to full_res
                     outputs = up(outputs)
    
-                    outputs = torch.permute(outputs, (0, 2, 3, 4, 1))        
+                    outputs = torch.permute(outputs, (0, 2, 3, 1))        
    
-                    inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+                    inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 3)
 
                     
                     targets_loc = next_res_gt
@@ -208,11 +230,11 @@ class Agent_NCA_3dOptVRAM(Agent):
                     inputs_loc_temp = inputs_loc
                     targets_loc_temp = targets_loc
 
-                    inputs_loc = torch.zeros((inputs_loc_temp.shape[0], size[0], size[1], size[2] , inputs_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
-                    targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], size[2] , targets_loc_temp.shape[4])).to(self.exp.get_from_config('device'))
+                    inputs_loc = torch.zeros((inputs_loc_temp.shape[0], size[0], size[1], inputs_loc_temp.shape[3])).to(self.exp.get_from_config('device'))
+                    targets_loc = torch.zeros((targets_loc_temp.shape[0], size[0], size[1], targets_loc_temp.shape[3])).to(self.exp.get_from_config('device'))
 
-                    full_res_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac), full_res.shape[4])).to(self.exp.get_from_config('device'))
-                    full_res_gt_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac), full_res.shape[4])).to(self.exp.get_from_config('device'))
+                    full_res_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), full_res.shape[3])).to(self.exp.get_from_config('device'))
+                    full_res_gt_new = torch.zeros((full_res.shape[0], int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), full_res_gt.shape[3])).to(self.exp.get_from_config('device'))
 
                     factor = self.exp.get_from_config('train_model') - m -1
                     factor_pow = math.pow(2, factor)
@@ -221,37 +243,19 @@ class Agent_NCA_3dOptVRAM(Agent):
                         while True:
                             pos_x = random.randint(0, inputs_loc_temp.shape[1] - size[0])
                             pos_y = random.randint(0, inputs_loc_temp.shape[2] - size[1])
-                            pos_z = random.randint(0, inputs_loc_temp.shape[3] - size[2])
-                            #print(pos_x)
-                            #print(pos_y)
-                            #print(pos_z)
+                            #äpos_z = random.randint(0, inputs_loc_temp.shape[3] - size[2])
 
-                            #if not torch.any(targets_loc_temp):
-                            #    break
+                            #if torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], 0:1] == 0) / torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], 0:1]) < 0.3:
+                            #if torch.sum(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], 0:1])  > 0:# or torch.sum(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], 4:5])  == 0:
+                            break
 
-                            #print(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]))
-                            #if len(torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :])) == 2:
-                            
-                            #print(torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0))
-                            #print(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1].shape)
-                            #print(torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) )
-                            if torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0) / torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) < 0.3:
-                                #if 1 in torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]):
-                                break
-                                #else:
-                                #    print("NO MASK")
-                            #else:
-                            #    print("SKIP")
-                                
-                            #else:
-                            #    print("NOOOOOO")
 
                         # SIZE OF FULL RES
                         pos_x_full = int(pos_x * factor_pow)
                         pos_y_full = int(pos_y * factor_pow)
-                        pos_z_full = int(pos_z * factor_pow)
+                        #pos_z_full = int(pos_z * factor_pow)
 
-                        size_full = [int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac), int(full_res.shape[3]/scale_fac)]
+                        size_full = [int(full_res.shape[1]/scale_fac), int(full_res.shape[2]/scale_fac)]
 
 
                         
@@ -264,15 +268,15 @@ class Agent_NCA_3dOptVRAM(Agent):
                         #print(size[2] )
 
                         # ----------- SET
-                        inputs_loc[b] = inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]
+                        inputs_loc[b] = inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
                         if len(targets_loc.shape) > 4:
-                            targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]
+                            targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], :]
                         else:
-                            targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]
+                            targets_loc[b] = targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1]]
                        
 
-                        full_res_new[b] = full_res[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], pos_z_full:pos_z_full+size_full[2], :]
-                        full_res_gt_new[b] = full_res_gt[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], pos_z_full:pos_z_full+size_full[2], :]
+                        full_res_new[b] = full_res[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], :]
+                        full_res_gt_new[b] = full_res_gt[b, pos_x_full:pos_x_full+size_full[0], pos_y_full:pos_y_full+size_full[1], :]
 
                         #full_res = inputs_loc
                         #full_res_label = targets_loc

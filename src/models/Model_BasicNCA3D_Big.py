@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
  
 class BasicNCA3D_Big(nn.Module):
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard"):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard", kernel_size=7):
         super(BasicNCA3D_Big, self).__init__()
 
         self.device = device
@@ -14,7 +14,9 @@ class BasicNCA3D_Big(nn.Module):
         # One Input
         self.fc0 = nn.Linear(channel_n*2, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
-        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
+        padding = int((kernel_size-1) / 2)
+
+        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=padding, padding_mode="reflect")
         self.bn = torch.nn.BatchNorm3d(hidden_size)
         
         with torch.no_grad():

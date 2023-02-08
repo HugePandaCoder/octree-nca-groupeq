@@ -88,8 +88,8 @@ class Agent(BaseAgent):
         #if len(self.exp.get_from_config('inference_steps')) > 1:
         #    steps = np.random.randint(self.exp.get_from_config('inference_steps')[0], self.exp.get_from_config('inference_steps')[1])
         #else:
-        if len(self.exp.get_from_config('inference_steps')) == 1:
-            steps = self.exp.get_from_config('inference_steps')[0]
+        if type(self.exp.get_from_config('inference_steps')) is list:
+            steps = self.exp.get_from_config('inference_steps')
         else:
             steps = self.exp.get_from_config('inference_steps')
         return steps
