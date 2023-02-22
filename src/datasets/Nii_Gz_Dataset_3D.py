@@ -69,14 +69,18 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #print(padded.shape)
 
         # For now single mask
-        if isLabel == True:
-            padded[padded != 0] = 1
+        #if isLabel == True:
+        #    padded[padded != 0] = 1
 
         return padded
 
     def rescale3d(self, img, isLabel=False):
-        size = (self.size[0], self.size[1])
-        size2 = (self.size[2], self.size[0])
+        if len(self.size) == 3:
+            size = (self.size[0], self.size[1])
+            size2 = (self.size[2], self.size[0])
+        else:
+            size = (self.size[0], self.size[1])
+
         img_resized = np.zeros((self.size[0], self.size[1], img.shape[2])) #img.shape[2]))
         for x in range(img.shape[2]):
             if not isLabel:
@@ -84,13 +88,14 @@ class Dataset_NiiGz_3D(Dataset_3D):
             else:
                 img_resized[:, :, x] = cv2.resize(img[:, :, x], dsize=size, interpolation=cv2.INTER_NEAREST) 
 
-        img = img_resized
-        img_resized = np.zeros((self.size[0], self.size[1], self.size[2]))
-        for x in range(img.shape[1]):
-            if not isLabel:
-                img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_CUBIC) 
-            else:
-                img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_NEAREST) 
+        if len(self.size) == 3 and True:
+            img = img_resized
+            img_resized = np.zeros((self.size[0], self.size[1], self.size[2]))
+            for x in range(img.shape[1]):
+                if not isLabel:
+                    img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_CUBIC) 
+                else:
+                    img_resized[:, x, :] = cv2.resize(img[:, x, :], dsize=size2, interpolation=cv2.INTER_NEAREST) 
 
         return img_resized
 
@@ -176,6 +181,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
             img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, img_name))
             if self.slice is not None:
+                if len(img.shape) == 4:
+                    img = img[..., 0]
+                if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
+                    img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
                 if self.slice == 0:
                     img, label = img[img_id, :, :], label[img_id, :, :]
                 elif self.slice == 1:
@@ -198,8 +207,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
-
-
             #size = (256, 256) 
             
 
@@ -216,8 +223,12 @@ class Dataset_NiiGz_3D(Dataset_3D):
             #plt.imshow(img)
             #plt.show()
             
-            self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
-            img = self.data.get_data(key=self.images_list[idx])
+            if False:
+                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+                img = self.data.get_data(key=self.images_list[idx])
+            else:
+                #self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+                img = (img_id, img, label)              
 
         id, img, label = img
 
@@ -236,10 +247,11 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #img = cv2.resize(img, dsize=size, interpolation=cv2.INTER_CUBIC) 
         #label = cv2.resize(label, dsize=size, interpolation=cv2.INTER_NEAREST) 
 
-        # Random State
-        self.count = self.count + 1
-        torch.manual_seed(self.count)
-        random.seed(self.count)
+        # Random State - SEED
+
+        #self.count = self.count + 1
+        #torch.manual_seed(self.count)
+        #random.seed(self.count)
 
         img2 = img.copy()
         mask = label == 1  
@@ -429,13 +441,27 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #print(np.min(img), np.max(img))
 
         if False:
-            plt.imshow(img[:,:,7])
+            plt.imshow(img[:,:])# ,7])
             plt.show()
-            plt.imshow(label[:,:,7])
+            plt.imshow(label[:,:])#,7])
             plt.show()
         # REMOVE
-        label[label > 0] = 1
+        if True:
+            #print(np.unique(label))
+            label[label > 0] = 1
+        else:
+            #print(label.shape)
+            label = np.stack((label, label), axis=-1)
+            label[..., 0] = label[..., 0] == 1
+            label[..., 1] = label[..., 1] == 2
+            #print("BBBBBBB", label.shape)
 
-        #print(img.shape)
+        #print(img.shape, label.shape)
+
+        if len(self.size) == 2:
+            img = img[..., :self.exp.get_from_config('input_channels')]
+            #img = np.squeeze(img)
+            label = label[..., :self.exp.get_from_config('input_channels')]
+            #label = np.squeeze(label)
 
         return (id, img, label)

@@ -70,14 +70,22 @@ class Agent_NCA_3dOptVRAM(Agent):
         #targets = targets.int()
         loss = 0
         loss_ret = {}
-        for m in range(outputs.shape[-1]):
-            #print(m, targets.shape, outputs.shape)
-            if 1 in targets[..., m]:
-                loss_loc = loss_f(outputs[..., m], targets[..., m])
-                #if m == 0:
-                #    loss_loc = loss_loc * 100
-                loss = loss + loss_loc
-                loss_ret[m] = loss_loc.item()
+        for o in range(len(outputs)):
+            for m in range(outputs[o].shape[-1]):
+                #print(m, targets.shape, outputs.shape)
+                if 1 in targets[o][..., m]:
+                    #print(outputs[o][..., m].shape, targets[o][..., m].shape, torch.unique(targets[o][..., m]))
+                    loss_loc = loss_f(outputs[o][..., m], targets[o][..., m])
+                    #if m == 0:
+                    #    loss_loc = loss_loc * 100
+
+                    #print(loss_loc)
+
+                    # If last element
+                    #if m == outputs[o].shape[-1] and outputs[o].shape[-1] != 1:
+                    #    loss_loc = loss_loc * m
+                    loss = loss + loss_loc
+                    loss_ret[m] = loss_loc.item()
 
         #if loss > 1.7:
         #    print("SKIP LOSS")
@@ -218,7 +226,11 @@ class Agent_NCA_3dOptVRAM(Agent):
                     # to full_res
                     outputs = up(outputs)
    
-                    outputs = torch.permute(outputs, (0, 2, 3, 4, 1))        
+                    outputs = torch.permute(outputs, (0, 2, 3, 4, 1))     
+
+                    # Add for caluclation across losses of all layers
+                    outputs_targets.append(next_res_gt)
+                    outputs_img.append(outputs[..., self.input_channels:self.input_channels+self.output_channels])   
    
                     inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
 
@@ -308,7 +320,15 @@ class Agent_NCA_3dOptVRAM(Agent):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
 
         #print("TARGETS_LOC3", targets_loc.shape)
-        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc 
+
+        if not full_img:
+
+            # Add for caluclation across losses of all layers
+            outputs_targets.append(targets_loc)
+            outputs_img.append(outputs[..., self.input_channels:self.input_channels+self.output_channels])   
+            return outputs_img, outputs_targets #
+        else:
+            return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc 
 
     def resize4d(self, img, size=(64,64), factor=4, label=False):
         if label:

@@ -24,7 +24,8 @@ class Agent(BaseAgent):
         id, inputs, targets = data
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
-        inputs, targets = torch.unsqueeze(inputs, 1), torch.unsqueeze(targets, 1) 
+        if self.exp.dataset.slice is None:
+            inputs, targets = torch.unsqueeze(inputs, 1), torch.unsqueeze(targets, 1) 
         #print(inputs.shape)
         if len(inputs.shape) == 4:
             return id, inputs.permute(0, 3, 1, 2), targets.permute(0, 3, 1, 2)

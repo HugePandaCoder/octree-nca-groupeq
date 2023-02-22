@@ -18,10 +18,10 @@ config = [{
     #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_8_Scaled',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Hippocampus_MedSeg_3_Scaled',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -40,7 +40,7 @@ config = [{
     'batch_size': 1,
     'persistence_chance':0.5,
     # Data
-    'input_size': (320, 320, 24),
+    'input_size': [(64, 64, 52)] ,
     'keep_original_scale': True,
     'rescale': True,
     'data_split': [0.7, 0, 0.3], 
@@ -53,7 +53,7 @@ config = [{
 #dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
 dataset = Dataset_NiiGz_3D()
 device = torch.device(config[0]['device'])
-ca = UNet3D(in_channels=1, padding=1, out_classes=1).to(device)
+ca = UNet3D(in_channels=1, padding=1, out_classes=1, num_encoding_blocks = 3).to(device)
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 
 agent = Agent(ca)
@@ -73,8 +73,6 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
-
-#print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 exp.temporarly_overwrite_config(config)
 agent.getAverageDiceScore()
 

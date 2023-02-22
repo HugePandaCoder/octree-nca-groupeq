@@ -4,19 +4,18 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
  
-class BasicNCA3D_Big(nn.Module):
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard", kernel_size=7, groups=False):
-        super(BasicNCA3D_Big, self).__init__()
+class BasicNCA3D_3(nn.Module):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard"):
+        super(BasicNCA3D_3, self).__init__()
 
         self.device = device
         self.channel_n = channel_n
 
         # One Input
         self.fc0 = nn.Linear(channel_n*2, hidden_size)
-        self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
-        padding = int((kernel_size-1) / 2)
-
-        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=padding, padding_mode="reflect", groups=channel_n)
+        self.fc1 = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.fc2 = nn.Linear(hidden_size, channel_n, bias=False)
+        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
         self.bn = torch.nn.BatchNorm3d(hidden_size)
         
         with torch.no_grad():
@@ -44,8 +43,9 @@ class BasicNCA3D_Big(nn.Module):
         #print(dx.shape)
         dx = self.bn(dx)
         dx = dx.transpose(1,4)
-        dx = F.relu(dx)
         dx = self.fc1(dx)
+        dx = F.relu(dx)
+        dx = self.fc2(dx)
 
         if fire_rate is None:
             fire_rate=self.fire_rate
@@ -61,6 +61,6 @@ class BasicNCA3D_Big(nn.Module):
 
     def forward(self, x, steps=10, fire_rate=0.5, angle=0.0):
         for step in range(steps):
-            x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
-            x = torch.concat((x[...,0:1], x2[...,1:]), 4)
+            x = self.update(x, fire_rate, angle) #.clone() #[...,3:][...,3:]
+            #x = torch.concat((x[...,0:1], x2[...,1:]), 4)
         return x

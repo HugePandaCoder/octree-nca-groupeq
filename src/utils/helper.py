@@ -284,11 +284,21 @@ def convert_image(img, prediction, label=None, encode_image=True):
 
     img_rgb, label, label_pred = [orderArray(v.squeeze()) for v in [img_rgb, label, label_pred]]
 
+    
+    label = np.amax(label, axis=-1)
+    label_pred = np.amax(label_pred, axis=-1)
+    label_pred = np.stack((label_pred, label_pred, label_pred), axis=-1)
+    #label = np.expand_dims(label, axis=-1)
+    
+
     # Overlay Label on Image
     if label is not None:
         sobel_x = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=1, dy=0, ksize=3)
         sobel_y = cv2.Sobel(src=label, ddepth=cv2.CV_64F, dx=0, dy=1, ksize=3)
         sobel = sobel_x + sobel_y
+        if len(sobel.shape) < 3:
+            sobel = np.stack((sobel, sobel, sobel), axis=-1)
+
         sobel[:,:,2] = sobel[:,:,0]
         sobel[:,:,0] = 0
         sobel = np.abs(sobel)

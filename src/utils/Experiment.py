@@ -188,6 +188,7 @@ class DataSplit():
     def __init__(self, path_image, path_label, data_split, dataset):
         self.images = self.split_files(self.getFilesInFolder(path_image, dataset), data_split)
         self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split)
+        print("Data Split: ", self.images)
 
     def get_images(self, state):
         r"""Returns the images of selected state

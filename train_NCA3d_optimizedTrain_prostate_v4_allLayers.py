@@ -29,7 +29,7 @@ from src.losses.LossFunctions import DiceLoss, DiceBCELoss, DiceFocalLoss
 from src.utils.Experiment import Experiment, DataSplit
 from src.agents.Agent_NCA import Agent
 
-from src.agents.Agent_NCA_3dOptVRAM import Agent_NCA_3dOptVRAM
+from src.agents.Agent_NCA_3dOptVRAM_lossAllLayers import Agent_NCA_3dOptVRAM
 
 import sys
 import os
@@ -45,7 +45,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test158_adam_big_groups', #best=86
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test159_adam_big_groups_allLayers', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
