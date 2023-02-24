@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import random
 import torchio
 
-class Dataset_NiiGz_3D(Dataset_3D):
+class Dataset_NiiGz_3D_BRATS(Dataset_3D):
     """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
 
     def getDataShapes():
@@ -57,13 +57,15 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return result
 
     def preprocessing3d(self, img, isLabel=False):
-        if len(img.shape) == 4:
-            img = img[..., 0]
+        #if len(img.shape) == 4:
+        #    img = img[..., 0]
+
         if not isLabel:
             padded = np.random.rand(*self.size) * 0.01# ((64, 64, 52)) #(400,400,64))
         else:
             padded = np.zeros(self.size)
         img_shape = img.shape
+        #print(img_shape, padded.shape)
         #padded[padded == 0] = 0.5 
         padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
         #print(padded.shape)
@@ -221,28 +223,29 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img = img[...,0] 
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
             else:
-                if len(img.shape) == 4:
-                    img = img[..., 0]
-                img = np.expand_dims(img, axis=0)
-                img = rescale(img) 
-                img = np.squeeze(img)
-                if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
-                    img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
-                if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
-                    img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
-                if self.exp.get_from_config('bad_samples') is not None and self.state == "train":
-                    bad_samples = {
-                        "prostate_37.nii.gz":[-21, 22, 28],
-                        "prostate_04.nii.gz":[-21, 20, 13], 
-                        "prostate_25.nii.gz":[13, 10, 16], 
-                        "prostate_31.nii.gz":[22, -28, -26], 
-                        "prostate_47.nii.gz":[29, 22, 24], 
-                        "prostate_41.nii.gz":[30, 16, 21], 
-                        "prostate_18.nii.gz":[11, 25, 26],  
-                    } 
-                    if str(p_id) in bad_samples.keys():#random.random() < self.exp.get_from_config('bad_samples'):
-                        print("BAD SAMPLE", img_name)
-                        label = self.badLabels(label, bad_samples[str(p_id)])
+                #if len(img.shape) == 4:
+                #    img = img[..., 0]
+                img = rescale(img)
+                img2 = np.zeros((self.size[0], self.size[1], self.size[2], img.shape[-1])) 
+                for i in range(img.shape[-1]): 
+                    if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
+                        img2[...,i], label = self.rescale3d(img[...,i]), self.rescale3d(label, isLabel=True)
+                    if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
+                        img2[...,i], label = self.preprocessing3d(img[...,i]), self.preprocessing3d(label, isLabel=True)  
+                    if self.exp.get_from_config('bad_samples') is not None and self.state == "train":
+                        bad_samples = {
+                            "prostate_37.nii.gz":[-21, 22, 28],
+                            "prostate_04.nii.gz":[-21, 20, 13], 
+                            "prostate_25.nii.gz":[13, 10, 16], 
+                            "prostate_31.nii.gz":[22, -28, -26], 
+                            "prostate_47.nii.gz":[29, 22, 24], 
+                            "prostate_41.nii.gz":[30, 16, 21], 
+                            "prostate_18.nii.gz":[11, 25, 26],  
+                        } 
+                        if str(p_id) in bad_samples.keys():#random.random() < self.exp.get_from_config('bad_samples'):
+                            print("BAD SAMPLE", img_name)
+                            label = self.badLabels(label, bad_samples[str(p_id)])
+                img = img2
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
             #size = (256, 256) 
@@ -269,6 +272,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img = (img_id, img, label)              
 
         id, img, label = img
+
+        #print(img.shape)
+        #img = np.transpose(img, axes=(3, 0, 1, 2))
+        #print(img.shape)
 
         if self.state == "train" and False:
             img, label = self.randomReplaceByNoise(img, label)
@@ -305,6 +312,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         #img = img[margin:-margin, :, :] 
         #label = label[margin:-margin, :, :] 
+
 
 
         #img[:,:,:] = 0
@@ -353,13 +361,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = np.squeeze(img)
 
         if False:
-            transform = torchio.transforms.RandomNoise(mean = 0.3, std=0.3)
+            transform = torchio.transforms.RandomNoise(mean = 0.2, std=0.05)
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
 
         if False:
-            transform = torchio.transforms.RandomGhosting(num_ghosts=6, intensity=2.5)
+            transform = torchio.transforms.RandomGhosting()
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
@@ -390,12 +398,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = transform(img)
             img = np.squeeze(img)
 
-        if False:
-            transform = torchio.transforms.RandomSpike(intensity=(2,6))
-            img = np.expand_dims(img, axis=0)
-            img = transform(img)
-            img = np.squeeze(img)
-
         #img = cv2.rectangle(img, (0, 0), (256, 256), (0.8, 0.8, 0.8), 120)
 
         if False:
@@ -411,7 +413,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #np.place(img, label > 0, img2[label > 0] )
 
 
-        #print(img.shape)    
         #img[..., 1] = img[..., 0]
         #img[..., 2] = img[..., 0]
 
@@ -468,7 +469,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 label = transform(label)
                 label = np.squeeze(label)
 
-        img = np.expand_dims(img, axis=0)
+        #img = np.expand_dims(img, axis=0)
         img = znormalisation(img)
         
         #img = histogram_stanard(img)
@@ -492,7 +493,15 @@ class Dataset_NiiGz_3D(Dataset_3D):
         # REMOVE
         if True:
             #print(np.unique(label))
-            label[label > 0] = 1
+            label2 = np.zeros((*label.shape, 3))
+            label2[..., 0] = label == 1 
+            label2[..., 1] = label == 2
+            label2[..., 2] = label == 3
+            label = label2
+            #n_classes = 3
+            #label = label.astype(np.int32)
+            #label = np.eye(n_classes)[label]  #[label > 0] = 1
+            #print("LABEL", label.shape)
         else:
             #print(label.shape)
             label = np.stack((label, label), axis=-1)

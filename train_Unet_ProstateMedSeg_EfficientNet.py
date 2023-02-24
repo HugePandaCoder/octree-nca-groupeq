@@ -74,11 +74,11 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 
-#agent.getAverageDiceScore()
+agent.getAverageDiceScore()
 
 
 

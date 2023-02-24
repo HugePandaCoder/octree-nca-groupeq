@@ -45,7 +45,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test159_adam_big_groups_allLayers', #best=86
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test160_adam_big_groups_allLayers', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate

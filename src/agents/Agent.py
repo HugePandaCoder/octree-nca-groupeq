@@ -33,8 +33,8 @@ class BaseAgent():
             self.optimizer = []
             self.scheduler = []
             for m in range(len(self.model)):
-                #self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr')))#self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
+                self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
+                #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), momentum=0.9))#self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
         else:
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
@@ -242,7 +242,7 @@ class BaseAgent():
         self.exp.dataset = dataset_train
 
 
-    def labelVariance(self, images):
+    def labelVariance(self, images, median):
         mean = np.sum(images, axis=0) / images.shape[0]
         stdd = 0
         for id in range(images.shape[0]):
@@ -253,9 +253,14 @@ class BaseAgent():
         stdd = np.sqrt(stdd)
 
         #print(stdd.shape)
-        for i in range(20):
-            plt.imshow(stdd[0, :, :, i, 0])
-            plt.show()
+        if False:
+            for i in range(20):
+                plt.imshow(stdd[0, :, :, i, 0])
+                plt.show()
+        else:
+            print(np.sum(stdd) / np.sum(median), ",")
+            #plt.imshow(stdd[0, :, :, 20, 0])
+            #plt.show()
             #mean = sum(loss_log.values())/len(loss_log)
             #stdd = 0
             #for e in loss_log.values():
@@ -305,10 +310,11 @@ class BaseAgent():
                         stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
 
                         #print(stack.shape)
-                        #self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy())
-
-
                         outputs, _ = torch.median(stack, dim=0)
+                        self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy() )
+
+
+                        
                     else:
                         outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
 
@@ -386,6 +392,7 @@ class BaseAgent():
 
                     for m in range(patient_3d_image.shape[-1]):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
+                        print(",",loss_log[m][patient_id])
                         #print(m, patient_id, loss_log[m][patient_id])
                         
                         # Add image to tensorboard

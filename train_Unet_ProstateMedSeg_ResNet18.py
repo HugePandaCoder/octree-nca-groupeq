@@ -22,7 +22,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_1_ResNet18',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/Models/UNet_Prostate_MedSeg_1_ResNet18',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -62,7 +62,7 @@ ca = smp.Unet(encoder_name='resnet18', encoder_weights=None, in_channels=1, clas
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
-exp.temporarly_overwrite_config(config)
+#exp.temporarly_overwrite_config(config)
 dataset.set_experiment(exp)
 
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
@@ -74,9 +74,9 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 
-#agent.getAverageDiceScore()
+agent.getAverageDiceScore()
 

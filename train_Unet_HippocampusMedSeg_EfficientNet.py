@@ -19,10 +19,12 @@ config = [{
     #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
+    #'img_path': r"/home/jkalkhof/Data/Task04_Hippocampus/train/imagesTr/",
+    #'label_path': r"/home/jkalkhof/Data/Task04_Hippocampus/train/labelsTr/",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Hippocampus_MedSeg_1_EfficientNet',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/Models/UNet_Hippocampus_MedSeg_1_EfficientNet/',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -72,8 +74,8 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
-exp.temporarly_overwrite_config(config)
+#exp.temporarly_overwrite_config(config)
 agent.getAverageDiceScore()

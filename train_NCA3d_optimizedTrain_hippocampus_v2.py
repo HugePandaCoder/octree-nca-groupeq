@@ -42,20 +42,20 @@ import os
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test162_adam_big_groups/', #best=86
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_hippocampus_Test23_noRescale', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
-    'inference_steps': [20, 40],
+    'inference_steps': [30],
     # Training config
     'save_interval': 10,
-    'evaluate_interval': 100,
+    'evaluate_interval': 10,
     'ood_interval':100,
     # Model config
     'channel_n': 16,        # Number of CA state channels
@@ -65,22 +65,21 @@ config = [{
     
     'cell_fire_interval':None,
     'batch_size': 3,
-    'repeat_factor': 2,
+    'repeat_factor': 1,
     'input_channels': 1,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(80, 80, 6), (320, 320, 24)] ,
+    'input_size': [(64, 64, 52)] ,
     'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'keep_original_scale': True,
-    'rescale': True,
+    'rescale': False,
     'Persistence': False,
     'unlock_CPU': True,
-    'train_model':1,
+    'train_model':0,
     'hidden_size':64,
-    'bad_samples':0.3,
 }#,
 #{
 #    'n_epoch': 2000,
@@ -96,7 +95,7 @@ ca2 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device
 #ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 #ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 #ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
-ca =[ca1, ca2] 
+ca =[ca1] #1, ca2] 
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 agent = Agent_NCA_3dOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)

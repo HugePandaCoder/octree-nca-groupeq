@@ -68,9 +68,13 @@ class Agent(BaseAgent):
             seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
             seed[..., :img.shape[3]] = img
         # 3D
-        if len(img.shape) == 4:
+        elif len(img.shape) == 4:
             seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], img.shape[3], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
-            seed[..., 0] = img        
+            seed[..., 0] = img  
+        else:
+            seed = torch.zeros((img.shape[0], img.shape[1], img.shape[2], img.shape[3], self.exp.get_from_config('channel_n')), dtype=torch.float32, device=self.device)#torch.from_numpy(np.zeros([img.shape[0], img.shape[1], img.shape[2], self.exp.get_from_config('channel_n')], np.float32)).to(self.device)
+            seed[..., 0:img.shape[-1]] = img 
+
         return seed
 
     def repeatBatch(self, seed, target, repeat_factor):

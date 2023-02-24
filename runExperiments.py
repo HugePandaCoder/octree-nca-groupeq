@@ -1,6 +1,6 @@
 #exec(open("train_bl_VisTransformer.py").read())
-exec(open("train_Unet_ProstateMedSeg_ResNet18.py").read())
-exec(open("train_Unet_ProstateMedSeg_VGG11").read())
+#exec(open("train_Unet_ProstateMedSeg_ResNet18.py").read())
+exec(open("train_Unet_ProstateMedSeg_VGG11.py").read())
 exec(open("train_Unet_HippocampusMedSeg_EfficientNet.py").read())
 exec(open("train_Unet_HippocampusMedSeg_ResNet18.py").read())
 exec(open("train_Unet_HippocampusMedSeg_VGG11.py").read())

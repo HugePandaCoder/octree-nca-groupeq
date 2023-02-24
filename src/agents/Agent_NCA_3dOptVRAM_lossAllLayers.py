@@ -82,8 +82,8 @@ class Agent_NCA_3dOptVRAM(Agent):
                     #print(loss_loc)
 
                     # If last element
-                    #if m == outputs[o].shape[-1] and outputs[o].shape[-1] != 1:
-                    #    loss_loc = loss_loc * m
+                    if o == len(outputs)-1:
+                        loss_loc = loss_loc * o *2
                     loss = loss + loss_loc
                     loss_ret[m] = loss_loc.item()
 

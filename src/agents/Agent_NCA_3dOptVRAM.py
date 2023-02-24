@@ -109,8 +109,8 @@ class Agent_NCA_3dOptVRAM(Agent):
         down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4), int(inputs.shape[3] / 4))
         #inputs_loc = self.resize4d(inputs.cpu(), size=down_scaled_size).to(self.exp.get_from_config('device')) #torch.from_numpy(zoom(inputs.cpu(), (1, 4, 4, 1))).to(self.exp.get_from_config('device'))
         
-        avg_pool = torch.nn.MaxPool3d(3, 2, 1)#torch.nn.MaxPool3d(2, 2, 0)
-        max_pool = torch.nn.MaxPool3d(3, 2, 1)#torch.nn.MaxPool3d(2, 2, 0)
+        avg_pool = torch.nn.MaxPool3d(2, 2, 0)#torch.nn.MaxPool3d(3, 2, 1)#torch.nn.MaxPool3d(2, 2, 0)
+        max_pool = torch.nn.MaxPool3d(2, 2, 0)#torch.nn.MaxPool3d(3, 2, 1)#torch.nn.MaxPool3d(2, 2, 0)
         
         #print(inputs.shape)
         #if scale_fac == 4:
@@ -142,6 +142,8 @@ class Agent_NCA_3dOptVRAM(Agent):
         #print(inputs_loc.shape)
         #plt.imshow(inputs_loc[0, :, :, 3, 0].detach().cpu().numpy())
         #plt.show()
+
+        input_channel = self.exp.get_from_config('input_channels')
 
         outputs_img = []
         outputs_targets = []
@@ -179,7 +181,7 @@ class Agent_NCA_3dOptVRAM(Agent):
                             next_res = avg_pool(next_res)
                             next_res = next_res.transpose(1,4)
 
-                        inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+                        inputs_loc = torch.concat((next_res[...,:input_channel], outputs[...,input_channel:]), 4)
                         #print(inputs_loc.shape)
                         targets_loc = targets
         else:
@@ -220,7 +222,7 @@ class Agent_NCA_3dOptVRAM(Agent):
    
                     outputs = torch.permute(outputs, (0, 2, 3, 4, 1))        
    
-                    inputs_loc = torch.concat((next_res[...,:1], outputs[...,1:]), 4)
+                    inputs_loc = torch.concat((next_res[...,:input_channel], outputs[...,input_channel:]), 4)
 
                     
                     targets_loc = next_res_gt
@@ -257,16 +259,10 @@ class Agent_NCA_3dOptVRAM(Agent):
                             #print(torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0))
                             #print(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1].shape)
                             #print(torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) )
-                            if torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0) / torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) < 0.3:
-                                #if 1 in torch.unique(targets_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], :]):
-                                break
-                                #else:
-                                #    print("NO MASK")
-                            #else:
-                            #    print("SKIP")
-                                
-                            #else:
-                            #    print("NOOOOOO")
+                            
+                            
+                            #if torch.sum(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1] == 0) / torch.numel(inputs_loc_temp[b, pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2], 0:1]) < 0.3:
+                            break
 
                         # SIZE OF FULL RES
                         pos_x_full = int(pos_x * factor_pow)
