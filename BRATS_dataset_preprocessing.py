@@ -12,9 +12,9 @@ for file in os.listdir(labels_directory):
 
     img_base = nib.load(os.path.join(images_directory, name + "_0000.nii.gz"))
     img0 = img_base.get_fdata()
-    img1 = nib.load(os.path.join(images_directory, name + "_0000.nii.gz")).get_fdata()
-    img2 = nib.load(os.path.join(images_directory, name + "_0000.nii.gz")).get_fdata()
-    img3 = nib.load(os.path.join(images_directory, name + "_0000.nii.gz")).get_fdata()
+    img1 = nib.load(os.path.join(images_directory, name + "_0001.nii.gz")).get_fdata()
+    img2 = nib.load(os.path.join(images_directory, name + "_0002.nii.gz")).get_fdata()
+    img3 = nib.load(os.path.join(images_directory, name + "_0003.nii.gz")).get_fdata()
 
     img_out = np.stack((img0, img1, img2, img3), axis=-1)
 

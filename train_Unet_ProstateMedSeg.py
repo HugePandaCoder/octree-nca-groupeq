@@ -21,7 +21,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_10_Scaled_30bad',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_8_Scaled',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -72,13 +72,13 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #exp.temporarly_overwrite_config(config)
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.getAverageDiceScore()
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 
 #print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 exp.temporarly_overwrite_config(config)
-#agent.getAverageDiceScore()
+agent.getAverageDiceScore()
 
 exit()
 with open(r"/home/jkalkhof_locale/Documents/temp/OutTxt/test.txt", "a") as myfile:

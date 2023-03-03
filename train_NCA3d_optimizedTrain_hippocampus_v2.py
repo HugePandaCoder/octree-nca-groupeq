@@ -112,7 +112,7 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 print("MODEL # PARAMETERS", sum((sum(p.numel() for p in m.parameters() if p.requires_grad)) for m in ca))
 #agent.train(data_loader, loss_function)
 
-exp.temporarly_overwrite_config(config)
+#exp.temporarly_overwrite_config(config)
 
 agent.getAverageDiceScore(pseudo_ensemble=True)
 

@@ -201,6 +201,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         if not img:
             #print(self.images_list[idx])
             img_name, p_id, img_id = self.images_list[idx]
+            print(str(p_id)) # REMOVE
 
             label_name, _, _ = self.labels_list[idx]
 
@@ -341,7 +342,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img[-80:256, 0:256, :] = img2 
 
         if False:
-            transform = torchio.transforms.RandomBiasField() #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
+            transform = torchio.transforms.RandomBiasField(coefficients=1) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
@@ -360,6 +361,12 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         if False:
             transform = torchio.transforms.RandomGhosting(num_ghosts=6, intensity=2.5)
+            img = np.expand_dims(img, axis=0)
+            img = transform(img)
+            img = np.squeeze(img)
+
+        if False:
+            transform = torchio.transforms.RandomBlur()#num_ghosts=2, intensity=1)
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
@@ -485,10 +492,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
         #print(np.min(img), np.max(img))
 
         if False:
-            plt.imshow(img[:,:, 7])# ,7])
+            plt.imshow(img[:,:, 7], cmap='gray')# ,7])
             plt.show()
-            plt.imshow(label[:,:, 7])#,7])
-            plt.show()
+            #plt.imshow(label[:,:, 7])#,7])
+            #plt.show()
         # REMOVE
         if True:
             #print(np.unique(label))

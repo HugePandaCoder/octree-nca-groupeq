@@ -46,7 +46,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_hippocampus_medNCA_Test2', #94
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_hippocampus_medNCA_Test3', #94
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -65,7 +65,7 @@ config = [{
     'cell_fire_rate': 0.5,
     
     'cell_fire_interval':None,
-    'batch_size': 400,
+    'batch_size': 200,
     'repeat_factor': 1,
     'input_channels': 3,
     'input_fixed': True,
@@ -111,7 +111,7 @@ loss_function = DiceBCELoss() #DiceBCELoss()# nn.CrossEntropyLoss() #
 
 #with torch.autograd.set_detect_anomaly(True):
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
 #exp.temporarly_overwrite_config(config)
 print(sum(p.numel() for p in ca1.parameters() if p.requires_grad))

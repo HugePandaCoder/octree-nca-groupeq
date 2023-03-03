@@ -265,6 +265,8 @@ class Dataset_NiiGz_3D_BRATS(Dataset_3D):
             #plt.show()
             
             if True:
+                img = np.float32(img)
+                label = np.int8(label)
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
                 img = self.data.get_data(key=self.images_list[idx])
             else:
@@ -493,11 +495,15 @@ class Dataset_NiiGz_3D_BRATS(Dataset_3D):
         # REMOVE
         if True:
             #print(np.unique(label))
-            label2 = np.zeros((*label.shape, 3))
-            label2[..., 0] = label == 1 
-            label2[..., 1] = label == 2
-            label2[..., 2] = label == 3
-            label = label2
+            
+            label[label>0] = 1 
+            #label2 = np.zeros((*label.shape, 3))
+            #label2[..., 0] = label == 1 
+            #label2[..., 1] = label == 2
+            #label2[..., 2] = label == 3
+            #label = label2
+            
+            
             #n_classes = 3
             #label = label.astype(np.int32)
             #label = np.eye(n_classes)[label]  #[label > 0] = 1

@@ -42,10 +42,10 @@ import os
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task003_Liver_Scaled/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task003_Liver_Scaled/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_prostate_Test160_adam_big_groups_allLayers', #best=86
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_liver_Test2_adam_big_groups', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
@@ -70,7 +70,7 @@ config = [{
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(80, 80, 6), (320, 320, 24)] ,
+    'input_size': [(64, 64, 10), (256, 256, 40)] ,
     'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,

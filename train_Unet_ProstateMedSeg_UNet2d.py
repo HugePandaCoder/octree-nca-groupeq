@@ -7,8 +7,9 @@ from src.utils.Experiment import Experiment, DataSplit
 import torch
 from src.losses.LossFunctions import DiceLoss, DiceBCELoss, DiceFocalLoss
 from src.agents.Agent_UNet import Agent
-#from medcam import medcam
 import segmentation_models_pytorch as smp
+#from medcam import medcam
+from unet import UNet2D
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -19,10 +20,12 @@ config = [{
     #'label_path': r"M:\MasterThesis\Datasets\Hippocampus\preprocessed_dataset_train\labelsTr",
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/imagesTs/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_Full_Combined_Test/labelsTs/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+    'label_path': r"/home/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet_Prostate_MedSeg_10_MobileNetV2',
+    'model_path': r'/home/jkalkhof/Models/UNet_Prostate_MedSeg_1_UNet2d/',
     'device':"cuda:0",
     'n_epoch': 1000,
     # Learning rate
@@ -41,28 +44,28 @@ config = [{
     'batch_size': 50,
     'persistence_chance':0.5,
     # Data
-    'input_size': (320, 320),
+    'input_size': (64, 64) ,
     'keep_original_scale': True,
     'rescale': True,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.7,
     'Persistence': False,
-    'input_channels': 1,
     'output_channels': 1,
+    'input_channels': 1,
+    'unlock_CPU': True,
 }]
 
 # Define Experiment
 #dataset = Dataset_NiiGz_3D(slice=2) #_3D(slice=2)
 dataset = Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
-#ca = UNet3D(in_channels=1, padding=1, out_classes=1).to(device)
+#ca = smp.Unet(encoder_name='efficientnet-b0', encoder_weights=None, in_channels=1, classes=1).to(device)
+ca = UNet2D(in_channels=1, padding=1, out_classes=1).to(device)
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
-ca = smp.Unet(encoder_name='mobilenet_v2', encoder_weights=None, in_channels=1, classes=1).to(device)
 
 agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
-exp.temporarly_overwrite_config(config)
 dataset.set_experiment(exp)
 
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
@@ -77,7 +80,5 @@ loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 agent.train(data_loader, loss_function)
 
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
-
-agent.getAverageDiceScore()
-
-
+#exp.temporarly_overwrite_config(config)
+#agent.getAverageDiceScore()

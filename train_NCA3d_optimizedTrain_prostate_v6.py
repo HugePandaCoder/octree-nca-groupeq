@@ -12,10 +12,9 @@ from src.models.Model_BasicNCA import BasicNCA
 from lib.CAModel_deeper import CAModel_Deeper
 from lib.CAModel_learntPerceive import CAModel_learntPerceive
 from src.models.Model_BasicNCA3D import BasicNCA3D
-from src.models.Model_BasicNCA3D_3 import BasicNCA3D_3
 from src.models.Model_BasicNCA3D_Public import BasicNCA3D_Public
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
-from src.datasets.Nii_Gz_Dataset_3D_BRATS import Dataset_NiiGz_3D_BRATS
+from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_distanceField import Nii_Gz_Dataset_DistanceField
 from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 from src.datasets.Nii_Gz_Dataset_allpass import Nii_Gz_Dataset_allPass
@@ -39,14 +38,16 @@ import os
 #import warnings
 #warnings.filterwarnings("ignore")
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+#os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 config = [{
     'out_path': r"D:/PhD/NCA_Experiments",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task001_BrainTumour_fixed/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task001_BrainTumour_fixed/labelsTr/",
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+    'label_path': r"/home/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_BRATS_test10', #94
+    'model_path': r'/home/jkalkhof/Models/NCA3d_optVRAM_prostate_Test9_level4_sgd/', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate
@@ -56,7 +57,7 @@ config = [{
     'inference_steps': [20, 20, 20, 20],
     # Training config
     'save_interval': 10,
-    'evaluate_interval': 10,
+    'evaluate_interval': 100,
     'ood_interval':100,
     # Model config
     'channel_n': 16,        # Number of CA state channels
@@ -65,22 +66,23 @@ config = [{
     'cell_fire_rate': 0.5,
     
     'cell_fire_interval':None,
-    'batch_size': 4,
-    'repeat_factor': 2,
-    'input_channels': 4,
+    'batch_size': 6,
+    'repeat_factor': 5,
+    'input_channels': 1,
     'input_fixed': True,
     'output_channels': 1,
     # Data
-    'input_size': [(30, 30, 20),(60, 60, 40), (120, 120, 80), (240, 240, 160)], #[(32, 32, 24),(64, 64, 48),(128, 128, 96), (256, 256, 192), (512, 512, 384)] , #
+    'input_size': [(40, 40, 3), (80, 80, 6), (160, 160, 12), (320, 320, 24)] ,
     'scale_factor': 2,
     'data_split': [0.7, 0, 0.3], 
     'pool_chance': 0.5,
     'keep_original_scale': True,
-    'rescale': False,
+    'rescale': True,
     'Persistence': False,
     'unlock_CPU': True,
     'train_model':3,
     'hidden_size':64,
+    #'bad_samples':0.3,
 }#,
 #{
 #    'n_epoch': 2000,
@@ -89,16 +91,16 @@ config = [{
 ]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D_BRATS()#_lowPass(filter="random")
+dataset = Dataset_NiiGz_3D()#_lowPass(filter="random")
 device = torch.device(config[0]['device'])
-ca1 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=7).to(device)
+ca1 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=3).to(device)
 ca2 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=3).to(device)
 ca3 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=3).to(device)
 ca4 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=3).to(device)
-ca5 = BasicNCA3D_Big(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=3).to(device)
+#ca3 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
+#ca4 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 #ca5 = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=64).to(device)
 ca =[ca1, ca2, ca3, ca4] 
-print(sum(p.numel() for p in ca1.parameters() if p.requires_grad))
 #ca = medcam.inject(ca, output_dir=r"M:\AttentionMapsUnet", save_maps = True)
 agent = Agent_NCA_3dOptVRAM(ca)
 exp = Experiment(config, dataset, ca, agent)
@@ -106,20 +108,18 @@ exp.set_model_state('train')
 dataset.set_experiment(exp)
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceFocalLoss() #DiceBCELoss()# nn.CrossEntropyLoss() #
+loss_function = DiceFocalLoss() #nn.CrossEntropyLoss() #
 #loss_function = F.mse_loss
 #loss_function = DiceLoss()
 #
 
 #with torch.autograd.set_detect_anomaly(True):
-
+print("MODEL # PARAMETERS", sum((sum(p.numel() for p in m.parameters() if p.requires_grad)) for m in ca))
 agent.train(data_loader, loss_function)
 
 exp.temporarly_overwrite_config(config)
-print("MODEL # PARAMETERS", sum((sum(p.numel() for p in m.parameters() if p.requires_grad)) for m in ca))
 
-with torch.no_grad():
-    agent.getAverageDiceScore()#pseudo_ensemble=True)
+#agent.getAverageDiceScore(pseudo_ensemble=True)
 
 #agent.ood_evaluation(epoch=exp.currentStep)
 #agent.test(data_loader, loss_function)

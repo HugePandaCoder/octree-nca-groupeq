@@ -34,7 +34,7 @@ class BaseAgent():
             self.scheduler = []
             for m in range(len(self.model)):
                 self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), momentum=0.9))#self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
+                #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr')))#self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
         else:
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
@@ -242,7 +242,7 @@ class BaseAgent():
         self.exp.dataset = dataset_train
 
 
-    def labelVariance(self, images, median):
+    def labelVariance(self, images, median, img_mri):
         mean = np.sum(images, axis=0) / images.shape[0]
         stdd = 0
         for id in range(images.shape[0]):
@@ -255,7 +255,10 @@ class BaseAgent():
         #print(stdd.shape)
         if False:
             for i in range(20):
-                plt.imshow(stdd[0, :, :, i, 0])
+                plt.imshow(median[0, :, :, i, 0])
+                plt.show()
+                print(img.shape)
+                plt.imshow(img_mri[0, :, :, i, 0], cmap='gray')
                 plt.show()
         else:
             print(np.sum(stdd) / np.sum(median), ",")
@@ -311,7 +314,7 @@ class BaseAgent():
 
                         #print(stack.shape)
                         outputs, _ = torch.median(stack, dim=0)
-                        self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy() )
+                        self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy() )
 
 
                         
