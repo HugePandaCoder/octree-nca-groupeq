@@ -10,7 +10,7 @@ import math
 
 d = {}
 
-hippocampus = False
+hippocampus = True
 
 if hippocampus:
     df = pd.read_csv(r'C:\Users\John\Desktop\hippocampus_pred.csv', sep="\t")
@@ -70,8 +70,8 @@ else:
     #print(df)
     if True:
         print(np.unique(df['Dice']))
-        ax = sns.violinplot(data=df, x='Parameters', y='Dice', hue='Method', dodge=False, cut=0)#, errorbar="STDD")
-        ax.set_ylim(0,1)
+        ax = sns.violinplot(data=df, x='Parameters', y='Dice', hue='Method', dodge=False)#, errorbar="STDD") #, cut=0
+        #ax.set_ylim(0,1)
     else:
         if False:
             print(df)
