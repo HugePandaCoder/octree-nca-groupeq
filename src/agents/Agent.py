@@ -242,7 +242,7 @@ class BaseAgent():
         self.exp.dataset = dataset_train
 
 
-    def labelVariance(self, images, median, img_mri):
+    def labelVariance(self, images, median, img_mri, img_id, targets):
         mean = np.sum(images, axis=0) / images.shape[0]
         stdd = 0
         for id in range(images.shape[0]):
@@ -253,9 +253,11 @@ class BaseAgent():
         stdd = np.sqrt(stdd)
 
         #print(stdd.shape)
+
         if False:
             for i in range(20):
-                plt.imshow(median[0, :, :, i, 0])
+                plt.imshow(stdd[0, :, :, i, 0])
+                plt.colorbar()
                 plt.show()
                 print(img.shape)
                 plt.imshow(img_mri[0, :, :, i, 0], cmap='gray')
@@ -270,6 +272,32 @@ class BaseAgent():
             #    stdd = stdd + pow(e - mean, 2)
             #stdd = stdd / len(loss_log)
             #stdd = math.sqrt(stdd)
+
+        
+        #print(id, nib_save.shape)
+        if False:
+            nib_save = np.expand_dims(img_mri[0, ..., 0], axis=-1) 
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Image/", str(img_id) + ".nii.gz"))
+            
+            nib_save = np.expand_dims(targets[0, ..., 0], axis=-1) 
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/GT/", str(img_id) + ".nii.gz"))
+
+            nib_save = np.expand_dims(stdd[0, ..., 0], axis=-1) 
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Variance/", str(img_id) + ".nii.gz"))
+
+            nib_save = np.expand_dims(mean[0, ..., 0], axis=-1) 
+            nib_save[nib_save > 0.5] = 1 
+            nib_save[nib_save != 1] = 0
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Label/", str(img_id) + ".nii.gz"))
+        
+            f = open(os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Score/", str(img_id) + ".txt"), "a")
+            f.write(str(np.sum(stdd) / np.sum(median)))
+            f.close()
+
         return
 
     def test(self, loss_f, save_img = None, tag='test/img/', pseudo_ensemble=False, **kwargs):
@@ -299,6 +327,21 @@ class BaseAgent():
                 data_id, inputs, _ = data
                 outputs, targets = self.get_outputs(data, full_img=True)
 
+                #if type(data_id) is list:
+                #    id = data_id[0]
+                #    slice = 0
+                #else:
+                if isinstance(data_id, str):
+                    _, id, slice = dataset.__getname__(data_id).split('_')
+                else:
+                    text = data_id[0].split('_')
+                    if len(text) == 3:
+                        _, id, slice = text
+                    else:
+                        id = data_id[0]
+                        slice = None
+
+
                 if pseudo_ensemble:
                     outputs2, _ = self.get_outputs(data, full_img=True)
                     outputs3, _ = self.get_outputs(data, full_img=True)
@@ -314,26 +357,12 @@ class BaseAgent():
 
                         #print(stack.shape)
                         outputs, _ = torch.median(stack, dim=0)
-                        self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy() )
+                        self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
 
 
                         
                     else:
                         outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
-
-                #if type(data_id) is list:
-                #    id = data_id[0]
-                #    slice = 0
-                #else:
-                if isinstance(data_id, str):
-                    _, id, slice = dataset.__getname__(data_id).split('_')
-                else:
-                    text = data_id[0].split('_')
-                    if len(text) == 3:
-                        _, id, slice = text
-                    else:
-                        id = data_id[0]
-                        slice = None
 
                 #print(id)
 

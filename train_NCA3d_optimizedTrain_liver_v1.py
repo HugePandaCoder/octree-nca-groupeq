@@ -45,7 +45,7 @@ config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task003_Liver_Scaled/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task003_Liver_Scaled/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_liver_Test2_adam_big_groups', #best=86
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_optVRAM_liver_Test3_adam_big_groups', #best=86
     'device':"cuda:0",
     'n_epoch': 25000,
     # Learning rate

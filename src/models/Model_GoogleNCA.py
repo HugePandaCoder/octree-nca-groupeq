@@ -45,6 +45,7 @@ class GoogleNCA(nn.Module):
     def update(self, x_in, fire_rate, angle):
         x = x_in.transpose(1,3)
 
+        #print(x.shape)
         dx = self.conv(x)#self.perceive(x, angle)
         dx = dx.transpose(1,3)
         #print(dx.shape)
@@ -76,5 +77,5 @@ class GoogleNCA(nn.Module):
     def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
         for step in range(steps):
             x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
-            x = torch.concat((x[...,:3], x2[...,3:]), 3)
+            x = torch.concat((x[...,:1], x2[...,1:]), 3)
         return x

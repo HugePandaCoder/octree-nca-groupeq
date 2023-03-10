@@ -201,7 +201,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         if not img:
             #print(self.images_list[idx])
             img_name, p_id, img_id = self.images_list[idx]
-            print(str(p_id)) # REMOVE
+            #print(str(p_id)) # REMOVE
 
             label_name, _, _ = self.labels_list[idx]
 
@@ -354,7 +354,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = np.squeeze(img)
 
         if False:
-            transform = torchio.transforms.RandomNoise(mean = 0.3, std=0.3)
+            transform = torchio.transforms.RandomNoise(mean = 0, std=0.5)
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
@@ -392,13 +392,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
         if False:
             #torch_rng_state = torch.random.get_rng_state()
             #torch.random.set_rng_state(torch_rng_state)
-            transform = torchio.transforms.RandomSpike(intensity=1)#, intensity=0) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
+            transform = torchio.transforms.RandomSpike(intensity=5)#, intensity=0) #, **kwargs()#(num_ghosts=10, axes=(0, 1, 2), intensity=(3, 5))
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
 
         if False:
-            transform = torchio.transforms.RandomSpike(intensity=(2,6))
+            transform = torchio.transforms.RandomSpike(intensity=(6,10))
             img = np.expand_dims(img, axis=0)
             img = transform(img)
             img = np.squeeze(img)
@@ -476,7 +476,8 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 label = np.squeeze(label)
 
         img = np.expand_dims(img, axis=0)
-        img = znormalisation(img)
+        if np.sum(img) > 0:
+            img = znormalisation(img)
         
         #img = histogram_stanard(img)
         img = rescale(img) #cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
