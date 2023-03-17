@@ -15,6 +15,7 @@ from scipy.ndimage import zoom
 import torchio as tio
 import matplotlib.pyplot as plt
 import math
+import nibabel as nib
 
 class Agent_NCA_3dOptVRAM(Agent):
     def initialize(self):
@@ -90,7 +91,7 @@ class Agent_NCA_3dOptVRAM(Agent):
                 self.scheduler[m].step()
         return loss_ret
 
-    def get_outputs(self, data, full_img=False):
+    def get_outputs(self, data, full_img=False, tag=""):
         r"""Get the outputs of the model
             Args:
                 data (int, tensor, tensor): id, inputs, targets
@@ -150,6 +151,19 @@ class Agent_NCA_3dOptVRAM(Agent):
         
 
         if full_img == True:
+
+            # REMOVE: Just for shortterm visualisation
+            save4d = True
+            slice_all_Channels = True
+            if not slice_all_Channels:
+                label_mri_4d = np.empty((sum(self.getInferenceSteps()), inputs.shape[1], inputs.shape[2], inputs.shape[3]))
+                img_mri_4d = np.empty((sum(self.getInferenceSteps()), inputs.shape[1], inputs.shape[2], inputs.shape[3]))
+            else:
+                x_size = math.ceil(math.sqrt(inputs.shape[4]))
+                label_mri_4d = np.empty((sum(self.getInferenceSteps()), inputs.shape[1]*x_size, inputs.shape[2]*x_size,1), dtype=float)
+                img_mri_4d = np.empty((sum(self.getInferenceSteps()), inputs.shape[1]*x_size, inputs.shape[2]*x_size,1), dtype=float)
+            step = 0
+            
             with torch.no_grad():
                 for m in range(self.exp.get_from_config('train_model')+1):
                     
@@ -159,14 +173,48 @@ class Agent_NCA_3dOptVRAM(Agent):
                         else:
                             stp = self.getInferenceSteps()
                         #print(stp)
-                        outputs = self.model[m](inputs_loc, steps=stp, fire_rate=self.exp.get_from_config('cell_fire_rate'))
+
+                        if save4d:
+                            outputs = inputs_loc
+                            for i in range(self.getInferenceSteps()[m]):
+                                outputs = self.model[m](outputs, steps=1, fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                                if not slice_all_Channels:
+                                    label_mri_4d[step, ...] = outputs[0, ..., 1].detach().cpu().numpy() 
+                                    img_mri_4d[step, ...] = inputs_loc[0, ..., 0].detach().cpu().numpy() 
+                                else:
+                                    for x in range(4):
+                                        for y in range(4):
+                                            label_mri_4d[step, x*320:(x+1)*320, y*320:(y+1)*320, 0] = outputs[0, ..., 11, x+y*4].detach().cpu().numpy() 
+                                            img_mri_4d[step, x*320:(x+1)*320, y*320:(y+1)*320, 0] = inputs_loc[0, ..., 11, x+y*4].detach().cpu().numpy() 
+
+                                step = step +1 
+                        else:
+                            outputs = self.model[m](inputs_loc, steps=stp, fire_rate=self.exp.get_from_config('cell_fire_rate'))
                         #plt.imshow(outputs[0,:,:,8,1].detach().cpu() - 20*targets_loc[0,:,:,8,0].detach().cpu())
                         #plt.show()
                     else:
                         #print(self.getInferenceSteps())
-                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
-                        
+
                         up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
+
+                        if save4d:
+                            outputs = inputs_loc
+                            for i in range(self.getInferenceSteps()[m]):
+                                outputs = self.model[m](outputs, steps=1, fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                                if not slice_all_Channels:
+                                    label_mri_4d[step, ...] = torch.permute(up(torch.permute(outputs, (0, 4, 1, 2, 3))), (0, 2, 3, 4, 1))[0, ..., 1].detach().cpu().numpy() 
+                                    img_mri_4d[step, ...] = torch.permute(up(torch.permute(inputs_loc, (0, 4, 1, 2, 3))), (0, 2, 3, 4, 1))[0, ..., 0].detach().cpu().numpy() 
+                                else:
+                                    for x in range(4):
+                                        for y in range(4):
+                                            label_mri_4d[step, x*320:(x+1)*320, y*320:(y+1)*320, 0] = torch.permute(up(torch.permute(outputs, (0, 4, 1, 2, 3))), (0, 2, 3, 4, 1))[0, ..., 11, x+y*4].detach().cpu().numpy() 
+                                            img_mri_4d[step, x*320:(x+1)*320, y*320:(y+1)*320, 0] = torch.permute(up(torch.permute(inputs_loc, (0, 4, 1, 2, 3))), (0, 2, 3, 4, 1))[0, ..., 11, x+y*4].detach().cpu().numpy()                                     
+                                step = step +1 
+
+
+                        else:
+                            outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        
 
                         outputs = torch.permute(outputs, (0, 4, 1, 2, 3))
 
@@ -184,6 +232,30 @@ class Agent_NCA_3dOptVRAM(Agent):
                         inputs_loc = torch.concat((next_res[...,:input_channel], outputs[...,input_channel:]), 4)
                         #print(inputs_loc.shape)
                         targets_loc = targets
+
+            if save4d:
+                if not slice_all_Channels:
+                    nib_save = torch.sigmoid(torch.from_numpy(np.transpose(label_mri_4d, (1, 2, 3, 0)))).numpy() #np.expand_dims(label_mri_4d, axis=-1) 
+                    nib_save[nib_save>0.5] = 1
+                    nib_save[nib_save != 1] = 0 
+                else:
+                    nib_save = torch.from_numpy(np.transpose(label_mri_4d, (1, 2, 3, 0))).numpy() #np.expand_dims(label_mri_4d, axis=-1)  
+                    sign = nib_save<0
+                    #print(np.max(nib_save))
+                    #print(sign.shape)
+                    #sign = sign*-1
+                    #nib_save = np.log10(np.abs(nib_save)+1) 
+                    #nib_save = nib_save* sign
+                    
+                nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(id)+"_"+tag+".nii.gz"))
+                #nib_save = np.expand_dims(inputs_loc.detach().cpu().numpy()[0, ..., 0] , axis=-1)  #np.transpose(label_mri_4d, (1, 2, 3, 0)) #
+                
+                #if slice_all_Channels:
+                nib_save = torch.sigmoid(torch.from_numpy(np.transpose(img_mri_4d, (1, 2, 3, 0)))).numpy()
+                nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(id)+"_img.nii.gz"))
+                #exit()
         else:
 
             for m in range(self.exp.get_from_config('train_model')+1): #range(self.exp.get_from_config('train_model')+1):

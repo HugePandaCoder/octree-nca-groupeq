@@ -359,7 +359,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = transform(img)
             img = np.squeeze(img)
 
-        if False:
+        if True:
             transform = torchio.transforms.RandomGhosting(num_ghosts=6, intensity=2.5)
             img = np.expand_dims(img, axis=0)
             img = transform(img)

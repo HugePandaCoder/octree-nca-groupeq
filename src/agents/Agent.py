@@ -275,26 +275,26 @@ class BaseAgent():
 
         
         #print(id, nib_save.shape)
-        if False:
+        if True:
             nib_save = np.expand_dims(img_mri[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Image/", str(img_id) + ".nii.gz"))
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_image.nii.gz"))
             
             nib_save = np.expand_dims(targets[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/GT/", str(img_id) + ".nii.gz"))
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_gt.nii.gz"))
 
             nib_save = np.expand_dims(stdd[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Variance/", str(img_id) + ".nii.gz"))
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_variance.nii.gz"))
 
             nib_save = np.expand_dims(mean[0, ..., 0], axis=-1) 
             nib_save[nib_save > 0.5] = 1 
             nib_save[nib_save != 1] = 0
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Label/", str(img_id) + ".nii.gz"))
+            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
+            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_label.nii.gz"))
         
-            f = open(os.path.join("/home/jkalkhof_locale/Documents/temp/Results/Groundtruth/Score/", str(img_id) + ".txt"), "a")
+            f = open(os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_score.txt"), "a")
             f.write(str(np.sum(stdd) / np.sum(median)))
             f.close()
 
@@ -325,7 +325,7 @@ class BaseAgent():
                 #data = dataset.__getitem__(i)
                 data = self.prepare_data(data, eval=True)
                 data_id, inputs, _ = data
-                outputs, targets = self.get_outputs(data, full_img=True)
+                outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
                 #if type(data_id) is list:
                 #    id = data_id[0]
@@ -343,16 +343,16 @@ class BaseAgent():
 
 
                 if pseudo_ensemble:
-                    outputs2, _ = self.get_outputs(data, full_img=True)
-                    outputs3, _ = self.get_outputs(data, full_img=True)
-                    outputs4, _ = self.get_outputs(data, full_img=True)
-                    outputs5, _ = self.get_outputs(data, full_img=True)
+                    outputs2, _ = self.get_outputs(data, full_img=True, tag="1")
+                    outputs3, _ = self.get_outputs(data, full_img=True, tag="2")
+                    outputs4, _ = self.get_outputs(data, full_img=True, tag="3")
+                    outputs5, _ = self.get_outputs(data, full_img=True, tag="4")
                     if True:
-                        outputs6, _ = self.get_outputs(data, full_img=True)
-                        outputs7, _ = self.get_outputs(data, full_img=True)
-                        outputs8, _ = self.get_outputs(data, full_img=True)
-                        outputs9, _ = self.get_outputs(data, full_img=True)
-                        outputs10, _ = self.get_outputs(data, full_img=True)
+                        outputs6, _ = self.get_outputs(data, full_img=True, tag="5")
+                        outputs7, _ = self.get_outputs(data, full_img=True, tag="6")
+                        outputs8, _ = self.get_outputs(data, full_img=True, tag="7")
+                        outputs9, _ = self.get_outputs(data, full_img=True, tag="8")
+                        outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
                         stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
 
                         #print(stack.shape)
@@ -421,6 +421,7 @@ class BaseAgent():
                     patient_3d_label = targets.detach().cpu()
                     patient_3d_real_Img = inputs.detach().cpu()
                     patient_id = id
+                    print(patient_id)
 
                     for m in range(patient_3d_image.shape[-1]):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
