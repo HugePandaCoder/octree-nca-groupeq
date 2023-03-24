@@ -1,14 +1,10 @@
 import torch
 import numpy as np
-from src.utils.helper import convert_image, dump_compressed_pickle_file, load_compressed_pickle_file
+from src.utils.helper import dump_compressed_pickle_file, load_compressed_pickle_file
 from src.agents.Agent import BaseAgent
-from src.losses.LossFunctions import DiceLoss
-import torch.optim as optim
-from IPython.display import clear_output
-from src.utils.helper import dump_pickle_file, load_pickle_file
 import os
 
-class Agent(BaseAgent):
+class Agent_NCA(BaseAgent):
     
     def initialize(self):
         super().initialize()
@@ -122,7 +118,7 @@ class Agent(BaseAgent):
             inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('repeat_factor'))
         return id, inputs, targets
 
-    def get_outputs(self, data, full_img=False):
+    def get_outputs(self, data, full_img=False, **kwargs):
         r"""Get the outputs of the model
             Args:
                 data (int, tensor, tensor): id, inputs, targets
@@ -152,7 +148,7 @@ class Agent(BaseAgent):
         return image[...,0:3]
 
 class Pool():
-    r"""Keeps the previous outputs of the model in stored in a pool
+    r"""Keeps the previous outputs of the model stored in a pool
     """
     def __init__(self):
         self.pool = {}

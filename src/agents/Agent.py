@@ -1,5 +1,3 @@
-from src.utils.helper import saveNiiGz
-
 import nibabel as nib
 import numpy as np
 import os
@@ -8,9 +6,7 @@ import torch.optim as optim
 from src.utils.helper import convert_image
 from src.losses.LossFunctions import DiceLoss
 import seaborn as sns
-from src.datasets.Nii_Gz_Dataset_lowpass import Nii_Gz_Dataset_lowPass
 import math
-import matplotlib.pyplot as plt
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -34,7 +30,6 @@ class BaseAgent():
             self.scheduler = []
             for m in range(len(self.model)):
                 self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr')))#self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
         else:
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
@@ -46,7 +41,6 @@ class BaseAgent():
                 loss (torch)
                 epoch (int) 
         """
-        #clear_output()
         print(epoch, "loss =", loss.item())
         self.exp.save_model()
         self.exp.write_scalar('Loss/train', loss, epoch)
@@ -87,25 +81,17 @@ class BaseAgent():
         data = self.prepare_data(data)
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
-        #targets = targets.int()
         loss = 0
         loss_ret = {}
-        #print(outputs.shape)
         if len(outputs.shape) == 5:
             for m in range(outputs.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
-                #if m == 0:
-                #    loss_loc = loss_loc * 100
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
         else:
             for m in range(outputs.shape[-1]):
-                #print(outputs[..., m])
-                #print(targets[..., m])
                 if 1 in targets[..., m]:
                     loss_loc = loss_f(outputs[..., m], targets[..., m])
-                    #if m == 0:
-                    #    loss_loc = loss_loc * 100
                     loss = loss + loss_loc
                     loss_ret[m] = loss_loc.item()
 
@@ -122,9 +108,6 @@ class BaseAgent():
                 los_log ([loss]): Array of losses
         """
         for key in loss_log.keys():
-            #print(loss_log)
-            #print(sum(loss_log[key]))
-            #print(len(loss_log[key]))
             if len(loss_log[key]) != 0:
                 average_loss = sum(loss_log[key]) / len(loss_log[key])
             else:
@@ -137,7 +120,6 @@ class BaseAgent():
             Args:
                 loss_log ({name: loss}: Dictionary of losses
         """
-        #loss_log = np.array(loss_log)
         print(loss_log)
         sns.set_theme()
         plot = sns.scatterplot(x=loss_log.keys(), y=loss_log.values())
@@ -161,7 +143,7 @@ class BaseAgent():
                 self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
                 self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
-        # ADD AGAIN TODO
+        # TODO: ADD AGAIN 
         #for param in self.model.parameters():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
@@ -226,20 +208,19 @@ class BaseAgent():
         """
         return image
 
-    def ood_evaluation(self, ood_cases=["random_noise", "random_spike", "random_anitrosopy"], epoch=0):
-        print("OOD EVALUATION")
-        dataset_train = self.exp.dataset
-        diceLoss = DiceLoss(useSigmoid=True)
-        for augmentation in ood_cases:
-            dataset_eval = Nii_Gz_Dataset_lowPass(aug_type=augmentation)
-            self.exp.dataset = dataset_eval
-            loss_log = self.test(diceLoss, tag='ood/' + str(augmentation) + '/')
-            #img_plot = self.plot_results_byPatient(loss_log)
-            #self.exp.write_figure('Patient/dice', img_plot, epoch)
-            for key in loss_log.keys():
-                self.exp.write_scalar('ood/Dice/' + str(key) + ", " + str(augmentation), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-                self.exp.write_histogram('ood/Dice/' + str(key) + ", " + str(augmentation) + '/byPatient', np.fromiter(loss_log[key].values(), dtype=float), epoch)
-        self.exp.dataset = dataset_train
+
+    #def ood_evaluation(self, ood_cases=["random_noise", "random_spike", "random_anitrosopy"], epoch=0):
+    #    print("OOD EVALUATION")
+    #    dataset_train = self.exp.dataset
+    #    diceLoss = DiceLoss(useSigmoid=True)
+    #    for augmentation in ood_cases:
+    #        dataset_eval = Nii_Gz_Dataset(aug_type=augmentation)
+    #        self.exp.dataset = dataset_eval
+    #        loss_log = self.test(diceLoss, tag='ood/' + str(augmentation) + '/')
+    #        for key in loss_log.keys():
+    #            self.exp.write_scalar('ood/Dice/' + str(key) + ", " + str(augmentation), sum(loss_log[key].values())/len(loss_log[key]), epoch)
+    #            self.exp.write_histogram('ood/Dice/' + str(key) + ", " + str(augmentation) + '/byPatient', np.fromiter(loss_log[key].values(), dtype=float), epoch)
+    #    self.exp.dataset = dataset_train
 
 
     def labelVariance(self, images, median, img_mri, img_id, targets):
@@ -252,30 +233,10 @@ class BaseAgent():
         stdd = stdd / images.shape[0]
         stdd = np.sqrt(stdd)
 
-        #print(stdd.shape)
+        print("NQM Score: ", np.sum(stdd) / np.sum(median))
 
+        # Save files refactor
         if False:
-            for i in range(20):
-                plt.imshow(stdd[0, :, :, i, 0])
-                plt.colorbar()
-                plt.show()
-                print(img.shape)
-                plt.imshow(img_mri[0, :, :, i, 0], cmap='gray')
-                plt.show()
-        else:
-            print(np.sum(stdd) / np.sum(median), ",")
-            #plt.imshow(stdd[0, :, :, 20, 0])
-            #plt.show()
-            #mean = sum(loss_log.values())/len(loss_log)
-            #stdd = 0
-            #for e in loss_log.values():
-            #    stdd = stdd + pow(e - mean, 2)
-            #stdd = stdd / len(loss_log)
-            #stdd = math.sqrt(stdd)
-
-        
-        #print(id, nib_save.shape)
-        if True:
             nib_save = np.expand_dims(img_mri[0, ..., 0], axis=-1) 
             nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
             nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_image.nii.gz"))
@@ -322,15 +283,10 @@ class BaseAgent():
                 save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
             for i, data in enumerate(dataloader):
-                #data = dataset.__getitem__(i)
                 data = self.prepare_data(data, eval=True)
                 data_id, inputs, _ = data
                 outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
-                #if type(data_id) is list:
-                #    id = data_id[0]
-                #    slice = 0
-                #else:
                 if isinstance(data_id, str):
                     _, id, slice = dataset.__getname__(data_id).split('_')
                 else:
@@ -342,12 +298,12 @@ class BaseAgent():
                         slice = None
 
 
-                if pseudo_ensemble:
+                if pseudo_ensemble: # 5 + 5 times
                     outputs2, _ = self.get_outputs(data, full_img=True, tag="1")
                     outputs3, _ = self.get_outputs(data, full_img=True, tag="2")
                     outputs4, _ = self.get_outputs(data, full_img=True, tag="3")
                     outputs5, _ = self.get_outputs(data, full_img=True, tag="4")
-                    if True:
+                    if True: 
                         outputs6, _ = self.get_outputs(data, full_img=True, tag="5")
                         outputs7, _ = self.get_outputs(data, full_img=True, tag="6")
                         outputs8, _ = self.get_outputs(data, full_img=True, tag="7")
@@ -355,16 +311,11 @@ class BaseAgent():
                         outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
                         stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
 
-                        #print(stack.shape)
                         outputs, _ = torch.median(stack, dim=0)
                         self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
 
-
-                        
                     else:
                         outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
-
-                #print(id)
 
                 # --------------- 2D ---------------------
                 if dataset.slice is not None:
@@ -377,22 +328,6 @@ class BaseAgent():
 
                                 if math.isnan(loss_log[m][patient_id]):
                                     loss_log[m][patient_id] = 0
-
-                                # save img
-                                #label_out = torch.sigmoid(patient_3d_image[..., 0])
-                                #label_out[label_out < 0.5] = 0
-                                #label_out[label_out > 0.5] = 1
-                                #nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + ".nii.gz"))
-
-                                #nib_save = nib.Nifti1Image(torch.sigmoid(patient_real_Img[..., 0])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_real.nii.gz"))
-
-                                #nib_save = nib.Nifti1Image(patient_3d_label[..., 0]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                #nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/Data/Prostate/Hippocampus/UNet/", str(len(loss_log[0])) + "_ground.nii.gz"))
-
-                                #print(loss_log[m])
-                                #print(patient_id + ", " + str(m) + ", " + str(loss_log[m][patient_id]))
                                 out = out + str(loss_log[m][patient_id]) + ", "
                             else:
                                 out = out + " , "
@@ -401,15 +336,15 @@ class BaseAgent():
 
                     if patient_3d_image == None:
                         patient_id = id
-                        patient_3d_image = outputs.detach().cpu()#[:, :, :, 0] #:4
-                        patient_3d_label = targets.detach().cpu()#[:, :, :, 0]
+                        patient_3d_image = outputs.detach().cpu()
+                        patient_3d_label = targets.detach().cpu()
                         patient_real_Img = inputs.detach().cpu()
                     else:
-                        patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()))#[:, :, :, 0])) #:4
-                        patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))#[:, :, :, 0])) #:4
-                        patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))#[:, :, :, 0])) #:4
+                        patient_3d_image = torch.vstack((patient_3d_image, outputs.detach().cpu()))
+                        patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))
+                        patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))
                     # Add image to tensorboard
-                    if i in save_img: #np.random.random() < chance:
+                    if i in save_img: 
                         self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                         convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
                         self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
@@ -423,22 +358,21 @@ class BaseAgent():
                     patient_id = id
                     print(patient_id)
 
+                    print(patient_3d_image.shape,patient_3d_label.shape )
                     for m in range(patient_3d_image.shape[-1]):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
                         print(",",loss_log[m][patient_id])
-                        #print(m, patient_id, loss_log[m][patient_id])
-                        
                         # Add image to tensorboard
-                        if True: #i in save_img and  #np.random.random() < chance:
+                        if True: 
                             if len(patient_3d_label.shape) == 4:
                                 patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
-                            #print(patient_3d_label.shape)
                             self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                             convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
                             self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
                             self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
                             encode_image=False), self.exp.currentStep)
 
+                            # Save samples refactor
                             if False:
                                 label_out = torch.sigmoid(patient_3d_image[0, ...])
                                 label_out[label_out < 0.5] = 0
@@ -452,14 +386,11 @@ class BaseAgent():
                                 nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
                                 nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_ground.nii.gz"))
 
-                    #if math.isnan(loss_log[m][patient_id]):
-                    #    loss_log[m][patient_id] = 0
-
             if dataset.slice is not None:
                 out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
-                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() # ,mask = patient_3d_label[...,4].bool()
+                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() 
                         out = out + str(loss_log[m][patient_id]) + ", "
                     else:
                         out = out + " , "

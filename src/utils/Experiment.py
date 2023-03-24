@@ -67,8 +67,6 @@ class Experiment():
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
             self.agent.load_state(model_path)
-
-        #self.setup()
     
     def set_size(self):
         if isinstance(self.config['input_size'][0], tuple):
@@ -100,7 +98,6 @@ class Experiment():
         model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep), 'model.pth')
         if os.path.exists(model_path):
             self.agent.load_model(model_path)
-            #self.model.load_state_dict(torch.load(model_path))
 
     def save_model(self):
         r"""TODO: Same as for reload -> move to better location
@@ -108,7 +105,6 @@ class Experiment():
         model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep+1))
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
-        #self.model.load_state_dict(torch.load(model_path))
 
     def current_step(self):
         r"""Find out the initial epoch by checking the saved models"""
@@ -188,7 +184,6 @@ class DataSplit():
     def __init__(self, path_image, path_label, data_split, dataset):
         self.images = self.split_files(self.getFilesInFolder(path_image, dataset), data_split)
         self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split)
-        #print("Data Split: ", self.images)
 
     def get_images(self, state):
         r"""Returns the images of selected state
@@ -239,5 +234,5 @@ class DataSplit():
                 path (String): Path to folder
                 dataset (Dataset)
         """
-        return  dataset.getFilesInPath(path) #os.path.listdir(path) # length [f for f in os.path.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        return  dataset.getFilesInPath(path) 
     

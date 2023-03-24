@@ -1,7 +1,5 @@
 from torch.utils.data import Dataset
 from src.datasets.Data_Instance import Data_Container
-import cv2
-import numpy as np
 
 class Dataset_Base(Dataset):
     r"""Base class for any dataset within this project

@@ -3,16 +3,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
  
-class BasicNCA(nn.Module):
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard"):
-        super(BasicNCA, self).__init__()
+class SegNCA(nn.Module):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=64, init_method="standard"):
+        super(SegNCA, self).__init__()
 
         self.device = device
         self.channel_n = channel_n
-        self.input_channels = input_channels
 
-        self.fc0 = nn.Linear(channel_n*3, hidden_size)
+        self.conv = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.fc0 = nn.Linear(channel_n, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
+        self.p0 = nn.Conv2d(hidden_size, hidden_size, kernel_size=1, stride=1, padding=0, padding_mode="reflect")
+        self.p1 = nn.Conv2d(hidden_size, hidden_size, kernel_size=1, stride=1, padding=0, padding_mode="reflect")
+        self.p2 = nn.Conv2d(hidden_size, hidden_size, kernel_size=1, stride=1, padding=0, padding_mode="reflect")
         with torch.no_grad():
             self.fc1.weight.zero_()
 
@@ -30,7 +33,7 @@ class BasicNCA(nn.Module):
             conv_weights = conv_weights.view(1,1,3,3).repeat(self.channel_n, 1, 1, 1)
             return F.conv2d(x, conv_weights, padding=1, groups=self.channel_n)
 
-        dx = np.outer([1, 2, 1], [-1, 0, 1]) / 8.0  # Sobel filter
+        dx = np.outer([1, 2, 1], [-1, 0, 1]) / 8.0 
         dy = dx.T
 
         y1 = _perceive_with(x, dx)
@@ -41,10 +44,18 @@ class BasicNCA(nn.Module):
     def update(self, x_in, fire_rate, angle):
         x = x_in.transpose(1,3)
 
-        dx = self.perceive(x, angle)
+        dx = self.conv(x)
         dx = dx.transpose(1,3)
         dx = self.fc0(dx)
         dx = F.relu(dx)
+        dx = dx.transpose(1,3)
+        dx = self.p0(dx)
+        dx = F.relu(dx)
+        dx = self.p1(dx)
+        dx = F.relu(dx)
+        dx = self.p2(dx)
+        dx = F.relu(dx)
+        dx = dx.transpose(1,3)
         dx = self.fc1(dx)
 
         if fire_rate is None:
@@ -62,5 +73,5 @@ class BasicNCA(nn.Module):
     def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
         for step in range(steps):
             x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
-            x = torch.concat((x[...,:self.input_channels], x2[...,self.input_channels:]), 3)
+            x = torch.concat((x[...,:1], x2[...,1:]), 3)
         return x

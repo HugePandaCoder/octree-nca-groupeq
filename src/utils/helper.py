@@ -12,7 +12,8 @@ import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import io
 import datetime
-import random
+import nibabel as nib
+import os
 
 def dump_pickle_file(file, path):
     with open(path, 'wb') as output_file:
@@ -41,23 +42,15 @@ def load_json_file(path):
         file =  json.load(input_file)
     return file
 
-# https://stackoverflow.com/questions/7821518/matplotlib-save-plot-to-numpy-array
 def get_img_from_fig(fig, dpi=400, size = (1700, 1700)):
     buf = io.BytesIO()
 
-    #min_size = min(size)
     size_inch = fig.get_size_inches()
     size_inch = size / size_inch
     dpi = int(min(size_inch))
     fig.savefig(buf, format="png", dpi=dpi)
     buf.seek(0)
-    #buf = buf[1].tobytes()
-    #img_arr = np.frombuffer(buf.getvalue(), dtype=np.uint8)
-    #buf.close()
     img = buf
-    #img = cv2.imdecode(img_arr, 1)
-    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #print(img.read())
     return img.read()
 
 def visualize_perceptive_range(img, cell_fire_rate=0.5):
@@ -97,43 +90,20 @@ def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, 
        y = int(math.floor(tile_pos/tiles))
        if tile_pos < 3:
            tile = tile
-           if False:
-               min = np.min(tile)
-               max = np.max(tile)
-               tile = tile - min
-               tile = np.log2(tile)
-               min = np.min(tile)
-               max = np.max(tile)
-               tile = tile-min / (-min+max)
  
        img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
  
        tile_pos_lab = tile_pos -3
        if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
            tile_label = labels[:,:,tile_pos_lab]
-           print(tile_label.shape)
-           print(labels.shape)
  
            gx_m1, gy_m1 = np.gradient(tile_label)
-           #gx_m2, gy_m2 = np.gradient(label[:,:, 1])
            tile_label = gy_m1 * gy_m1 + gx_m1 * gx_m1
            tile_label[tile_label != 0.0] = 1
            img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y][tile_label == 1] = 1000
-  
-   output_log = False
- 
-   if output_log:
-       print(np.max(img_all_channels))
-       print(np.min(img_all_channels))
- 
  
    img_all_channels_blue = img_all_channels.copy()
    img_all_channels_blue[img_all_channels_blue!=0] = 0
-   #img_all_channels_blue[img_all_channels_blue >= 1] = 0
-   #img_all_channels_blue[img_all_channels_blue <= 0] = 0
-   #if output_log:
-   #    print(np.max(img_all_channels_blue))
-   #    print(np.min(img_all_channels_blue))
  
    img_all_channels_red = img_all_channels.copy()
    img_all_channels_red[img_all_channels_red > 0] = 0
@@ -141,56 +111,26 @@ def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, 
    img_all_channels_green = img_all_channels.copy()
    img_all_channels_green[img_all_channels_green < 0] = 0
  
-   if output_log:
-       print("REEED")
-       print(np.max(img_all_channels_red))
-       print(np.min(img_all_channels_red))
-   #img_all_channels_red = img_all_channels_red * -1
-   #img_all_channels_red = img_all_channels_red / 20
  
    img_all_channels_red = img_all_channels_red * -1
    img_all_channels_red[img_all_channels_red <= min] = (img_all_channels_red[img_all_channels_red <= min] / min) * 0.5
    img_all_channels_red[img_all_channels_red > min] = np.log(img_all_channels_red[img_all_channels_red > min]) / np.log(max) + 0.5
-   #img_all_channels_red = np.log(img_all_channels_red)
-   #img_all_channels_red = (img_all_channels_red) / np.log(divide_by)
  
- 
-   if output_log:
-       print(np.max(img_all_channels_red))
-       print(np.min(img_all_channels_red))
- 
-       print("GREEEN")
-       print(np.max(img_all_channels_green))
-       print(np.min(img_all_channels_green))
-   #img_all_channels_green = img_all_channels_green / 20
-   #img_all_channels_green = np.log(img_all_channels_green)
-   #img_all_channels_green = (img_all_channels_green) / np.log(divide_by)
    img_all_channels_green[img_all_channels_green <= min] = (img_all_channels_green[img_all_channels_green <= min] / min) * 0.5
    img_all_channels_green[img_all_channels_green > min] = np.log(img_all_channels_green[img_all_channels_green > min]) / np.log(max) + 0.5
-   if output_log:
-       print(np.max(img_all_channels_green))
-       print(np.min(img_all_channels_green))
- 
-       print("TEEESTST")
+
   
    img_all_channels = np.stack([img_all_channels_blue, img_all_channels_green, img_all_channels_red], axis=2)
-  
-   #img_all_channels = np.stack([img_all_channels for _ in range(3)], axis=2)
- 
+
    max = np.max(img_all_channels)   
    min = np.min(img_all_channels)
-   #print(max)
-   #print(min)
-   #img_all_channels = np.log(img_all_channels)
-   #img_all_channels = (img_all_channels - min) / (-min+max)
- 
-   #print(img_all_channels.shape)
+
    if replace_firstImage is not None:
        print("YES")
        print(replace_firstImage.shape)
        img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
  
-   return img_all_channels# encode()
+   return img_all_channels
 
 
 
@@ -199,9 +139,6 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
         img = img[0]
     if labels is not None and labels.shape[0] == 1:
         labels = labels[0]
-
-    #tiles = int(math.ceil(math.sqrt(img.shape[2])))
-    #img_all_channels = img.reshape(3,-1)#np.reshape(img, (img.shape[0]*tiles, img.shape[1]*tiles))
 
     tiles = int(math.ceil(math.sqrt(img.shape[2])))
     img_x = img.shape[0]
@@ -217,14 +154,6 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
         y = int(math.floor(tile_pos/tiles))
         if tile_pos < 3:
             tile = tile
-            if False:
-                min = np.min(tile)
-                max = np.max(tile)
-                tile = tile - min
-                tile = np.log2(tile)
-                min = np.min(tile)
-                max = np.max(tile)
-                tile = tile-min / (-min+max)
 
         img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
 
@@ -240,7 +169,6 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
     time_b = datetime.datetime.now()
     print((time_b - time_a).microseconds)
     
-    #plt.tight_layout()
     if np.min(size) != 0:
         figsize_def = (10, int(10*size[1]/size[0]))
         print(figsize_def)
@@ -256,10 +184,6 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
     axes.margins(x= 0, y=0)
 
     fig.colorbar(pos, cax=cax)
-    #fig.subplots_adjust(bottom=0, top=1, left=0.1, right=0.9)
-    #fig.tight_layout()
-    #plt.show()
-    #fig.subplots_adjust(top=1) #, bottom=0.05
     
     fig.canvas.draw()
 
@@ -276,9 +200,9 @@ def convert_image(img, prediction, label=None, encode_image=True):
         Args:
 
             """
-    img_rgb = img #+ label[0:3]
+    img_rgb = img 
     img_rgb = img_rgb - np.amin(img_rgb)
-    img_rgb = img_rgb * img_rgb #* img_rgb * 3
+    img_rgb = img_rgb * img_rgb 
     img_rgb = img_rgb / np.amax(img_rgb)
     label_pred = prediction
 
@@ -288,7 +212,6 @@ def convert_image(img, prediction, label=None, encode_image=True):
     label = np.amax(label, axis=-1)
     label_pred = np.amax(label_pred, axis=-1)
     label_pred = np.stack((label_pred, label_pred, label_pred), axis=-1)
-    #label = np.expand_dims(label, axis=-1)
     
 
     # Overlay Label on Image
@@ -305,13 +228,9 @@ def convert_image(img, prediction, label=None, encode_image=True):
         img_rgb[img_rgb < 0] = 0
         label_pred[label_pred < 0] = 0
 
-        #if label_pred.shape != img_rgb.shape:
         sobel = cv2.resize(sobel, dsize=(label_pred.shape[0], label_pred.shape[1])) 
         img_rgb = cv2.resize(img_rgb, dsize=(label_pred.shape[0], label_pred.shape[1]), interpolation=cv2.INTER_NEAREST) 
 
-        #print(sobel.shape)
-        #print(img_rgb.shape)
-        #print(label_pred.shape)
         img_rgb = np.clip((sobel  * 0.8 + img_rgb + 0.5 * label_pred), 0, 1)
 
     if sum(img_rgb.shape) > 2000:
@@ -336,10 +255,6 @@ def orderArray(array):
 
 
 def encode(img_rgb, size=(150, 100)):
-
-    #size_inch = img_rgb.shape
-    #factor_img = size_inch[0] / size_inch[1]
-    #factor_space = size[0] / size[1]
 
     size_img = img_rgb.shape
     size_img = [1, size_img[0]/ size_img[1]]

@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
  
 class GrowingNCA(nn.Module):
@@ -67,12 +66,10 @@ class GrowingNCA(nn.Module):
 
         x = x.transpose(1,3)
 
-        #print(torch.unique(life_mask))
 
         return x
 
     def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
         for step in range(steps):
-            x = self.update(x, fire_rate, angle)#.clone() #[...,3:][...,3:]
-            #x = torch.concat((x[...,:3], x2[...,3:]), 3)
+            x = self.update(x, fire_rate, angle)
         return x

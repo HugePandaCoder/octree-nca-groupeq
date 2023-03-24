@@ -1,20 +1,21 @@
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
  
 class BasicNCA3D(nn.Module):
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard"):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False):
         super(BasicNCA3D, self).__init__()
 
         self.device = device
         self.channel_n = channel_n
+        self.input_channels = input_channels
 
         # One Input
         self.fc0 = nn.Linear(channel_n*2, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
-        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        padding = int((kernel_size-1) / 2)
+
+        self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=padding, padding_mode="reflect", groups=channel_n)
         self.bn = torch.nn.BatchNorm3d(hidden_size)
         
         with torch.no_grad():
@@ -29,7 +30,6 @@ class BasicNCA3D(nn.Module):
 
     def perceive(self, x, angle):
         y1 = self.p0(x)
-        #y2 = self.p1(x)
         y = torch.cat((x,y1),1)
         return y
 
@@ -39,7 +39,6 @@ class BasicNCA3D(nn.Module):
         dx = dx.transpose(1,4)
         dx = self.fc0(dx)
         dx = dx.transpose(1,4)
-        #print(dx.shape)
         dx = self.bn(dx)
         dx = dx.transpose(1,4)
         dx = F.relu(dx)
@@ -60,5 +59,5 @@ class BasicNCA3D(nn.Module):
     def forward(self, x, steps=10, fire_rate=0.5, angle=0.0):
         for step in range(steps):
             x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
-            x = torch.concat((x[...,0:1], x2[...,1:]), 4)
+            x = torch.concat((x[...,0:self.input_channels], x2[...,self.input_channels:]), 4)
         return x

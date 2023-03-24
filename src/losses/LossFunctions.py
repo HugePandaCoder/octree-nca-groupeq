@@ -2,10 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from matplotlib import pyplot as plt
-import math
-#import torchmetrics as tm
 
-# TODO: License -> https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
 class DiceLoss(torch.nn.Module):
     def __init__(self, useSigmoid = True):
         self.useSigmoid = useSigmoid
@@ -16,13 +13,8 @@ class DiceLoss(torch.nn.Module):
             input = torch.sigmoid(input)  
         input = torch.flatten(input)
         target = torch.flatten(target)
-        #print(target.unique())
         intersection = (input * target).sum()
-        #print(2.*intersection)
-        #print(input.sum())
-        #print(target.sum())
         dice = (2.*intersection + smooth)/(input.sum() + target.sum() + smooth)
-        #print(dice)
 
         return 1 - dice
 
@@ -45,17 +37,6 @@ class DiceLoss_mask(torch.nn.Module):
 
         return 1 - dice
 
-class DiceLossV2(torch.nn.Module):
-    def __init__(self, useSigmoid = True):
-        self.useSigmoid = useSigmoid
-        super(DiceLossV2, self).__init__()
-
-    def forward(self, input, target, smooth=1):
-        if self.useSigmoid:
-            input = torch.sigmoid(input)  
-
-        return 1 - tm.functional.dice(input, target)
-
 
 
 class DiceBCELoss_Distance(torch.nn.Module):
@@ -74,9 +55,7 @@ class DiceBCELoss_Distance(torch.nn.Module):
         for x in range(size[1]):
             for y in range(size[2]):
                 a = np.array((x, y))
-                img_gr[x, y] =  np.linalg.norm(a - b) / max_distance#1 - math.sqrt(math.pow(((size[1]/2) - x) / (size[1]/2) + ((size[2]/2) - y) / (size[2]/2), 2)) /2
-        #plt.imshow(img_gr)
-        #plt.show()
+                img_gr[x, y] =  np.linalg.norm(a - b) / max_distance
 
         return img_gr
 
@@ -134,10 +113,6 @@ class BCELoss(torch.nn.Module):
         BCE = torch.nn.functional.binary_cross_entropy(input, target, reduction='mean')
         return BCE
 
-# MIT License
-#
-# Copyright (c) 2017 Ke Ding
-# https://github.com/DingKe/pytorch_workplace/blob/master/focalloss/loss.py
 class FocalLoss(torch.nn.Module):
 
     def __init__(self, gamma=2, eps=1e-7):
