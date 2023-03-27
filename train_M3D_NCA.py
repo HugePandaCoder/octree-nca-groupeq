@@ -9,40 +9,32 @@ from src.agents.Agent_M3D_NCA import Agent_M3D_NCA
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'M:/Models/M3D_NCA_Test21',
+    'model_path': r'M:/Models/M3D_NCA_Test22',
     'device':"cuda:0",
-    'n_epoch': 1000,
-    # Learning rate
+    'unlock_CPU': True,
+    # Optimizer
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': [10, 10],
-    # Training config
+    # Training
     'save_interval': 10,
     'evaluate_interval': 10,
-    # Model config
+    'n_epoch': 1000,
+    'batch_duplication': 1,
+    # Model
     'channel_n': 16,        # Number of CA state channels
-    'target_padding': 0,    # Number of pixels used to pad the target image border
-    'target_size': 64,
+    'inference_steps': [10, 10],
     'cell_fire_rate': 0.5,
-    'cell_fire_interval':None,
     'batch_size': 4,
-    'repeat_factor': 1,
     'input_channels': 1,
-    'input_fixed': True,
     'output_channels': 1,
     'hidden_size': 64,
+    'train_model':1,
     # Data
     'input_size': [(32, 32, 26),(64, 64, 52)], # 
     'scaling_factor': 2,
     'data_split': [0.7, 0, 0.3], 
-    'pool_chance': 0.5,
-    'Persistence': False,
-    'unlock_CPU': True,
     'keep_original_scale': True,
-    'rescale': True,
-    'train_model':1,
 }
 ]
 

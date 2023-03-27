@@ -10,7 +10,7 @@ class Data_Container():
 
     def get_data(self, key):
         r"""Try to get data that has already been processed
-            Args:
+            #Args
                 key: The key of the data
                 data: The data to be loaded
         """
@@ -21,7 +21,7 @@ class Data_Container():
 
     def set_data(self, key, data):
         r"""Store data to load later
-            Args:
+            #Args
                 key: The key of the data
                 data: The data to be stored
         """

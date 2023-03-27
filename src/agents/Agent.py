@@ -17,12 +17,14 @@ class BaseAgent():
 
     def set_exp(self, exp):
         r"""Set experiment of agent and initialize.
-            Args:
+            #Args
                 exp (Experiment): Experiment class"""
         self.exp = exp
         self.initialize()
 
     def initialize(self):
+        r"""Initialize agent with optimizers and schedulers
+        """
         self.device = torch.device(self.exp.get_from_config('device'))
         # If stacked NCAs
         if isinstance(self.model, list):
@@ -37,7 +39,7 @@ class BaseAgent():
 
     def printIntermediateResults(self, loss, epoch):
         r"""Prints intermediate results of training and adds it to tensorboard
-            Args: 
+            #Args 
                 loss (torch)
                 epoch (int) 
         """
@@ -47,7 +49,7 @@ class BaseAgent():
 
     def prepare_data(self, data, eval=False):
         r"""If any data preparation needs to be done do it here. 
-            Args:
+            #Args
                 data ([]): The data to be processed.
                 eval (Bool): Whether or not its for evaluation. 
         """
@@ -55,7 +57,7 @@ class BaseAgent():
 
     def get_outputs(self, data, **kwargs):
         r"""Get the output of the model.
-            Args: 
+            #Args 
                 data (torch): The data to be passed to the model.
         """
         return self.model(data)
@@ -72,10 +74,10 @@ class BaseAgent():
 
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step
-            Args:
+            #Args
                 data (tensor, tensor): inputs, targets
                 loss_f (torch.nn.Module): loss function
-            Returns:
+            #Returns:
                 loss item
         """
         data = self.prepare_data(data)
@@ -103,7 +105,7 @@ class BaseAgent():
 
     def intermediate_results(self, epoch, loss_log):
         r"""Write intermediate results to tensorboard
-            Args:
+            #Args
                 epoch (int): Current epoch
                 los_log ([loss]): Array of losses
         """
@@ -117,7 +119,7 @@ class BaseAgent():
 
     def plot_results_byPatient(self, loss_log):
         r"""Plot losses in a per patient fashion with seaborn to display in tensorboard.
-            Args:
+            #Args
                 loss_log ({name: loss}: Dictionary of losses
         """
         print(loss_log)
@@ -130,7 +132,7 @@ class BaseAgent():
     def intermediate_evaluation(self, dataloader, epoch):
         r"""Do an intermediate evluation during training 
             .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
-            Args:
+            #Args
                 dataset (Dataset)
                 epoch (int)
         """
@@ -150,7 +152,7 @@ class BaseAgent():
 
     def getAverageDiceScore(self, useSigmoid=True, tag = "", pseudo_ensemble=False):
         r"""Get the average Dice test score.
-            Returns:
+            #Returns:
                 return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=[], pseudo_ensemble=pseudo_ensemble)
@@ -174,7 +176,7 @@ class BaseAgent():
 
     def train(self, dataloader, loss_f):
         r"""Execute training of model
-            Args:
+            #Args
                 dataloader (Dataloader): contains training data
                 loss_f (nn.Model): The loss for training"""
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
@@ -203,7 +205,7 @@ class BaseAgent():
 
     def prepare_image_for_display(self, image):
         r"""Prepare an image to be displayed in tensorboard. Since images need to be in a specific format these modifications these can be done here.
-            Args:
+            #Args
                 image (torch): The image to be processed for display. 
         """
         return image
@@ -224,6 +226,14 @@ class BaseAgent():
 
 
     def labelVariance(self, images, median, img_mri, img_id, targets):
+        r"""Calculate variance over all predictions
+            #Args
+                images (torch): The inferences
+                median: The median of all inferences
+                img_mri: The mri image
+                img_id: The id of the image
+                targets: The target segmentation
+        """
         mean = np.sum(images, axis=0) / images.shape[0]
         stdd = 0
         for id in range(images.shape[0]):
@@ -264,24 +274,26 @@ class BaseAgent():
     def test(self, loss_f, save_img = None, tag='test/img/', pseudo_ensemble=False, **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
-            Args:
+            #Args
                 dataset (Dataset)
                 loss_f (torch.nn.Module)
                 steps (int): Number of steps to do for inference
         """
         with torch.no_grad():
+            # Prepare dataset for testing
             dataset = self.exp.dataset
             self.exp.set_model_state('test')
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
+            # Prepare arrays
             patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
             patient_real_Img = None
             loss_log = {}
             for m in range(self.output_channels):
                 loss_log[m] = {}
-
             if save_img == None:
                 save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
+            # For each data sample
             for i, data in enumerate(dataloader):
                 data = self.prepare_data(data, eval=True)
                 data_id, inputs, _ = data
@@ -298,6 +310,7 @@ class BaseAgent():
                         slice = None
 
 
+                # Run inference 10 times to create a pseudo ensemble
                 if pseudo_ensemble: # 5 + 5 times
                     outputs2, _ = self.get_outputs(data, full_img=True, tag="1")
                     outputs3, _ = self.get_outputs(data, full_img=True, tag="2")
@@ -310,7 +323,8 @@ class BaseAgent():
                         outputs9, _ = self.get_outputs(data, full_img=True, tag="8")
                         outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
                         stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
-
+                        
+                        # Calculate median
                         outputs, _ = torch.median(stack, dim=0)
                         self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
 
@@ -319,7 +333,7 @@ class BaseAgent():
 
                 # --------------- 2D ---------------------
                 if dataset.slice is not None:
-                    # Calculate Dice
+                    # If next patient
                     if id != patient_id and patient_id != None:
                         out = patient_id + ", "
                         for m in range(patient_3d_image.shape[3]):
@@ -333,7 +347,7 @@ class BaseAgent():
                                 out = out + " , "
                         print(out)
                         patient_id, patient_3d_image, patient_3d_label = id, None, None
-
+                    # If first slice of volume
                     if patient_3d_image == None:
                         patient_id = id
                         patient_3d_image = outputs.detach().cpu()
@@ -372,11 +386,9 @@ class BaseAgent():
                             self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
                             encode_image=False), self.exp.currentStep)
 
-                            # Save samples refactor
+                            # REFACTOR: Save predictions
                             if False:
                                 label_out = torch.sigmoid(patient_3d_image[0, ...])
-                                label_out[label_out < 0.5] = 0
-                                label_out[label_out > 0.5] = 1
                                 nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
                                 nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + ".nii.gz"))
 
@@ -386,6 +398,7 @@ class BaseAgent():
                                 nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
                                 nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_ground.nii.gz"))
 
+            # If 2D
             if dataset.slice is not None:
                 out = patient_id + ", "
                 for m in range(patient_3d_image.shape[3]):
@@ -395,16 +408,20 @@ class BaseAgent():
                     else:
                         out = out + " , "
                 print(out)
+            # Print dice score per label
             for key in loss_log.keys():
                 if len(loss_log[key]) > 0:
                     print("Average Dice Loss 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
                     print("Standard Deviation 3d: " + str(key) + ", " + str(standard_deviation(loss_log[key])))
 
-
             self.exp.set_model_state('train')
             return loss_log
 
 def standard_deviation(loss_log):
+    r"""Calculate the standard deviation
+        #Args
+            loss_log: losses
+    """
     mean = sum(loss_log.values())/len(loss_log)
     stdd = 0
     for e in loss_log.values():

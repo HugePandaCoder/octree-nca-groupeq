@@ -4,7 +4,7 @@ from src.agents.Agent_NCA import Agent
 class Agent_Growing(Agent):
     def get_outputs(self, data, full_img=False):
         r"""Get the outputs of the model
-            Args:
+            #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
         id, inputs, targets = data

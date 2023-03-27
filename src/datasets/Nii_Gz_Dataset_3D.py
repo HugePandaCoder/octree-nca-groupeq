@@ -14,9 +14,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
     def getFilesInPath(self, path):
         r"""Get files in path ordered by id and slice
-            Args:
+            #Args
                 path (string): The path which should be worked through
-            Returns:
+            #Returns:
                 dic (dictionary): {key:patientID, {key:sliceID, img_slice}
         """
         dir_files = os.listdir(os.path.join(path))
@@ -41,7 +41,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
     def load_item(self, path):
         r"""Loads the data of an image of a given path.
-            Args:
+            #Args
                 path (String): The path to the nib file to be loaded."""
         return nib.load(path).get_fdata()
 
@@ -55,6 +55,13 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return result
 
     def preprocessing3d(self, img, isLabel=False):
+        r"""Preprocess data to fit the required shape
+            #Args
+                img (numpy): Image data
+                isLabel (numpy): Whether or not data is label
+            #Returns:
+                img (numpy): numpy array
+        """
         if not isLabel:
             # TODO: Currently only single volume, no multi phase
             if len(img.shape) == 4:
@@ -65,12 +72,16 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img_shape = img.shape
         padded[0:img_shape[0], 0:img_shape[1], 0:img_shape[2]] = img
 
-        if isLabel and len(padded.shape) == 3:
-            padded = np.expand_dims(padded, axis=-1)
-
         return padded
 
     def rescale3d(self, img, isLabel=False):
+        r"""Rescale input image to fit training size
+            #Args
+                img (numpy): Image data
+                isLabel (numpy): Whether or not data is label
+            #Returns:
+                img (numpy): numpy array
+        """
         if len(self.size) == 3:
             size = (self.size[0], self.size[1])
             size2 = (self.size[2], self.size[0])
@@ -96,6 +107,14 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return img_resized
 
     def patchify(self, img, label):
+        r"""Take a patch of the input. This should be used instead of rescaling if global information is not required.
+            #Args
+                img (numpy): Image data
+                label (numpy): Label data
+            #Returns:
+                img (numpy): Image data
+                label (numpy): Label data
+        """
         size = self.size
 
         containsMask = (random.uniform(0, 1) < self.exp.get_from_config('priotize_masks'))
@@ -116,6 +135,12 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return img, label
     
     def badLabels(self, label, shifts=None):
+        r"""Create artifically badly labbelled data
+            #Args
+                label (numpy): Label data
+            #Returns:
+                label (numpy): Label data
+        """
         if shifts is None:
             shift_x = random.randint(10, 30)
             shift_y = random.randint(10, 30)
@@ -141,6 +166,14 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
 
     def randomReplaceByNoise(self, img, label):
+        r"""Replace parts of the image by noise
+            #Args
+                img (numpy): Image data
+                label (numpy): Label data
+            #Returns:
+                img (numpy): Image data
+                label (numpy): Label data
+        """
         axis = random.randint(0, 2)
         side = random.randint(0, 2)
         slides = random.randint(0, int(img.shape[axis]/3)) 
@@ -180,9 +213,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
     def __getitem__(self, idx):
         r"""Standard get item function
-            Args:
+            #Args
                 idx (int): Id of item to loa
-            Returns:
+            #Returns:
                 img (numpy): Image data
                 label (numpy): Label data
         """
@@ -221,6 +254,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
                 if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
                     img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
+                # Add dim to label
+                if len(label.shape) == 3:
+                    label = np.expand_dims(label, axis=-1)
             img_id = "_" + str(p_id) + "_" + str(img_id)
             
             self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))

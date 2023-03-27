@@ -5,6 +5,15 @@ import torch.nn.functional as F
  
 class SegNCA(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=64, init_method="standard"):
+        r"""Init function
+            #Args:
+                channel_n: number of channels per cell
+                fire_rate: random activation of each cell
+                device: device to run model on
+                hidden_size: hidden size of model
+                input_channels: number of input channels
+                init_method: Weight initialisation function
+        """
         super(SegNCA, self).__init__()
 
         self.device = device
@@ -26,8 +35,11 @@ class SegNCA(nn.Module):
         self.fire_rate = fire_rate
         self.to(self.device)
 
-    def perceive(self, x, angle):
-
+    def perceive(self, x):
+        r"""Perceptive function, combines 2 sobel x and y outputs with the identity of the cell
+            #Args:
+                x: image
+        """
         def _perceive_with(x, weight):
             conv_weights = torch.from_numpy(weight.astype(np.float32)).to(self.device)
             conv_weights = conv_weights.view(1,1,3,3).repeat(self.channel_n, 1, 1, 1)
@@ -41,7 +53,12 @@ class SegNCA(nn.Module):
         y = torch.cat((x,y1,y2),1)
         return y
 
-    def update(self, x_in, fire_rate, angle):
+    def update(self, x_in, fire_rate):
+        r"""Update function runs same nca rule on each cell of an image with a random activation
+            #Args:
+                x_in: image
+                fire_rate: random activation of cells
+        """
         x = x_in.transpose(1,3)
 
         dx = self.conv(x)
@@ -70,8 +87,14 @@ class SegNCA(nn.Module):
 
         return x
 
-    def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
+    def forward(self, x, steps=64, fire_rate=0.5):
+        r"""Foward function applies update function s times leaving input channels unchanged
+            #Args:
+                x: image
+                steps: number of steps to run update
+                fire_rate: random activation rate of each cell
+        """
         for step in range(steps):
-            x2 = self.update(x, fire_rate, angle).clone() #[...,3:][...,3:]
+            x2 = self.update(x, fire_rate).clone() #[...,3:][...,3:]
             x = torch.concat((x[...,:1], x2[...,1:]), 3)
         return x

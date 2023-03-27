@@ -5,6 +5,15 @@ import torch.nn.functional as F
  
 class GrowingNCA(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, init_method="standard"):
+        r"""Init function
+            #Args:
+                channel_n: number of channels per cell
+                fire_rate: random activation of each cell
+                device: device to run model on
+                hidden_size: hidden size of model
+                input_channels: number of input channels
+                init_method: Weight initialisation function
+        """
         super(GrowingNCA, self).__init__()
 
         self.device = device
@@ -24,8 +33,11 @@ class GrowingNCA(nn.Module):
         self.fire_rate = fire_rate
         self.to(self.device)
 
-    def perceive(self, x, angle):
-
+    def perceive(self, x):
+        r"""Perceptive function, combines 2 sobel x and y outputs with the identity of the cell
+            #Args:
+                x: image
+        """
         def _perceive_with(x, weight):
             conv_weights = torch.from_numpy(weight.astype(np.float32)).to(self.device)
             conv_weights = conv_weights.view(1,1,3,3).repeat(self.channel_n, 1, 1, 1)
@@ -42,11 +54,16 @@ class GrowingNCA(nn.Module):
     def alive(self, x):
         return F.max_pool2d(x[:, 3:4, :, :], kernel_size=5, stride=1, padding=2) > 0.1
 
-    def update(self, x_in, fire_rate, angle):
+    def update(self, x_in, fire_rate):
+        r"""Update function runs same nca rule on each cell of an image with a random activation
+            #Args:
+                x_in: image
+                fire_rate: random activation of cells
+        """
         x = x_in.transpose(1,3)
         pre_life_mask = self.alive(x)
 
-        dx = self.perceive(x, angle)
+        dx = self.perceive(x)
         dx = dx.transpose(1,3)
         dx = self.fc0(dx)
         dx = F.relu(dx)
@@ -69,7 +86,13 @@ class GrowingNCA(nn.Module):
 
         return x
 
-    def forward(self, x, steps=64, fire_rate=0.5, angle=0.0):
+    def forward(self, x, steps=64, fire_rate=0.5):
+        r"""Forward function applies update function s times 
+            #Args:
+                x: image
+                steps: number of steps to run update
+                fire_rate: random activation rate of each cell
+        """
         for step in range(steps):
-            x = self.update(x, fire_rate, angle)
+            x = self.update(x, fire_rate)
         return x

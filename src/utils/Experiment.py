@@ -11,6 +11,7 @@ class Experiment():
     """
     def __init__(self, config, dataset, model, agent):
         self.projectConfig = config
+        self.add_required_to_config()
         self.config = self.projectConfig[0]
         self.dataset = dataset
         self.model = model
@@ -22,6 +23,18 @@ class Experiment():
             self.setup()
         self.currentStep = self.currentStep+1
         self.set_current_config()
+
+    def add_required_to_config(self):
+        r"""Fills config with basic setup if not defined otherwise
+        """
+        if 'Persistence' not in self.projectConfig[0]:
+            self.projectConfig[0]['Persistence'] = False
+        if 'batch_duplication' not in self.projectConfig[0]:
+            self.projectConfig[0]['batch_duplication'] = 1
+        if 'keep_original_scale' not in self.projectConfig[0]:
+            self.projectConfig[0]['keep_original_scale'] = False
+        if 'rescale' not in self.projectConfig[0]:
+            self.projectConfig[0]['rescale'] = True
 
     def setup(self):
         r"""Initial experiment setup when first started
@@ -123,7 +136,7 @@ class Experiment():
         
     def get_from_config(self, tag):
         r"""Get from config
-            Args:
+            #Args
                 tag (String): Key of requested value
         """
         if tag in self.config.keys():
@@ -186,22 +199,22 @@ class DataSplit():
         self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split)
 
     def get_images(self, state):
-        r"""Returns the images of selected state
-            Args:
+        r"""#Returns the images of selected state
+            #Args
                 state (String): Can be 'train', 'val', 'test'
         """
         return self.get_data(self.images[state])
 
     def get_labels(self, state):
-        r"""Returns the labels of selected state
-            Args:
+        r"""#Returns the labels of selected state
+            #Args
                 state (String): Can be 'train', 'val', 'test'
         """
         return self.get_data(self.labels[state])
 
     def get_data(self, data):
-        r"""Returns the data in a list rather than the stored folder strucure
-            Args:
+        r"""#Returns the data in a list rather than the stored folder strucure
+            #Args
                 data ({}): Dictionary ordered by {id, {slice, img_name}}
         """
         lst = data.values()
@@ -213,7 +226,7 @@ class DataSplit():
     def split_files(self, files, data_split):
         r"""Split files into train, val, test according to definition
             while keeping patients slics together.
-            Args:
+            #Args
                 files ({int, {int, string}}): {id, {slice, img_name}}
                 data_split ([float, float, float]): Sum of 1
         """
@@ -230,7 +243,7 @@ class DataSplit():
 
     def getFilesInFolder(self, path, dataset):
         r"""Get files in folder
-            Args:
+            #Args
                 path (String): Path to folder
                 dataset (Dataset)
         """

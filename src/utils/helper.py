@@ -16,33 +16,66 @@ import nibabel as nib
 import os
 
 def dump_pickle_file(file, path):
+    r"""Dump pickle file in path
+        #Args:
+            file: the file to dump
+            path: location to dump file to
+    """
     with open(path, 'wb') as output_file:
         pickle.dump(file, output_file)
 
 def load_pickle_file(path):
+    r"""Load pickle file
+        #Args:
+            path: location to dump file to
+    """
     with open(path, 'rb') as input_file:
         file = pickle.load(input_file)
     return file
 
 def dump_compressed_pickle_file(file, path):
+    r"""Dump compressed pickle file in path
+        #Args:
+            file: the file to dump
+            path: location to dump file to
+    """
     with bz2.BZ2File(path, 'w') as output_file:
         pickle.dump(file, output_file)
 
 def load_compressed_pickle_file(path):
+    r"""Load compressed pickle file
+        #Args:
+            path: location to dump file to
+    """
     with bz2.BZ2File(path, 'rb') as input_file:
         file = pickle.load(input_file)
     return file
     
 def dump_json_file(file, path):
+    r"""Dump json file in path
+        #Args:
+            file: the json file to dump
+            path: location to dump file to
+    """
     with open(path, 'w') as output_file:
         json.dump(file, output_file)
 
 def load_json_file(path):
+    r"""Load json file
+        #Args:
+            path: location to dump file to
+    """
     with open(path, 'r') as input_file:
         file =  json.load(input_file)
     return file
 
 def get_img_from_fig(fig, dpi=400, size = (1700, 1700)):
+    r"""Convert figure to img
+        #Args:
+            fig: the figure to convert
+            dpi: the dots per inch when converting
+            size: the preferred output size
+    """
     buf = io.BytesIO()
 
     size_inch = fig.get_size_inches()
@@ -54,7 +87,11 @@ def get_img_from_fig(fig, dpi=400, size = (1700, 1700)):
     return img.read()
 
 def visualize_perceptive_range(img, cell_fire_rate=0.5):
-
+    r"""Visualize the current perceptive range by replicating the activation
+        #Args:
+            img: the input image
+            cell_fire_rate: the chance a cell is active
+    """
     if np.max(img) == 0:
         img[int(img.shape[0] / 2), int(img.shape[1] / 2), :] = 1
     else:
@@ -74,67 +111,83 @@ def visualize_perceptive_range(img, cell_fire_rate=0.5):
 
 
 def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, labels = None):
-   if img.shape[0] == 1:
-       img = img[0]
-   if labels is not None and labels.shape[0] == 1:
-       labels = labels[0]
- 
-   tiles = int(math.ceil(math.sqrt(img.shape[2])))
-   img_x = img.shape[0]
-   img_y = img.shape[1]
- 
-   img_all_channels = np.zeros((img_x*tiles, img_y*tiles))
-   for tile_pos in range(img.shape[2]):
-       tile = img[:,:,tile_pos]
-       x = tile_pos%tiles
-       y = int(math.floor(tile_pos/tiles))
-       if tile_pos < 3:
-           tile = tile
- 
-       img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
- 
-       tile_pos_lab = tile_pos -3
-       if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
-           tile_label = labels[:,:,tile_pos_lab]
- 
-           gx_m1, gy_m1 = np.gradient(tile_label)
-           tile_label = gy_m1 * gy_m1 + gx_m1 * gx_m1
-           tile_label[tile_label != 0.0] = 1
-           img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y][tile_label == 1] = 1000
- 
-   img_all_channels_blue = img_all_channels.copy()
-   img_all_channels_blue[img_all_channels_blue!=0] = 0
- 
-   img_all_channels_red = img_all_channels.copy()
-   img_all_channels_red[img_all_channels_red > 0] = 0
- 
-   img_all_channels_green = img_all_channels.copy()
-   img_all_channels_green[img_all_channels_green < 0] = 0
- 
- 
-   img_all_channels_red = img_all_channels_red * -1
-   img_all_channels_red[img_all_channels_red <= min] = (img_all_channels_red[img_all_channels_red <= min] / min) * 0.5
-   img_all_channels_red[img_all_channels_red > min] = np.log(img_all_channels_red[img_all_channels_red > min]) / np.log(max) + 0.5
- 
-   img_all_channels_green[img_all_channels_green <= min] = (img_all_channels_green[img_all_channels_green <= min] / min) * 0.5
-   img_all_channels_green[img_all_channels_green > min] = np.log(img_all_channels_green[img_all_channels_green > min]) / np.log(max) + 0.5
+    r"""Visualize all nca channels in a simplified setup
+        #Args:
+            img: the input image
+            replace_firstImage: what to replace first image with
+            min: min value
+            max: max value
+            labels: whether to show label overlay
+    """
+    if img.shape[0] == 1:
+        img = img[0]
+    if labels is not None and labels.shape[0] == 1:
+        labels = labels[0]
 
-  
-   img_all_channels = np.stack([img_all_channels_blue, img_all_channels_green, img_all_channels_red], axis=2)
+    tiles = int(math.ceil(math.sqrt(img.shape[2])))
+    img_x = img.shape[0]
+    img_y = img.shape[1]
 
-   max = np.max(img_all_channels)   
-   min = np.min(img_all_channels)
+    img_all_channels = np.zeros((img_x*tiles, img_y*tiles))
+    for tile_pos in range(img.shape[2]):
+        tile = img[:,:,tile_pos]
+        x = tile_pos%tiles
+        y = int(math.floor(tile_pos/tiles))
+        if tile_pos < 3:
+            tile = tile
 
-   if replace_firstImage is not None:
-       print("YES")
-       print(replace_firstImage.shape)
-       img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
+        img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y] = tile
+
+        tile_pos_lab = tile_pos -3
+        if labels is not None and labels.shape[2] > tile_pos_lab and tile_pos_lab > 0:
+            tile_label = labels[:,:,tile_pos_lab]
+
+            gx_m1, gy_m1 = np.gradient(tile_label)
+            tile_label = gy_m1 * gy_m1 + gx_m1 * gx_m1
+            tile_label[tile_label != 0.0] = 1
+            img_all_channels[x*img_x:(x+1)*img_x, y*img_y:(y+1)*img_y][tile_label == 1] = 1000
+
+    img_all_channels_blue = img_all_channels.copy()
+    img_all_channels_blue[img_all_channels_blue!=0] = 0
+
+    img_all_channels_red = img_all_channels.copy()
+    img_all_channels_red[img_all_channels_red > 0] = 0
+
+    img_all_channels_green = img_all_channels.copy()
+    img_all_channels_green[img_all_channels_green < 0] = 0
+
+
+    img_all_channels_red = img_all_channels_red * -1
+    img_all_channels_red[img_all_channels_red <= min] = (img_all_channels_red[img_all_channels_red <= min] / min) * 0.5
+    img_all_channels_red[img_all_channels_red > min] = np.log(img_all_channels_red[img_all_channels_red > min]) / np.log(max) + 0.5
+
+    img_all_channels_green[img_all_channels_green <= min] = (img_all_channels_green[img_all_channels_green <= min] / min) * 0.5
+    img_all_channels_green[img_all_channels_green > min] = np.log(img_all_channels_green[img_all_channels_green > min]) / np.log(max) + 0.5
+
+
+    img_all_channels = np.stack([img_all_channels_blue, img_all_channels_green, img_all_channels_red], axis=2)
+
+    max = np.max(img_all_channels)   
+    min = np.min(img_all_channels)
+
+    if replace_firstImage is not None:
+        print("YES")
+        print(replace_firstImage.shape)
+        img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
  
-   return img_all_channels
+    return img_all_channels
 
 
 
 def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels = None, color_map="nipy_spectral", size = (1700, 1700)):
+    r"""Visualize all nca channels in a nicer but slower setup (interactive vs recording)
+        #Args:
+            img: the input image
+            replace_firstImage: what to replace first image with
+            min: min value
+            max: max value
+            labels: whether to show label overlay
+    """
     if img.shape[0] == 1:
         img = img[0]
     if labels is not None and labels.shape[0] == 1:
@@ -197,7 +250,7 @@ def visualize_all_channels(img, replace_firstImage = None, divide_by=3, labels =
 def convert_image(img, prediction, label=None, encode_image=True):
     r"""Convert an image plus an optional label into one image that can be dealt with by Pillow and similar to display
         TODO: Write nicely and optmiize output, currently only for displaying intermediate results
-        Args:
+        #Args
 
             """
     img_rgb = img 
@@ -255,7 +308,11 @@ def orderArray(array):
 
 
 def encode(img_rgb, size=(150, 100)):
-
+    r"""Encode an image
+        #Args:
+            img_rgb: the input image
+            size: size of the image
+    """
     size_img = img_rgb.shape
     size_img = [1, size_img[0]/ size_img[1]]
 
@@ -276,6 +333,13 @@ def encode(img_rgb, size=(150, 100)):
     return img_rgb
 
 def saveNiiGz(self, output, label, patient_id, path):
+    r"""Save NiiGz file
+        #Args:
+            output: the image / output of nca
+            label: the label of the image
+            patient_id: the patient id
+            path: the path to save file in 
+    """
     output = np.round(output.cpu().detach().numpy())
     output[output < 0] = 0
     output[output > 0] = 1

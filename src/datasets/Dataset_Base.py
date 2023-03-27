@@ -12,17 +12,21 @@ class Dataset_Base(Dataset):
 
     def set_size(self, size):
         r"""Set size of images
-            Args:
+            #Args
                 size (int, int): Size of images
         """
         self.size = tuple(size)
 
     def set_experiment(self, experiment):
+        r"""Set experiment
+            #Args
+                experiment: The experiment class
+        """
         self.exp = experiment
 
     def setPaths(self, images_path, images_list, labels_path, labels_list):
         r"""Set the important image paths
-            Args:
+            #Args
                 images_path (String): The path to the images
                 images_list ([String]): A list of the names of all images
                 labels_path (String): The path to the labels
@@ -37,7 +41,7 @@ class Dataset_Base(Dataset):
 
     def getImagePaths(self):
         r"""Get a list of all images in dataset
-            Returns:
+            #Returns:
                 list ([String]): List of images
         """
         return self.images_list
@@ -48,9 +52,9 @@ class Dataset_Base(Dataset):
 
     def getItemByName(self, name):
         r"""Get item by its name
-            Args:
+            #Args
                 name (String)
-            Returns:
+            #Returns:
                 item (tensor): The image tensor
         """
         idx = self.images_list.index(name)

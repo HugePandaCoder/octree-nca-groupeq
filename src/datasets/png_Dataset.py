@@ -1,20 +1,12 @@
-from torch.utils.data import Dataset, DataLoader
-from os import listdir
-from os.path import isfile, join
-import nibabel as nib
-import sys
-import numpy as np
 import cv2
 import os
-import matplotlib.pyplot as plt
-
 from  src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 
 class png_Dataset(Dataset_NiiGz_3D):
 
     def load_item(self, path):
         r"""Loads the data of an image of a given path.
-            Args:
+            #Args
                 path (String): The path to the nib file to be loaded."""
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
@@ -23,9 +15,9 @@ class png_Dataset(Dataset_NiiGz_3D):
 
     def __getitem__(self, idx):
         r"""Standard get item function
-            Args:
+            #Args
                 idx (int): Id of item to loa
-            Returns:
+            #Returns:
                 img (numpy): Image data
                 label (numpy): Label data
         """

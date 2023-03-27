@@ -1,4 +1,3 @@
-from torch.utils.data import Dataset
 from src.datasets.Dataset_Base import Dataset_Base
 import cv2
 import numpy as np
@@ -14,16 +13,16 @@ class Dataset_3D(Dataset_Base):
 
     def getImagePaths(self):
         r"""Get a list of all images in dataset
-            Returns:
+            #Returns:
                 list ([String]): List of images
         """
         return self.images_list
 
     def getItemByName(self, name):
         r"""Get item by its name
-            Args:
+            #Args
                 name (String)
-            Returns:
+            #Returns:
                 item (tensor): The image tensor
         """
         idx = self.images_list.index(name)
@@ -39,7 +38,7 @@ class Dataset_3D(Dataset_Base):
     
     def preprocessing(self, img, isLabel=False):
         r"""Preprocessing of image slices
-            Args:
+            #Args
                 img (tensor): the image
                 isLabel (boolean): Whether its a mask or an image
             .. warning:: Likely there is a preprocessing problem since performance is worse than the already preprocessed slices. ( I imagine the scaling functionality of the mask is at fault)

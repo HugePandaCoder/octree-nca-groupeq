@@ -1,14 +1,24 @@
 import torch
 import torch.nn.functional as F
-import numpy as np
-from matplotlib import pyplot as plt
 
 class DiceLoss(torch.nn.Module):
+    r"""Dice Loss
+    """
     def __init__(self, useSigmoid = True):
+        r"""Initialisation method of DiceLoss
+            #Args:
+                useSigmoid: Whether to use sigmoid
+        """
         self.useSigmoid = useSigmoid
         super(DiceLoss, self).__init__()
 
     def forward(self, input, target, smooth=1):
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+                smooth: Smoothing value
+        """
         if self.useSigmoid:
             input = torch.sigmoid(input)  
         input = torch.flatten(input)
@@ -19,11 +29,24 @@ class DiceLoss(torch.nn.Module):
         return 1 - dice
 
 class DiceLoss_mask(torch.nn.Module):
+    r"""Dice Loss mask, that only calculates on masked values
+    """
     def __init__(self, useSigmoid = True):
+        r"""Initialisation method of DiceLoss mask
+            #Args:
+                useSigmoid: Whether to use sigmoid
+        """
         self.useSigmoid = useSigmoid
         super(DiceLoss_mask, self).__init__()
 
     def forward(self, input, target, mask = None, smooth=1):
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+                smooth: Smoothing value
+                mask: The mask which defines which values to consider
+        """
         if self.useSigmoid:
             input = torch.sigmoid(input)  
         input = torch.flatten(input)
@@ -37,57 +60,24 @@ class DiceLoss_mask(torch.nn.Module):
 
         return 1 - dice
 
-
-
-class DiceBCELoss_Distance(torch.nn.Module):
-    def __init__(self, useSigmoid = True):
-        self.useSigmoid = useSigmoid
-        self.gradientScaling = None
-        super(DiceBCELoss_Distance, self).__init__()
-
-    def gradient(self, size):
-        img_gr = np.zeros((size[1], size[2]))
-
-        a = np.array((0,0))
-        b = np.array((size[1]/2, size[2]/2))        
-        max_distance = np.linalg.norm(a - b)
-
-        for x in range(size[1]):
-            for y in range(size[2]):
-                a = np.array((x, y))
-                img_gr[x, y] =  np.linalg.norm(a - b) / max_distance
-
-        return img_gr
-
-    def forward(self, input, target, smooth=1):
-
-        if self.gradientScaling is None:
-            self.gradientScaling = self.gradient(input.shape)
-
-        img_gr = np.stack([self.gradientScaling] * input.shape[0], axis=0)  
-        img_gr = torch.Tensor(img_gr).to(input.get_device())
-
-        input = torch.sigmoid(input)       
-        input = torch.flatten(input) 
-        target = torch.flatten(target)
-        distance = torch.flatten(img_gr)
-        
-        intersection = (input * target * distance).sum()                            
-        dice_loss = 1 - (2.*intersection + smooth)/(input.sum() + target.sum() + smooth)  
-        BCE = torch.mean((torch.nn.functional.binary_cross_entropy(input, target, reduction='none') * distance))
-        Dice_BCE = BCE + dice_loss
-        Dice_BCE = dice_loss
-
-        return Dice_BCE
-
-
 class DiceBCELoss(torch.nn.Module):
+    r"""Dice BCE Loss
+    """
     def __init__(self, useSigmoid = True):
+        r"""Initialisation method of DiceBCELoss
+            #Args:
+                useSigmoid: Whether to use sigmoid
+        """
         self.useSigmoid = useSigmoid
         super(DiceBCELoss, self).__init__()
 
     def forward(self, input, target, smooth=1):
-        
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+                smooth: Smoothing value
+        """
         input = torch.sigmoid(input)       
         input = torch.flatten(input) 
         target = torch.flatten(target)
@@ -100,12 +90,23 @@ class DiceBCELoss(torch.nn.Module):
         return Dice_BCE
 
 class BCELoss(torch.nn.Module):
+    r"""BCE Loss
+    """
     def __init__(self, useSigmoid = True):
+        r"""Initialisation method of DiceBCELoss
+            #Args:
+                useSigmoid: Whether to use sigmoid
+        """
         self.useSigmoid = useSigmoid
         super(BCELoss, self).__init__()
 
     def forward(self, input, target, smooth=1):
-        
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+                smooth: Smoothing value
+        """
         input = torch.sigmoid(input)       
         input = torch.flatten(input) 
         target = torch.flatten(target)
@@ -114,13 +115,24 @@ class BCELoss(torch.nn.Module):
         return BCE
 
 class FocalLoss(torch.nn.Module):
-
+    r"""Focal Loss
+    """
     def __init__(self, gamma=2, eps=1e-7):
+        r"""Initialisation method of DiceBCELoss
+            #Args:
+                gamma
+                eps
+        """
         super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.eps = eps
 
     def forward(self, input, target):
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+        """
         input = torch.sigmoid(input)
         input = torch.flatten(input)
         target = torch.flatten(target)
@@ -135,13 +147,24 @@ class FocalLoss(torch.nn.Module):
 
 
 class DiceFocalLoss(FocalLoss):
-
+    r"""Dice Focal Loss
+    """
     def __init__(self, gamma=2, eps=1e-7):
+        r"""Initialisation method of DiceBCELoss
+            #Args:
+                gamma
+                eps
+        """
         super(DiceFocalLoss, self).__init__()
         self.gamma = gamma
         self.eps = eps
 
     def forward(self, input, target):
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+        """
         input = torch.sigmoid(input)
         input = torch.flatten(input)
         target = torch.flatten(target)

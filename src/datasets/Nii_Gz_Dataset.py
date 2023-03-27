@@ -1,27 +1,21 @@
 from cmath import nan
-import torch
-from torch.utils.data import Dataset, DataLoader
 from os import listdir
-from os.path import isfile, join
+from os.path import join
 import nibabel as nib
-import sys
 import numpy as np
 import cv2
 import os
-import matplotlib.pyplot as plt
-from src.datasets.Data_Instance import Data_Container
 from src.datasets.Dataset_Base import Dataset_Base
 import random
-import torchio
 
 class Nii_Gz_Dataset(Dataset_Base):
     r""".. WARNING:: Deprecated, lacks functionality of 3D counterpart. Needs to be updated to be useful again."""
 
     def getFilesInPath(self, path):
         r"""Get files in path ordered by id and slice
-            Args:
+            #Args
                 path (string): The path which should be worked through
-            Returns:
+            #Returns:
                 dic (dictionary): {key:patientID, {key:sliceID, img_slice}
         """
         dir_files = listdir(join(path))
@@ -39,9 +33,9 @@ class Nii_Gz_Dataset(Dataset_Base):
 
     def __getitem__(self, idx):
         r"""Standard get item function
-            Args:
+            #Args
                 idx (int): Id of item to loa
-            Returns:
+            #Returns:
                 img (numpy): Image data
                 label (numpy): Label data
         """
@@ -83,7 +77,7 @@ class Nii_Gz_Dataset(Dataset_Base):
 
     def preprocessing(self, img, label):
         r"""Preprocessing of image
-            Args:
+            #Args
                 img (numpy): Image to preprocess
                 label (numpy): Label to preprocess
         """

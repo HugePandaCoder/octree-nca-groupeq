@@ -8,39 +8,30 @@ from src.utils.Experiment import Experiment
 from src.agents.Agent_NCA import Agent_NCA
 
 config = [{
+    # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_refactored_test6',
+    'model_path': r'/home/jkalkhof_locale/Documents/Models/NCA3d_refactored_test7',
     'device':"cuda:0",
-    'n_epoch': 30000,
-    # Learning rate
+    'unlock_CPU': True,
+    # Optimizer
     'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.5, 0.5),
-    'inference_steps': 20,
-    # Training config
+    # Training
     'save_interval': 10,
     'evaluate_interval': 1,
-    # Model config
-    'channel_n': 8,        # Number of CA state channels
-    'target_padding': 0,    # Number of pixels used to pad the target image border
-    'target_size': 64,
-    'cell_fire_rate': 0.5,
-    'cell_fire_interval':None,
+    'n_epoch': 30000,
     'batch_size': 4,
-    'repeat_factor': 1,
+    # Model
+    'channel_n': 8,        # Number of CA state channels
+    'inference_steps': 20,
+    'cell_fire_rate': 0.5,
     'input_channels': 1,
-    'input_fixed': True,
     'output_channels': 1,
     # Data
     'input_size': (64, 64, 52),
     'data_split': [0.7, 0, 0.3], 
-    'pool_chance': 0.5,
-    'Persistence': False,
-    'unlock_CPU': True,
-    'keep_original_scale': True,
-    'rescale': True,
 }
 ]
 

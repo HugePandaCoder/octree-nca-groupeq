@@ -5,7 +5,8 @@ from src.agents.Agent import BaseAgent
 import os
 
 class Agent_NCA(BaseAgent):
-    
+    """Base agent for training NCA models
+    """
     def initialize(self):
         super().initialize()
         self.input_channels = self.exp.get_from_config('input_channels')
@@ -23,11 +24,6 @@ class Agent_NCA(BaseAgent):
             loss = torch.sum(x) / xin_sum
         return loss
 
-    def loss_f(self, x, target):
-        r"""TODO 
-        """
-        return torch.mean(torch.pow(x[..., :3]-target, 2), [-2,-3,-1])
-
     def save_state(self, model_path):
         r"""Save state - Add Pool to state
         """
@@ -44,7 +40,7 @@ class Agent_NCA(BaseAgent):
 
     def pad_target_f(self, target, padding):
         r"""Creates a padding around the tensor 
-            Args:
+            #Args
                 target (tensor)
                 padding (int): padding on all 4 sides
         """
@@ -55,7 +51,7 @@ class Agent_NCA(BaseAgent):
 
     def make_seed(self, img):
         r"""Create a seed for the NCA - TODO: Currently only 0 input
-            Args:
+            #Args
                 shape ([int, int]): height, width shape
                 n_channels (int): Number of channels
         """
@@ -79,14 +75,14 @@ class Agent_NCA(BaseAgent):
 
         return seed
 
-    def repeatBatch(self, seed, target, repeat_factor):
+    def repeatBatch(self, seed, target, batch_duplication):
         r"""Repeat batch -> Useful for better generalisation when doing random activated neurons
-            Args:
+            #Args
                 seed (tensor): Seed for NCA
                 target (tensor): Target of Model
-                repeat_factor (int): How many times it should be repeated
+                batch_duplication (int): How many times it should be repeated
         """
-        return torch.Tensor.repeat_interleave(seed, repeat_factor, dim=0), torch.Tensor.repeat_interleave(target, repeat_factor, dim=0)
+        return torch.Tensor.repeat_interleave(seed, batch_duplication, dim=0), torch.Tensor.repeat_interleave(target, batch_duplication, dim=0)
 
     def getInferenceSteps(self):
         r"""Get the number of steps for inference, if its set to an array its a random value inbetween
@@ -102,9 +98,9 @@ class Agent_NCA(BaseAgent):
 
     def prepare_data(self, data, eval=False):
         r"""Prepare the data to be used with the model
-            Args:
+            #Args
                 data (int, tensor, tensor): identity, image, target mask
-            Returns:
+            #Returns:
                 inputs (tensor): Input to model
                 targets (tensor): Target of model
         """
@@ -115,12 +111,12 @@ class Agent_NCA(BaseAgent):
         if not eval:
             if self.exp.get_from_config('Persistence'):
                 inputs = self.pool.getFromPool(inputs, id, self.device)
-            inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('repeat_factor'))
+            inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('batch_duplication'))
         return id, inputs, targets
 
     def get_outputs(self, data, full_img=False, **kwargs):
         r"""Get the outputs of the model
-            Args:
+            #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
         id, inputs, targets = data
@@ -158,7 +154,7 @@ class Pool():
 
     def addToPool(self, outputs, ids):
         r"""Add a value to the pool
-            Args:
+            #Args
                 output (tensor): Output to store
                 idx (int): idx in dataset
                 exp (Experiment): All experiment related configs
@@ -169,7 +165,7 @@ class Pool():
 
     def getFromPool(self, inputs, ids, device):   
         r"""Get value from pool
-            Args:
+            #Args
                 item (int): idx of item
                 dataset (Dataset)
         """
