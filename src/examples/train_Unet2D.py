@@ -6,9 +6,9 @@ from src.losses.LossFunctions import DiceBCELoss
 from src.agents.Agent_UNet import Agent
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'model_path': r'/home/jkalkhof_locale/Documents/Models/UNet2D_Test12_Scaled',
+    'img_path': r"image_path",
+    'label_path': r"label_path",
+    'model_path': r'model_path',
     'device':"cuda:0",
     # Learning rate
     'lr': 1e-4,

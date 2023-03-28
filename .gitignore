@@ -1,7 +1,6 @@
 *.pyc
 *.png
 *.gif
-*.ipynb
 runs/
 html/
 M:/Models/*

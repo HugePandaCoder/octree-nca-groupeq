@@ -35,6 +35,12 @@ class Experiment():
             self.projectConfig[0]['keep_original_scale'] = False
         if 'rescale' not in self.projectConfig[0]:
             self.projectConfig[0]['rescale'] = True
+        if 'channel_n' not in self.projectConfig[0]:
+            self.projectConfig[0]['channel_n'] = 16
+        if 'cell_fire_rate' not in self.projectConfig[0]:
+            self.projectConfig[0]['cell_fire_rate'] = 0.5
+        if 'output_channels' not in self.projectConfig[0]:
+            self.projectConfig[0]['output_channels'] = 1
 
     def setup(self):
         r"""Initial experiment setup when first started

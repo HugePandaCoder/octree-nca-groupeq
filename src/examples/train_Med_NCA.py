@@ -1,4 +1,3 @@
-from re import I
 import torch
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.models.Model_BackboneNCA import BackboneNCA
@@ -7,9 +6,9 @@ from src.utils.Experiment import Experiment
 from src.agents.Agent_Med_NCA import Agent_Med_NCA
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'model_path': r'M:/Models/Med_NCA_Test15',
+    'img_path': r"image_path",
+    'label_path': r"label_path",
+    'model_path': r'model_path',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
