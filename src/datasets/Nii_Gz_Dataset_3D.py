@@ -229,6 +229,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             label_name, _, _ = self.labels_list[idx]
 
             img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, img_name))
+            # 2D
             if self.slice is not None:
                 if len(img.shape) == 4:
                     img = img[..., 0]
@@ -244,6 +245,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 if len(img.shape) == 4:
                     img = img[...,0] 
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
+            # 3D
             else:
                 if len(img.shape) == 4:
                     img = img[..., 0]
@@ -267,23 +269,24 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         size = self.size 
         
+        # Create patches from full resolution
         if self.exp.get_from_config('patchify') is not None and self.exp.get_from_config('patchify') is True and self.state == "train": 
             img, label = self.patchify(img, label) 
 
         if len(size) > 2:
             size = size[0:2] 
 
+        # Normalize image
         img = np.expand_dims(img, axis=0)
         if np.sum(img) > 0:
             img = znormalisation(img)
-        
         img = rescale(img) 
         img = img[0]
-        img[img == 0] = 0.0001 
 
-        # Merge labels
+        # Merge labels -> For now single label
         label[label > 0] = 1
 
+        # Number of defined channels
         if len(self.size) == 2:
             img = img[..., :self.exp.get_from_config('input_channels')]
             label = label[..., :self.exp.get_from_config('output_channels')]
