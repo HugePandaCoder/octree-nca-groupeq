@@ -171,8 +171,6 @@ def visualize_all_channels_fast(img, replace_firstImage = None, min=1, max=100, 
     min = np.min(img_all_channels)
 
     if replace_firstImage is not None:
-        print("YES")
-        print(replace_firstImage.shape)
         img_all_channels[0:img_x, 0:img_y, :] = replace_firstImage
  
     return img_all_channels

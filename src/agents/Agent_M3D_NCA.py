@@ -143,11 +143,11 @@ class Agent_M3D_NCA(Agent_Multi_NCA):
                     sign = nib_save<0
                     
                 nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) 
-                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(id)+"_"+tag+".nii.gz"))
+                nib.save(nib_save, os.path.join("path", str(id)+"_"+tag+".nii.gz"))
 
                 nib_save = torch.sigmoid(torch.from_numpy(np.transpose(img_mri_4d, (1, 2, 3, 0)))).numpy()
                 nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(id)+"_img.nii.gz"))
+                nib.save(nib_save, os.path.join("path", str(id)+"_img.nii.gz"))
         # During training run inference on patches
         else:
             # For number of downscaling levels

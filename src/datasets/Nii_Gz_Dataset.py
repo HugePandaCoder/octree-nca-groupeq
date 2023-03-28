@@ -46,18 +46,7 @@ class Nii_Gz_Dataset(Dataset_Base):
             img = nib.load(os.path.join(self.images_path, self.images_list[idx])).get_fdata()
             label = nib.load(os.path.join(self.labels_path, self.labels_list[idx])).get_fdata()[..., np.newaxis]
             img, label = self.preprocessing(img, label)
-
-            #Random flip data - wrong examples
-            if False:
-                if random.uniform(0, 1) < 0.7:
-                    print("ROLLLL; REMOVE THIS!!!!!!")
-                    label = np.roll(label, 10 + int(random.uniform(0, 30)), axis=1)
-                else:
-                    print("NOT FLIP")
-
-
             self.data.set_data(key=img_id, data=(img_id, img, label))
-
             out = self.data.get_data(key=img_id)
 
         img_id, img, label = out

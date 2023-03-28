@@ -249,23 +249,23 @@ class BaseAgent():
         if False:
             nib_save = np.expand_dims(img_mri[0, ..., 0], axis=-1) 
             nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_image.nii.gz"))
+            nib.save(nib_save, os.path.join("path", str(img_id) + "_image.nii.gz"))
             
             nib_save = np.expand_dims(targets[0, ..., 0], axis=-1) 
             nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_gt.nii.gz"))
+            nib.save(nib_save, os.path.join("path", str(img_id) + "_gt.nii.gz"))
 
             nib_save = np.expand_dims(stdd[0, ..., 0], axis=-1) 
             nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_variance.nii.gz"))
+            nib.save(nib_save, os.path.join("path", str(img_id) + "_variance.nii.gz"))
 
             nib_save = np.expand_dims(mean[0, ..., 0], axis=-1) 
             nib_save[nib_save > 0.5] = 1 
             nib_save[nib_save != 1] = 0
             nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_label.nii.gz"))
+            nib.save(nib_save, os.path.join("path", str(img_id) + "_label.nii.gz"))
         
-            f = open(os.path.join("/home/jkalkhof_locale/Documents/temp/Test4D/", str(img_id) + "_score.txt"), "a")
+            f = open(os.path.join("path", str(img_id) + "_score.txt"), "a")
             f.write(str(np.sum(stdd) / np.sum(median)))
             f.close()
 
@@ -390,13 +390,13 @@ class BaseAgent():
                             if False:
                                 label_out = torch.sigmoid(patient_3d_image[0, ...])
                                 nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + ".nii.gz"))
+                                nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + ".nii.gz"))
 
                                 nib_save = nib.Nifti1Image(torch.sigmoid(patient_3d_real_Img[0, ...])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_real.nii.gz"))
+                                nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_real.nii.gz"))
 
                                 nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                                nib.save(nib_save, os.path.join("/home/jkalkhof_locale/Documents/temp/ResultsImages/", str(len(loss_log[0])) + "_ground.nii.gz"))
+                                nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_ground.nii.gz"))
 
             # If 2D
             if dataset.slice is not None:

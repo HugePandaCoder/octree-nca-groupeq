@@ -284,8 +284,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
         # Merge labels
         label[label > 0] = 1
 
-
-        #print(img.shape, label.shape)
         if len(self.size) == 2:
             img = img[..., :self.exp.get_from_config('input_channels')]
             label = label[..., :self.exp.get_from_config('output_channels')]
