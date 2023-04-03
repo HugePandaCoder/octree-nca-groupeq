@@ -3,7 +3,7 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
-from src.utils.helper import convert_image
+from src.utils.helper import convert_image, merge_img_label_gt
 from src.losses.LossFunctions import DiceLoss
 import seaborn as sns
 import math
@@ -359,11 +359,15 @@ class BaseAgent():
                         patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))
                     # Add image to tensorboard
                     if i in save_img: 
-                        self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
-                        convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
-                        self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
-                        self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
-                        encode_image=False), self.exp.currentStep)
+                        self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
+                                           merge_img_label_gt(inputs.detach().cpu().numpy(), torch.sigmoid(outputs.detach().cpu().numpy()), targets.detach().cpu().numpy()), 
+                                           self.exp.currentStep)
+                                           
+                        #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
+                        #convert_image(self.prepare_image_for_display(inputs.detach().cpu()).numpy(), 
+                        #self.prepare_image_for_display(outputs.detach().cpu()).numpy(), 
+                        #self.prepare_image_for_display(targets.detach().cpu()).numpy(), 
+                        #encode_image=False), self.exp.currentStep)
                 # --------------------------------- 3D ----------------------------
                 else: 
                     patient_3d_image = outputs.detach().cpu()
@@ -380,11 +384,15 @@ class BaseAgent():
                         if True: 
                             if len(patient_3d_label.shape) == 4:
                                 patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
-                            self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
-                            convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                            self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                            self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                            encode_image=False), self.exp.currentStep)
+                            middle_slice = int(patient_3d_real_Img.shape[3] /2)
+                            self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
+                                            merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                            self.exp.currentStep)
+                            #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
+                            #convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                            #self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                            #self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
+                            #encode_image=False), self.exp.currentStep)
 
                             # REFACTOR: Save predictions
                             if False:
