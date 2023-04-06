@@ -26,6 +26,7 @@ class BaseAgent():
         r"""Initialize agent with optimizers and schedulers
         """
         self.device = torch.device(self.exp.get_from_config('device'))
+        self.batch_size = self.exp.get_from_config('batch_size')
         # If stacked NCAs
         if isinstance(self.model, list):
             self.optimizer = []
@@ -138,12 +139,13 @@ class BaseAgent():
         """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss)
-        for key in loss_log.keys():
-            img_plot = self.plot_results_byPatient(loss_log[key])
-            self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
-            if len(loss_log[key]) > 0:
-                self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-                self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
+        if loss_log is not None:
+            for key in loss_log.keys():
+                img_plot = self.plot_results_byPatient(loss_log[key])
+                self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
+                if len(loss_log[key]) > 0:
+                    self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
+                    self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
         # TODO: ADD AGAIN 
         #for param in self.model.parameters():

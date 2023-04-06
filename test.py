@@ -8,7 +8,7 @@ from src.agents.Agent_M3D_NCA import Agent_M3D_NCA
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'name': r'M3D_NCA_Run4',
+    'name': r'M3D_NCA_Run7',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer

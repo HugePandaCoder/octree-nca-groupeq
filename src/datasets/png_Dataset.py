@@ -1,6 +1,7 @@
 import cv2
 import os
 from  src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
+import numpy as np
 
 class png_Dataset(Dataset_NiiGz_3D):
 
@@ -9,8 +10,10 @@ class png_Dataset(Dataset_NiiGz_3D):
             #Args
                 path (String): The path to the nib file to be loaded."""
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
         img = img/256 
+        img = img * 2 -1
         return img
 
     def __getitem__(self, idx):

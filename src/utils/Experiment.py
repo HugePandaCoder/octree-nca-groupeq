@@ -62,7 +62,7 @@ class Experiment():
         # Create dirs
         os.makedirs(self.config['model_path'], exist_ok=True)
         os.makedirs(os.path.join(self.config['model_path'], 'models'), exist_ok=True)
-        os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
+        #os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
         # Create Run
         self.run = Run(experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
         self.projectConfig[0]['hash'] = self.run.hash
@@ -102,6 +102,7 @@ class Experiment():
         self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
 
         # Find most recent Experiment with name and reload
+        print(self.projectConfig[0]['hash'])
         self.run = Run(run_hash=self.projectConfig[0]['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
 
         self.config = self.projectConfig[0]
@@ -210,6 +211,7 @@ class Experiment():
 
         #image = np.uint8(image*256)
         image= np.squeeze(image)
+        image = np.clip(image, 0, 1)
         print(image.shape)
         image = PILImage.fromarray(np.uint8(image*255)).convert('RGB')
         #image = PILImage(image)
