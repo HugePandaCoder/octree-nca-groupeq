@@ -14,6 +14,8 @@ class png_Dataset(Dataset_NiiGz_3D):
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
         img = img/256 
         img = img * 2 -1
+        #img = img
+        #print("MINMAX", np.max(img), np.min(img))
         return img
 
     def __getitem__(self, idx):

@@ -88,12 +88,12 @@ class DiffusionNCA_fft2(nn.Module):
         dx = self.fc0_real(dx)
 
         dx = dx.transpose(1, 3)
-        dx = self.bn(dx)
+        #dx = self.bn(dx)
         dx = dx.transpose(1, 3)
         dx = F.leaky_relu(dx)
 
 
-        #dx = self.norm_real(dx)
+        dx = self.norm_real(dx)
         dx = self.drop0(dx)
 
         dx = self.fc1_real(dx)
@@ -113,7 +113,11 @@ class DiffusionNCA_fft2(nn.Module):
         #plt.imshow(alive_mask[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
 
-        dx = dx * alive_mask.transpose(1, 3)
+
+        if False:
+            dx = dx * alive_mask.transpose(1, 3)
+        
+        
         #post_life_mask = self.alive(x)
 
         dx = torch.complex(torch.split(dx, int(dx.shape[3]/2), dim=3)[0], torch.split(dx, int(dx.shape[3]/2), dim=3)[1])
@@ -165,7 +169,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         x = x.transpose(1, 3)
         print("FFT", torch.max(x), torch.min(x))
-        x = torch.fft.fft2(x, norm="forward")
+        x = torch.fft.fft2(x)#, norm="forward")
         #print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
         #min_real, max_real = -500, 500 #torch.max(x.real), torch.min(x.real)
         #min_imag, max_imag = -256, 256 #torch.max(x.imag), torch.min(x.imag)
@@ -180,7 +184,7 @@ class DiffusionNCA_fft2(nn.Module):
             x = x_update
         #x.real = x.real * (max_real - min_real) + min_real#(x.real - min_real) / max_real
         #x.imag = x.imag * (max_imag - min_imag) + min_imag
-        x = torch.fft.ifft2(x, norm="forward")
+        x = torch.fft.ifft2(x)#, norm="forward")
 
         x = x.transpose(1, 3)
         #raise Exception("STOP!")

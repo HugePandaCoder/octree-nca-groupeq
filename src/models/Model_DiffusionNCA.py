@@ -83,11 +83,14 @@ class DiffusionNCA(BackboneNCA):
 
         # Add pos
         if True:
+            #x_count = torch.linspace(0, 1, x.shape[1]).expand(x.shape[0], 1, x.shape[2], x.shape[1]).transpose(1,3)
+            #y_count = torch.linspace(0, 1, x.shape[2]).expand(x.shape[0], x.shape[1], 1, x.shape[2]).transpose(2,3)
             x_count = torch.linspace(0, 1, x.shape[1]).expand(x.shape[0], 1, x.shape[2], x.shape[1]).transpose(1,3)
-            y_count = torch.linspace(0, 1, x.shape[2]).expand(x.shape[0], x.shape[1], 1, x.shape[2]).transpose(2,3)
-
+            x_count = (x_count + torch.transpose(x_count, 1,2)) / 2
+            #y_count = torch.transpose(x_count, 2, 3)
             x[:, :, :, -2:-1] = x_count
-            x[:, :, :, -3:-2] = y_count
+            #x[:, :, :, -3:-2] = y_count
+
             #x[:, :, :, -6:-3] = x[:, :, :, 0:3]
 
 
@@ -98,12 +101,16 @@ class DiffusionNCA(BackboneNCA):
         #x = x.type(torch.cfloat)
         #if self.complex:
         #    x = torch.fft.fftn(x)
+
+        x_min, x_max = torch.min(x), torch.max(x)
+        x = (x - x_min) / (x_max - x_min) 
         for step in range(steps):
             #print(x.shape, scaled_t.shape)
             x_update = self.update(x, fire_rate).clone()
             #x = torch.concat((x_update[..., 0:-6], x[..., -6:]), 3)#x_update
             x = x_update
-            
+        x = x * (x_max - x_min) + x_min
+
             #x = torch.concat((x_update[..., :3], x[..., 3:4], x_update[..., 4:]), 3) # Leave 3:4
         #if self.complex:
         #    x = torch.fft.ifftn(x)

@@ -13,9 +13,9 @@ config = [{
     # Basic
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/", #img_align_celeba
-    'name': r'DiffusionNCA_Run131_fft_Emojis_Smiley_alivePulse_fixed',
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley
+    'name': r'DiffusionNCA_Run194_Celeb_fixed_rescale',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -23,22 +23,22 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 100,
-    'evaluate_interval': 100,
+    'save_interval': 10,
+    'evaluate_interval': 10,
     'n_epoch': 100000,
-    'batch_size': 36,
+    'batch_size': 18,
     # Model
     'channel_n': 16,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 64,
+    'inference_steps': 44,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
     'hidden_size': 128,
     # Data
-    'input_size': (36, 36),
-    'data_split': [0.9, 0, 0.1], 
-    'timesteps': 200,
+    'input_size': (72, 72),
+    'data_split': [0.01, 0, 1], 
+    'timesteps': 500,
     '2D': True,
 }
 ]
@@ -57,7 +57,7 @@ loss_function = DiceBCELoss()
 
 agent.train(data_loader, loss_function)
 
-#agent.getAverageDiceScore()
+#agent.generateSamples(samples=3)
 
 
 # %%

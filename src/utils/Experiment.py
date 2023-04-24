@@ -203,7 +203,7 @@ class Experiment():
         
         self.run.track(step=step, value=value, name=tag)
 
-    def write_img(self, tag, image, step):
+    def write_img(self, tag, image, step, context={}):
         r"""Write an image to tensorboard
         """
         
@@ -216,7 +216,7 @@ class Experiment():
         image = PILImage.fromarray(np.uint8(image*255)).convert('RGB')
         #image = PILImage(image)
         aim_image = Image(image=image, optimize=True, quality=50)
-        self.run.track(step=step, value=aim_image, name=tag)
+        self.run.track(step=step, value=aim_image, name=tag, context=context)
 
     def write_text(self, tag, text, step):
         r"""Write text to tensorboard
