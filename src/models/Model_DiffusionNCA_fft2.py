@@ -16,6 +16,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.drop0 = nn.Dropout(drop_out_rate)
         self.norm_real = nn.LayerNorm([img_size, img_size, hidden_size])
+        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
 
         # Complex
         self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
@@ -55,6 +56,8 @@ class DiffusionNCA_fft2(nn.Module):
         :return: residual updated vector
         """
         
+        #print("ALIVE_RATE", alive_rate)
+
         # Convert to Fourier
         #x = x_in.transpose(1, 3)
         #x = torch.fft.fft2(x)
@@ -78,6 +81,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         #plt.imshow(dx.real[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
+        #exit()
         #plt.imshow(dx.real[0, -1, :, :].detach().cpu().numpy())
         #plt.show()
 
@@ -93,7 +97,11 @@ class DiffusionNCA_fft2(nn.Module):
         dx = F.leaky_relu(dx)
 
 
-        dx = self.norm_real(dx)
+        #dx = self.norm_real(dx)
+        dx = dx.transpose(1, 3)
+        dx = self.norm_real2(dx)
+        dx = dx.transpose(1, 3)
+
         dx = self.drop0(dx)
 
         dx = self.fc1_real(dx)
@@ -106,12 +114,21 @@ class DiffusionNCA_fft2(nn.Module):
 
         #print(dx.shape)
         #print(alive_rate)
-        alive_mask = (alive >= alive_rate) & (alive <= (alive_rate + (1/dx.shape[3])*20))
         
+        if False:
+            alive_mask = (alive >= alive_rate) & (alive <= (alive_rate + (1/dx.shape[3])*10))
+        else:
+            alive_rate = alive_rate.expand_as(alive.transpose(0, 3))
+            alive_rate = alive_rate.transpose(0, 3)
+            #print("ALIVE", alive.shape, alive_rate.shape)
+            alive_mask = (alive >= alive_rate) & (alive <= (alive_rate + (1/dx.shape[3])*10))
+
         #print(alive.shape)
         #print(alive_mask.shape)
+        
         #plt.imshow(alive_mask[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
+        #exit()
 
 
         if False:
@@ -178,8 +195,11 @@ class DiffusionNCA_fft2(nn.Module):
 
         for step in range(steps):
             #print(x.shape, scaled_t.shape)
-            x_update = self.update(x, fire_rate, alive_rate=1-(step/x.shape[2])) #.clone()
             
+            #x_update = self.update(x, fire_rate, alive_rate=1-(step/x.shape[2])) 
+            x_update = self.update(x, fire_rate, alive_rate=t) 
+
+
             #x = torch.concat((x_update[..., 0:-6], x[..., -6:]), 3)#x_update
             x = x_update
         #x.real = x.real * (max_real - min_real) + min_real#(x.real - min_real) / max_real

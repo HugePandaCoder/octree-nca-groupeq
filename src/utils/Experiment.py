@@ -203,7 +203,7 @@ class Experiment():
         
         self.run.track(step=step, value=value, name=tag)
 
-    def write_img(self, tag, image, step, context={}):
+    def write_img(self, tag, image, step, context={}, normalize=False):
         r"""Write an image to tensorboard
         """
         
@@ -211,7 +211,11 @@ class Experiment():
 
         #image = np.uint8(image*256)
         image= np.squeeze(image)
-        image = np.clip(image, 0, 1)
+        if normalize:
+            img_min, img_max = np.min(image), np.max(image)
+            image = (image - img_min) / (img_max - img_min) 
+        else:
+            image = np.clip(image, 0, 1)
         print(image.shape)
         image = PILImage.fromarray(np.uint8(image*255)).convert('RGB')
         #image = PILImage(image)

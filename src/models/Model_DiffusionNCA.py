@@ -76,10 +76,16 @@ class DiffusionNCA(BackboneNCA):
         :return: updated input
         """
         #print(t)
+        x_min, x_max = torch.min(x), torch.max(x)
+        abs_max = torch.max(torch.abs(x_min), torch.abs(x_max))
+        #x = x/abs_max
+        
+        #x = (x - x_min) / (x_max - x_min) 
+        #x = x*2-1
+
         scaled_t = t.expand(1, x.shape[1], x.shape[2], x.shape[0])#,x.shape[2],1
         scaled_t = scaled_t.transpose(0, 3)
         x[:, :, :, -1:] = scaled_t
-
 
         # Add pos
         if True:
@@ -102,14 +108,15 @@ class DiffusionNCA(BackboneNCA):
         #if self.complex:
         #    x = torch.fft.fftn(x)
 
-        x_min, x_max = torch.min(x), torch.max(x)
-        x = (x - x_min) / (x_max - x_min) 
         for step in range(steps):
             #print(x.shape, scaled_t.shape)
             x_update = self.update(x, fire_rate).clone()
             #x = torch.concat((x_update[..., 0:-6], x[..., -6:]), 3)#x_update
             x = x_update
-        x = x * (x_max - x_min) + x_min
+        #x = x*abs_max
+        
+        #x = (x+1)/2
+        #x = x * (x_max - x_min) + x_min
 
             #x = torch.concat((x_update[..., :3], x[..., 3:4], x_update[..., 4:]), 3) # Leave 3:4
         #if self.complex:

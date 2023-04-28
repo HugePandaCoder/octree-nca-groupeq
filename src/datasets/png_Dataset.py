@@ -2,6 +2,9 @@ import cv2
 import os
 from  src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 import numpy as np
+import torchvision.transforms as T
+import torch
+
 
 class png_Dataset(Dataset_NiiGz_3D):
 
@@ -12,10 +15,18 @@ class png_Dataset(Dataset_NiiGz_3D):
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
-        img = img/256 
-        img = img * 2 -1
+        #img = img/256 
+        #img = img*2 -1
+        transform = T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        img = torch.from_numpy(img).to(torch.float64)
+        img = img.permute((2, 1, 0))
+        #print(img.shape)
+        img = transform(img)
+        img = img.permute((2, 1, 0))
+        #img = img * 2 -1
         #img = img
-        #print("MINMAX", np.max(img), np.min(img))
+        img = img/256/2.5 -1
+        print("MINMAX", torch.max(img), torch.min(img))
         return img
 
     def __getitem__(self, idx):
