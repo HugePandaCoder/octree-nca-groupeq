@@ -279,12 +279,12 @@ class Agent_Diffusion(Agent_NCA):
             #Returns:
                 return (float): Average Dice score of test set. """
         #diceLoss = DiceLoss(useSigmoid=useSigmoid)
-        self.test(tag="extra", samples=samples)
+        self.test(tag="extra", samples=samples, extra=True)
 
         #return loss_log
 
     @torch.no_grad()
-    def test(self, tag='0', samples=1, **kwargs):
+    def test(self, tag='0', samples=1, extra=False, **kwargs):
         # Generate sample
         size = self.exp.get_from_config('input_size')
         
@@ -314,7 +314,7 @@ class Agent_Diffusion(Agent_NCA):
                 output, _ = self.get_outputs(img_p, t = step)
                 img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                 img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-            self.exp.write_img('1', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+            self.exp.write_img(tag + '2', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
             #/2 +0.5
         if False:
             # Extra steps
@@ -343,9 +343,22 @@ class Agent_Diffusion(Agent_NCA):
                     img = self.p_sample(output, img[..., 0:self.exp.get_from_config('input_channels')], t, step)
                     img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
                 self.exp.write_img("extra_steps" + str(100 + (i+1)*100) + "%", img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy(), self.exp.currentStep)
-        if False:
+        if extra:
             for s in range(samples):
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*2, size[1]*2, self.exp.get_from_config('input_channels'))))
+                img = self.make_seed(noise)
+                for step in reversed(range(self.timesteps)):
+                    for i in range(1):
+                        t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                        img_p = 0, img, 0
+                        #print("NOISE HERE", torch.max(img), torch.min(img))
+                        output, _ = self.get_outputs(img_p, t = step)
+                        img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                        img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                self.exp.write_img("bigger_size", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+
+            for s in range(samples):
+                noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
                     for i in range(2):
@@ -355,4 +368,5 @@ class Agent_Diffusion(Agent_NCA):
                         output, _ = self.get_outputs(img_p, t = step)
                         img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                         img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-                self.exp.write_img("bigger_size", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+                self.exp.write_img(tag + "doubleSteps", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+                #/2 +0.5

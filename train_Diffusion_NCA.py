@@ -3,6 +3,7 @@ import torch
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
+from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
 from src.models.Model_DiffusionNCA_fft import DiffusionNCA_fft
 from src.models.Model_DiffusionNCA_fft2 import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
@@ -13,9 +14,9 @@ config = [{
     # Basic
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    'name': r'DiffusionNCA_Run249_CelebA_fixed_rescale_fourier_byT',
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/", #img_align_celeba, Emojis_Smiley, Emojis_Google
+    'name': r'DiffusionNCA_Run259_Smiley_fixed_rescale_Group_fft',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -37,7 +38,7 @@ config = [{
     'hidden_size': 256,
     # Data
     'input_size': (48, 48),
-    'data_split': [0.01, 0, 1], 
+    'data_split': [1, 0, 1], 
     'timesteps': 500,
     '2D': True,
 }
@@ -46,6 +47,7 @@ config = [{
 #dataset = Dataset_NiiGz_3D(slice=2)
 dataset= png_Dataset()
 device = torch.device(config[0]['device'])
+#ca = DiffusionNCA_Group(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 ca = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 agent = Agent_Diffusion(ca)
 exp = Experiment(config, dataset, ca, agent)

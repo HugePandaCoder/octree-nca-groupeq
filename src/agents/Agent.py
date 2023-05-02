@@ -36,6 +36,7 @@ class BaseAgent():
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
         else:
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+            #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
             self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
 
     def printIntermediateResults(self, loss, epoch):
