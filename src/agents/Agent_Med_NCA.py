@@ -12,7 +12,7 @@ class Agent_Med_NCA(Agent_Multi_NCA):
         self.stacked_models = self.exp.get_from_config('stacked_models')
         self.scaling_factor = self.exp.get_from_config('scaling_factor')   
 
-    def get_outputs(self, data, full_img=False, **kwargs):
+    def get_outputs(self, data: tuple, full_img: bool = False, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
@@ -84,7 +84,7 @@ class Agent_Med_NCA(Agent_Multi_NCA):
         return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc 
 
 
-    def resize4d(self, img, size=(64,64), factor=4, label=False):
+    def resize4d(self, img: torch.Tensor, size: tuple = (64,64), factor: int = 4, label: bool = False) -> torch.Tensor:
         r"""Resize input image
             #Args
                 img: 4d image to rescale

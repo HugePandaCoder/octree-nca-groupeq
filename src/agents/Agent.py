@@ -5,17 +5,20 @@ import torch
 import torch.optim as optim
 from src.utils.helper import convert_image, merge_img_label_gt
 from src.losses.LossFunctions import DiceLoss
+from src.utils.Experiment import Experiment
 import seaborn as sns
 import math
+from matplotlib import figure
+from torch.utils.data import DataLoader
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
     
     .. note:: In many cases only the data preparation and outputs need to be changed."""
-    def __init__(self, model):
+    def __init__(self, model: torch.nn.Module):
         self.model = model
 
-    def set_exp(self, exp):
+    def set_exp(self, exp: Experiment) -> None:
         r"""Set experiment of agent and initialize.
             #Args
                 exp (Experiment): Experiment class"""
@@ -39,7 +42,7 @@ class BaseAgent():
             #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
             self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
 
-    def printIntermediateResults(self, loss, epoch):
+    def printIntermediateResults(self, loss: torch.Tensor, epoch: int) -> None:
         r"""Prints intermediate results of training and adds it to tensorboard
             #Args 
                 loss (torch)
@@ -49,7 +52,7 @@ class BaseAgent():
         self.exp.save_model()
         self.exp.write_scalar('Loss/train', loss, epoch)
 
-    def prepare_data(self, data, eval=False):
+    def prepare_data(self, data: list, eval: bool = False) -> list:
         r"""If any data preparation needs to be done do it here. 
             #Args
                 data ([]): The data to be processed.
@@ -57,24 +60,24 @@ class BaseAgent():
         """
         return data
 
-    def get_outputs(self, data, **kwargs):
+    def get_outputs(self, data: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Get the output of the model.
             #Args 
                 data (torch): The data to be passed to the model.
         """
         return self.model(data)
 
-    def initialize_epoch(self):
+    def initialize_epoch(self) -> None:
         r"""Everything that should happen once before each epoch should be defined here.
         """
         return
 
-    def conclude_epoch(self):
+    def conclude_epoch(self) -> None:
         r"""Everything that should happen once after each epoch should be defined here.
         """
         return
 
-    def batch_step(self, data, loss_f):
+    def batch_step(self, data: tuple, loss_f: torch.nn.Module) -> dict:
         r"""Execute a single batch training step
             #Args
                 data (tensor, tensor): inputs, targets
@@ -105,7 +108,7 @@ class BaseAgent():
             self.scheduler.step()
         return loss_ret
 
-    def intermediate_results(self, epoch, loss_log):
+    def intermediate_results(self, epoch: int, loss_log: list) -> None:
         r"""Write intermediate results to tensorboard
             #Args
                 epoch (int): Current epoch
@@ -119,7 +122,7 @@ class BaseAgent():
             print(epoch, "loss =", average_loss)
             self.exp.write_scalar('Loss/train/' + str(key), average_loss, epoch)
 
-    def plot_results_byPatient(self, loss_log):
+    def plot_results_byPatient(self, loss_log: dict) -> figure:
         r"""Plot losses in a per patient fashion with seaborn to display in tensorboard.
             #Args
                 loss_log ({name: loss}: Dictionary of losses
@@ -131,7 +134,7 @@ class BaseAgent():
         plot = plot.get_figure()
         return plot
 
-    def intermediate_evaluation(self, dataloader, epoch):
+    def intermediate_evaluation(self, dataloader, epoch: int) -> None:
         r"""Do an intermediate evluation during training 
             .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
             #Args
@@ -153,7 +156,7 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, useSigmoid=True, tag = "", pseudo_ensemble=False):
+    def getAverageDiceScore(self, useSigmoid: bool = True, tag: str = "", pseudo_ensemble: bool = False) -> dict:
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
@@ -162,7 +165,7 @@ class BaseAgent():
 
         return loss_log
 
-    def save_state(self, model_path):
+    def save_state(self, model_path: str) -> None:
         r"""Save state of current model
         """
         os.makedirs(model_path, exist_ok=True)
@@ -170,14 +173,14 @@ class BaseAgent():
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
 
-    def load_state(self, model_path):
+    def load_state(self, model_path: str) -> None:
         r"""Load state of current model
         """
         self.model.load_state_dict(torch.load(os.path.join(model_path, 'model.pth')))
         self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
         self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
 
-    def train(self, dataloader, loss_f):
+    def train(self, dataloader: DataLoader, loss_f: torch.Tensor) -> None:
         r"""Execute training of model
             #Args
                 dataloader (Dataloader): contains training data
@@ -206,7 +209,7 @@ class BaseAgent():
             self.conclude_epoch()
             self.exp.increase_epoch()
 
-    def prepare_image_for_display(self, image):
+    def prepare_image_for_display(self, image: torch.Tensor) -> torch.Tensor:
         r"""Prepare an image to be displayed in tensorboard. Since images need to be in a specific format these modifications these can be done here.
             #Args
                 image (torch): The image to be processed for display. 
@@ -228,7 +231,7 @@ class BaseAgent():
     #    self.exp.dataset = dataset_train
 
 
-    def labelVariance(self, images, median, img_mri, img_id, targets):
+    def labelVariance(self, images: torch.Tensor, median: torch.Tensor, img_mri: torch.Tensor, img_id: str, targets: torch.Tensor) -> None:
         r"""Calculate variance over all predictions
             #Args
                 images (torch): The inferences
@@ -274,7 +277,7 @@ class BaseAgent():
 
         return
 
-    def test(self, loss_f, save_img = None, tag='test/img/', pseudo_ensemble=False, **kwargs):
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -428,7 +431,7 @@ class BaseAgent():
             self.exp.set_model_state('train')
             return loss_log
 
-def standard_deviation(loss_log):
+def standard_deviation(loss_log: dict) -> float:
     r"""Calculate the standard deviation
         #Args
             loss_log: losses

@@ -164,14 +164,15 @@ class Agent_Diffusion(Agent_NCA):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        t = torch.tensor(t/self.timesteps).to(self.device)
+        t = torch.tensor((t+1)/self.timesteps).to(self.device)
         print("T", t)
         id, inputs, targets = data
         outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
-        return outputs[..., 0:self.output_channels], targets
+        #return outputs[..., 0:self.output_channels], targets
+        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets
 
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step
@@ -190,8 +191,15 @@ class Agent_Diffusion(Agent_NCA):
         loss_ret = {}
 
         #loss = loss_f(outputs, noise)
+        print(outputs.dtype, noise.dtype)
         print(outputs.shape, noise.shape)
+
         loss = F.l1_loss(outputs, noise)
+        #loss = F.mse_loss(outputs, noise)
+
+        #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
+        #loss = (noise - outputs).square().sum(dim=(1, 2, 3)).mean(dim=0)
+        print("LOSS", loss)
         loss_ret[0] = loss
 
         
@@ -308,12 +316,13 @@ class Agent_Diffusion(Agent_NCA):
             noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
             img = self.make_seed(noise)
             for step in reversed(range(self.timesteps)):
-                t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                img_p = 0, img, 0
-                #print("NOISE HERE", torch.max(img), torch.min(img))
-                output, _ = self.get_outputs(img_p, t = step)
-                img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                for i in range(2):
+                    t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                    img_p = 0, img, 0
+                    #print("NOISE HERE", torch.max(img), torch.min(img))
+                    output, _ = self.get_outputs(img_p, t = step)
+                    img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                    img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
             self.exp.write_img(tag + '2', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
             #/2 +0.5
         if False:
@@ -348,7 +357,7 @@ class Agent_Diffusion(Agent_NCA):
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*2, size[1]*2, self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
-                    for i in range(1):
+                    for i in range(6):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))

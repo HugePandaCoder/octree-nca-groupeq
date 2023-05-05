@@ -8,7 +8,7 @@ import torch
 
 class png_Dataset(Dataset_NiiGz_3D):
 
-    def load_item(self, path):
+    def load_item(self, path: str) -> np.ndarray:
         r"""Loads the data of an image of a given path.
             #Args
                 path (String): The path to the nib file to be loaded."""
@@ -29,7 +29,7 @@ class png_Dataset(Dataset_NiiGz_3D):
         print("MINMAX", torch.max(img), torch.min(img))
         return img
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple:
         r"""Standard get item function
             #Args
                 idx (int): Id of item to loa

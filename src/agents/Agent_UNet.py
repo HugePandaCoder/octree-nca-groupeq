@@ -9,7 +9,7 @@ class Agent(BaseAgent):
         self.input_channels = self.exp.get_from_config('input_channels')
         self.output_channels = self.exp.get_from_config('output_channels')
 
-    def prepare_data(self, data, eval=False):
+    def prepare_data(self, data: tuple, eval: bool = False) -> tuple:
         r"""Prepare the data to be used with the model
             #Args
                 data (int, tensor, tensor): identity, image, target mask
@@ -27,7 +27,7 @@ class Agent(BaseAgent):
         else:
             return id, inputs, targets
 
-    def get_outputs(self, data, **kwargs):
+    def get_outputs(self, data: tuple, **kwargs) -> tuple:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
@@ -38,7 +38,7 @@ class Agent(BaseAgent):
         else:
             return (self.model(inputs)).permute(0, 2, 3, 4, 1), targets #.permute(0, 2, 3, 4, 1)
 
-    def prepare_image_for_display(self, image):
+    def prepare_image_for_display(self, image: torch.tensor) -> torch.Tensor:
         r"""Prepare image for display
             #Args
                 image (tensor): image

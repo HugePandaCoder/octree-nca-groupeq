@@ -16,11 +16,13 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.drop0 = nn.Dropout(drop_out_rate)
         self.norm_real = nn.LayerNorm([img_size, img_size, hidden_size])
-        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+
+        #self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2)
 
         # Complex
-        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
-        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
+        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
         self.fc0_real = nn.Linear(channel_n*3*2, hidden_size)
         self.fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
 
@@ -62,22 +64,22 @@ class DiffusionNCA_fft2(nn.Module):
         #x = x_in.transpose(1, 3)
         #x = torch.fft.fft2(x)
 
+        
+
         if True:
             x_count = torch.linspace(0, 1, x.shape[2]).expand(x.shape[0], 1, x.shape[2], x.shape[3])#.transpose(1,3)
             y_count = torch.transpose(x_count, 2, 3)
-            #y_count = torch.linspace(0, 1, x.shape[3]).expand(x.shape[0], x.shape[2], 1, x.shape[3])#.transpose(2,3)
-
-            #x[:, -2:-1, :, :] = x_count
-            #x[:, -3:-2, :, :] = y_count
-            #x[:, -1:, :, :] = self.scaled_t.transpose(1, 3)
-
             alive = torch.linspace(1, 0, x.shape[3]).expand(x.shape[0], 1, x.shape[2], x.shape[3]).to(self.device)
-            #alive = alive * torch.transpose(alive, 2,3)
             alive = (alive + torch.transpose(alive, 2,3)) / 2
 
         dx = torch.concat((x.real, x.imag), 1)
 
-        dx[:, -1:, :, :] = alive
+        #dx = dx.transpose(1, 3)
+        #print("SHAPE", dx.shape)
+        dx = self.norm_real2(dx)
+       # dx = dx.transpose(1, 3)
+
+        #dx[:, -1:, :, :] = alive
 
         #plt.imshow(dx.real[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
@@ -87,20 +89,20 @@ class DiffusionNCA_fft2(nn.Module):
 
         dx = self.perceive(dx)
 
+        
+
         dx = dx.transpose(1, 3)
 
         dx = self.fc0_real(dx)
 
-        dx = dx.transpose(1, 3)
-        #dx = self.bn(dx)
-        dx = dx.transpose(1, 3)
         dx = F.leaky_relu(dx)
 
 
         #dx = self.norm_real(dx)
-        dx = dx.transpose(1, 3)
-        dx = self.norm_real2(dx)
-        dx = dx.transpose(1, 3)
+        
+        #dx = dx.transpose(1, 3)
+        #dx = self.norm_real2(dx)
+        #dx = dx.transpose(1, 3)
 
         dx = self.drop0(dx)
 
@@ -114,19 +116,23 @@ class DiffusionNCA_fft2(nn.Module):
 
         #print(dx.shape)
         #print(alive_rate)
-        
+
         if False:
             alive_mask = (alive >= alive_rate) & (alive <= (alive_rate + (1/dx.shape[3])*10))
         else:
             alive_rate = alive_rate.expand_as(alive.transpose(0, 3))
             alive_rate = alive_rate.transpose(0, 3)
             #print("ALIVE", alive.shape, alive_rate.shape)
-            alive_mask = (alive >= alive_rate) & (alive <= (alive_rate + (1/dx.shape[3])*10))
+            alive_mask = ((alive + (1/dx.shape[3])*2) <= alive_rate) & (alive >= (alive_rate - (1/dx.shape[3])*2)) # *10
 
         #print(alive.shape)
         #print(alive_mask.shape)
         
         #plt.imshow(alive_mask[0, 0, :, :].detach().cpu().numpy())
+        #plt.show()
+        #plt.imshow(alive_mask[1, 0, :, :].detach().cpu().numpy())
+        #plt.show()
+        #plt.imshow(alive[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
         #exit()
 
@@ -184,10 +190,10 @@ class DiffusionNCA_fft2(nn.Module):
         # Convert to Fourier
         #print(x.shape)
 
-        x = x.transpose(1, 3)
+        x = x.transpose(1, 3) 
         print("FFT", torch.max(x), torch.min(x))
         x = torch.fft.fft2(x)#, norm="forward")
-        #print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
+        print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
         #min_real, max_real = -500, 500 #torch.max(x.real), torch.min(x.real)
         #min_imag, max_imag = -256, 256 #torch.max(x.imag), torch.min(x.imag)
         #x.real = (x.real - min_real) / (max_real - min_real)
@@ -204,9 +210,11 @@ class DiffusionNCA_fft2(nn.Module):
             x = x_update
         #x.real = x.real * (max_real - min_real) + min_real#(x.real - min_real) / max_real
         #x.imag = x.imag * (max_imag - min_imag) + min_imag
+        
         x = torch.fft.ifft2(x)#, norm="forward")
 
-        x = x.transpose(1, 3)
+        x = x.transpose(1, 3).to(torch.double)
+
         #raise Exception("STOP!")
 
 

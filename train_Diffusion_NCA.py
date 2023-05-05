@@ -14,9 +14,9 @@ config = [{
     # Basic
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Emojis_Smiley/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    'name': r'DiffusionNCA_Run259_Smiley_fixed_rescale_Group_fft',
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
+    'name': r'DiffusionNCA_Run294_CelebA_fixed_rescale_norm_fft_updat_l1_k7',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -38,14 +38,14 @@ config = [{
     'hidden_size': 256,
     # Data
     'input_size': (48, 48),
-    'data_split': [1, 0, 1], 
-    'timesteps': 500,
+    'data_split': [0.005, 0, 1], 
+    'timesteps': 300,
     '2D': True,
 }
 ]
 
 #dataset = Dataset_NiiGz_3D(slice=2)
-dataset= png_Dataset()
+dataset = png_Dataset()
 device = torch.device(config[0]['device'])
 #ca = DiffusionNCA_Group(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 ca = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
@@ -57,9 +57,9 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
-#agent.generateSamples(samples=1)
+agent.generateSamples(samples=1)
 
 
 # %%
