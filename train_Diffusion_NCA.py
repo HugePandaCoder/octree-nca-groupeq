@@ -16,7 +16,7 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    'name': r'DiffusionNCA_Run294_CelebA_fixed_rescale_norm_fft_updat_l1_k7',
+    'name': r'DiffusionNCA_Run314_CelebA_fixed_rescale_norm_fft_updat_l1_k7_grouping_newModel_wAlive',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -29,17 +29,17 @@ config = [{
     'n_epoch': 100000,
     'batch_size': 8,
     # Model
-    'channel_n': 16,        # Number of CA state channels
+    'channel_n': 32,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size': 256,
+    'hidden_size': 2048,
     # Data
     'input_size': (48, 48),
     'data_split': [0.005, 0, 1], 
-    'timesteps': 300,
+    'timesteps': 500,
     '2D': True,
 }
 ]

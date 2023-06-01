@@ -15,16 +15,19 @@ class DiffusionNCA_fft2(nn.Module):
         self.device=device
 
         self.drop0 = nn.Dropout(drop_out_rate)
-        self.norm_real = nn.LayerNorm([img_size, img_size, hidden_size])
+        #self.norm_real = nn.LayerNorm([img_size, img_size, hidden_size])
 
         #self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
         self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2)
 
         # Complex
-        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
-        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
+        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2)
+        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2)
         self.fc0_real = nn.Linear(channel_n*3*2, hidden_size)
         self.fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
+
+        self.fc_mid = nn.Linear(hidden_size, hidden_size)
+        #self.fc_mid2 = nn.Linear(hidden_size, hidden_size)
 
         self.bn = nn.BatchNorm2d(hidden_size)
 
@@ -79,7 +82,7 @@ class DiffusionNCA_fft2(nn.Module):
         dx = self.norm_real2(dx)
        # dx = dx.transpose(1, 3)
 
-        #dx[:, -1:, :, :] = alive
+        dx[:, -1:, :, :] = alive
 
         #plt.imshow(dx.real[0, 0, :, :].detach().cpu().numpy())
         #plt.show()
@@ -103,6 +106,13 @@ class DiffusionNCA_fft2(nn.Module):
         #dx = dx.transpose(1, 3)
         #dx = self.norm_real2(dx)
         #dx = dx.transpose(1, 3)
+
+        # Added Layer
+        dx = self.fc_mid(dx)
+        dx = F.leaky_relu(dx)
+
+        #dx = self.fc_mid2(dx)
+        #dx = F.leaky_relu(dx)
 
         dx = self.drop0(dx)
 

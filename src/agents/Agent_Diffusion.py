@@ -198,6 +198,7 @@ class Agent_Diffusion(Agent_NCA):
         #loss = F.mse_loss(outputs, noise)
 
         #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
+        
         #loss = (noise - outputs).square().sum(dim=(1, 2, 3)).mean(dim=0)
         print("LOSS", loss)
         loss_ret[0] = loss
@@ -357,7 +358,7 @@ class Agent_Diffusion(Agent_NCA):
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*2, size[1]*2, self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
-                    for i in range(6):
+                    for i in range(16):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))
