@@ -1,10 +1,12 @@
 import numpy as np
 from src.agents.Agent_NCA import Agent_NCA
+from src.agents.Agent_Multi_NCA import Agent_Multi_NCA
 import torch
 import random
 import torch.nn.functional as F
+import math
 
-class Agent_Diffusion(Agent_NCA):
+class Agent_Diffusion(Agent_Multi_NCA):
     def initialize(self, beta_schedule='linear'):
         super().initialize()
         self.timesteps = self.exp.get_from_config('timesteps')
@@ -19,8 +21,8 @@ class Agent_Diffusion(Agent_NCA):
         return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
 
     def q_sample(self, x_start, t, noise=None):
-        print("X_START", torch.max(x_start), torch.min(x_start))
-        print("NOISE", torch.max(noise), torch.min(noise))
+        #print("X_START", torch.max(x_start), torch.min(x_start))
+        #print("NOISE", torch.max(noise), torch.min(noise))
         sqrt_alphas_cumprod_t = self.extract(self.sqrt_alphas_cumprod, t, x_start.shape)
         sqrt_one_minus_alphas_cumprod_t = self.extract(
             self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
@@ -148,7 +150,8 @@ class Agent_Diffusion(Agent_NCA):
         
         #img_noisy -= img_noisy.min(1, keepdim=True)[0]
         #img_noisy /= img_noisy.max(1, keepdim=True)[0]
-        print("IMG NOISy", torch.max(img_noisy), torch.min(img_noisy))
+        
+        #print("IMG NOISy", torch.max(img_noisy), torch.min(img_noisy))
         
         img_noisy = self.make_seed(img_noisy)
         if not eval:
@@ -165,9 +168,19 @@ class Agent_Diffusion(Agent_NCA):
                 data (int, tensor, tensor): id, inputs, targets
         """
         t = torch.tensor((t+1)/self.timesteps).to(self.device)
-        print("T", t)
+        #print("T", t)
         id, inputs, targets = data
-        outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
+        
+        if isinstance(self.model, list): # TODO: Add support for > batch size one
+            if torch.numel(t) > 1:
+                model_id = math.floor(((t[0]-0.0000001) * self.timesteps) / (self.timesteps / len(self.model)))   
+                #print(model_id)
+            else:
+                model_id = math.floor(((t-0.0000001) * self.timesteps) / (self.timesteps / len(self.model)))  
+            outputs = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
+        else:
+            outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
+        
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
@@ -182,17 +195,24 @@ class Agent_Diffusion(Agent_NCA):
             #Returns:
                 loss item
         """
-        t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+        if isinstance(self.model, list):
+            rang = int((self.timesteps / len(self.model)) * np.random.randint(0, len(self.model)))
+            t = torch.randint(0, int(self.timesteps / len(self.model)), (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+            t = torch.add(t, rang)
+            #print(t)
+        else:
+            t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
         data, noise, label = self.prepare_data(data, t)
         id, img, _ = data
         outputs, _ = self.get_outputs(data, t=t)
-        self.optimizer.zero_grad()
+
+        if isinstance(self.optimizer, list): 
+            for m in range(len(self.optimizer)):
+                self.optimizer[m].zero_grad()
+        else:
+            self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
-
-        #loss = loss_f(outputs, noise)
-        print(outputs.dtype, noise.dtype)
-        print(outputs.shape, noise.shape)
 
         loss = F.l1_loss(outputs, noise)
         #loss = F.mse_loss(outputs, noise)
@@ -200,7 +220,8 @@ class Agent_Diffusion(Agent_NCA):
         #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
         
         #loss = (noise - outputs).square().sum(dim=(1, 2, 3)).mean(dim=0)
-        print("LOSS", loss)
+        
+        #print("LOSS", loss)
         loss_ret[0] = loss
 
         
@@ -217,8 +238,16 @@ class Agent_Diffusion(Agent_NCA):
         #            loss_ret[m] = loss_loc.item()
 
         loss.backward()
-        self.optimizer.step()
-        self.scheduler.step()
+        if isinstance(self.optimizer, list): 
+            for m in range(len(self.optimizer)):
+                self.optimizer[m].step()
+        else:
+            self.optimizer.step()
+        if isinstance(self.scheduler, list): 
+            for m in range(len(self.scheduler)):
+                self.scheduler[m].step()
+        else:
+            self.scheduler.step()
         return loss_ret
 
     def getNoiseLike(self, img, noisy=False, t=0):

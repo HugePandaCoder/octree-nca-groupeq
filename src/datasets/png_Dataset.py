@@ -26,7 +26,7 @@ class png_Dataset(Dataset_NiiGz_3D):
         #img = img * 2 -1
         #img = img
         img = img/256/2.5 -1
-        print("MINMAX", torch.max(img), torch.min(img))
+        #print("MINMAX", torch.max(img), torch.min(img))
         return img
 
     def __getitem__(self, idx: int) -> tuple:

@@ -201,9 +201,11 @@ class DiffusionNCA_fft2(nn.Module):
         #print(x.shape)
 
         x = x.transpose(1, 3) 
-        print("FFT", torch.max(x), torch.min(x))
+        #print("FFT", torch.max(x), torch.min(x))
         x = torch.fft.fft2(x)#, norm="forward")
-        print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
+        #print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
+        
+        
         #min_real, max_real = -500, 500 #torch.max(x.real), torch.min(x.real)
         #min_imag, max_imag = -256, 256 #torch.max(x.imag), torch.min(x.imag)
         #x.real = (x.real - min_real) / (max_real - min_real)
