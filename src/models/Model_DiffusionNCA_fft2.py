@@ -21,13 +21,14 @@ class DiffusionNCA_fft2(nn.Module):
         self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2)
 
         # Complex
-        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2)
-        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2)
+        self.p0_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")#, groups=channel_n*2)
+        self.p1_real = nn.Conv2d(channel_n*2, channel_n*2, kernel_size=7, stride=1, padding=3, padding_mode="reflect")#, groups=channel_n*2)
         self.fc0_real = nn.Linear(channel_n*3*2, hidden_size)
         self.fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
 
         self.fc_mid = nn.Linear(hidden_size, hidden_size)
-        #self.fc_mid2 = nn.Linear(hidden_size, hidden_size)
+        self.fc_mid2 = nn.Linear(hidden_size, hidden_size)
+        self.fc_mid3 = nn.Linear(hidden_size, hidden_size)
 
         self.bn = nn.BatchNorm2d(hidden_size)
 
@@ -109,6 +110,10 @@ class DiffusionNCA_fft2(nn.Module):
 
         # Added Layer
         dx = self.fc_mid(dx)
+
+        dx = self.fc_mid2(dx)
+        dx = self.fc_mid3(dx)
+
         dx = F.leaky_relu(dx)
 
         #dx = self.fc_mid2(dx)

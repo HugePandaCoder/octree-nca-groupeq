@@ -16,7 +16,7 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    'name': r'DiffusionNCA_Run323_CelebA_fixed_rescale_norm_fft_updat_l1_k7_multiNCA_10_fixed',
+    'name': r'DiffusionNCA_Run326_CelebA_fixed_rescale_norm_fft_updat_l1_k7_multiNCA_2_fixed_NoGrouping_deeper',
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -58,7 +58,7 @@ ca7 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], dev
 ca8 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 ca9 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 ca0 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
-ca = [ca0, ca1, ca2, ca3, ca4, ca5, ca6, ca7, ca8, ca9]
+ca = [ca0, ca1]#, ca2, ca3, ca4, ca5, ca6, ca7, ca8, ca9]
 
 agent = Agent_Diffusion(ca)
 exp = Experiment(config, dataset, ca, agent)
