@@ -5,9 +5,10 @@ import torch
 import random
 import torch.nn.functional as F
 import math
+from matplotlib import pyplot as plt
 
 class Agent_Diffusion(Agent_Multi_NCA):
-    def initialize(self, beta_schedule='linear'):
+    def initialize(self, beta_schedule='linear'): #'linear'): cosine
         super().initialize()
         self.timesteps = self.exp.get_from_config('timesteps')
         self.beta_schedule = beta_schedule
@@ -46,7 +47,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         """
         steps = timesteps + 1
         x = torch.linspace(0, timesteps, steps)
-        alphas_cumprod = (torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2).to(self.device)
+        alphas_cumprod = (torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2) #.to(self.device)
         alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
         return torch.clip(betas, 0.0001, 0.9999)
@@ -214,7 +215,32 @@ class Agent_Diffusion(Agent_Multi_NCA):
         loss = 0
         loss_ret = {}
 
-        loss = F.l1_loss(outputs, noise)
+
+        if False:
+            outputs = outputs.transpose(1, 3)
+            outputs_fourier = torch.fft.fft2(outputs)
+            #print(outputs.shape, outputs_fourier.shape)
+            noise = noise.transpose(1, 3)
+            noise_fourier = torch.fft.fft2(noise)
+            loss = F.l1_loss(outputs_fourier, noise_fourier, reduction='none')
+
+            # WEIGHTING
+            x_count = torch.linspace(0.1, 1, loss.shape[2]).expand(1, 1, loss.shape[2], loss.shape[3]).to(self.device)#.transpose(1,3)
+            y_count = torch.transpose(x_count, 2, 3)
+            #print(x_count.shape(),y_count.shape())
+            alive = 1-torch.maximum(y_count, x_count) #x_count[x_count > y_count] = y_count
+            alive = alive * alive
+
+            #plt.imshow(alive[0, 0, :, :].detach().cpu().numpy())
+            #plt.show()
+            #exit()
+            loss = torch.mean(loss * alive)
+
+        else:
+            loss = F.l1_loss(outputs, noise)
+        #loss = loss * 
+        #loss = F.smooth_l1_loss(outputs, noise)
+
         #loss = F.mse_loss(outputs, noise)
 
         #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
@@ -286,7 +312,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
         return noise.to(self.device), img_noisy
 
-    @torch.no_grad()
+    #@torch.no_grad()
     def p_sample(self, output, x, t, t_index):
         betas_t = self.extract(self.betas, t, x.shape)
         sqrt_one_minus_alphas_cumprod_t = self.extract(
@@ -328,7 +354,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         
         #noise = torch.randn_like(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))).to(self.device)
 
-        #self.timesteps = 1000
+        #self.timesteps = 400
         for s in range(samples):
             noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
             img = self.make_seed(noise)
@@ -384,10 +410,10 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 self.exp.write_img("extra_steps" + str(100 + (i+1)*100) + "%", img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy(), self.exp.currentStep)
         if extra:
             for s in range(samples):
-                noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*2, size[1]*2, self.exp.get_from_config('input_channels'))))
+                noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*2), int(size[1]*2), self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
-                    for i in range(16):
+                    for i in range(1):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))
@@ -400,7 +426,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
-                    for i in range(2):
+                    for i in range(1):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))
