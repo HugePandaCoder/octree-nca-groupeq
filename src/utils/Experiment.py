@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image as PILImage
 import git
 from matplotlib import figure
+from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 
@@ -36,6 +37,7 @@ class Experiment():
             self.reload()
         else:
             self.setup()
+        self.initializeFID()
         self.currentStep = self.currentStep+1
         self.set_current_config()
 
@@ -143,6 +145,27 @@ class Experiment():
             print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
             torch.set_num_threads(1)
 
+    def initializeFID(self) -> None:
+        # Reload or generate FID Model
+        fid_path = os.path.join(pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
+
+        if os.path.exists(fid_path):
+            # RELOAD
+            self.fid = load_pickle_file(fid_path)
+        else:
+            self.set_model_state("train")
+            self.fid = FrechetInceptionDistance(feature=64, reset_real_features=False)
+            self.dataset.set_normalize(False)
+            dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+            for i, data in enumerate(dataloader_fid):
+                #print(data[1].shape)
+                sample = data[1].to(torch.uint8)
+                sample = sample.transpose(1,3)
+                self.fid.update(sample, real=True)
+                #self.fid.compute()
+                break
+            print("FID CREATED")
+            self.dataset.set_normalize(True)
 
     def reload_model(self) -> None:
         r"""Reload model

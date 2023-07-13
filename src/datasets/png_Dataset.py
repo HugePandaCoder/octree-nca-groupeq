@@ -8,6 +8,11 @@ import torch
 
 class png_Dataset(Dataset_NiiGz_3D):
 
+    normalize = True
+
+    def set_normalize(self, normalize=True):
+        self.normalize = normalize
+
     def load_item(self, path: str) -> np.ndarray:
         r"""Loads the data of an image of a given path.
             #Args
@@ -17,15 +22,6 @@ class png_Dataset(Dataset_NiiGz_3D):
         img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
         #img = img/256 
         #img = img*2 -1
-        transform = T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-        img = torch.from_numpy(img).to(torch.float64)
-        img = img.permute((2, 1, 0))
-        #print(img.shape)
-        img = transform(img)
-        img = img.permute((2, 1, 0))
-        #img = img * 2 -1
-        #img = img
-        img = img/256/2.5 -1
         #print("MINMAX", torch.max(img), torch.min(img))
         return img
 
@@ -52,6 +48,17 @@ class png_Dataset(Dataset_NiiGz_3D):
         id, img, label = img
 
         img = img[...,0:4]
+
+        if self.normalize:
+            transform = T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+            img = torch.from_numpy(img).to(torch.float64)
+            img = img.permute((2, 1, 0))
+            #print(img.shape)
+            img = transform(img)
+            img = img.permute((2, 1, 0))
+            #img = img * 2 -1
+            #img = img
+            img = img/256/2.5 -1
 
         return (id, img, label)
 

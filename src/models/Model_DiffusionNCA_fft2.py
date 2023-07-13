@@ -16,28 +16,19 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.device=device
 
+        kernelSize = 7
+        padding = int((kernelSize-1)/2)
 
         # ---------------- MODEL 0 -----------------
         self.drop0 = nn.Dropout(drop_out_rate)
-        #self.norm_real = nn.LayerNorm([img_size, img_size, hidden_size])
-
-        #self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
         self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2+extra_channels)
-
-        # Complex
-        kernelSize = 7
-
-        if kernelSize == 7:
-            self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-            self.p1_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        else:
-            self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=3, stride=1, padding=1, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-            self.p1_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=3, stride=1, padding=1, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        
+        self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
+        self.p1_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
         self.fc0_real = nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
+        #self.fc05_middle_real = nn.Linear(hidden_size, hidden_size)
         self.fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
 
-        self.model_0 = {"dropout": self.drop0, "normalisation":self.norm_real2, "conv0": self.p0_real, "conv1": self.p1_real, "fc0": self.fc0_real, "fc1": self.fc1_real}
+        self.model_0 = {"dropout": self.drop0, "normalisation":self.norm_real2, "conv0": self.p0_real, "conv1": self.p1_real, "fc0": self.fc0_real, "fc1": self.fc1_real}#, "fc05": self.fc05_middle_real}
 
         if False:
             self.fc_mid = nn.Linear(hidden_size, hidden_size)
@@ -48,20 +39,37 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.bn = nn.BatchNorm2d(hidden_size)
 
-        # In real space
-        if True:
-            self.real_drop0 = nn.Dropout(drop_out_rate)
-            self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n+extra_channels)
-            if kernelSize == 7:
-                self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
-                self.real_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n+extra_channels)#, groups=channel_n*2)
-            else:
-                self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=3, stride=1, padding=1, padding_mode="reflect", groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
-                self.real_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=3, stride=1, padding=1, padding_mode="reflect", groups=channel_n+extra_channels)#, groups=channel_n*2)
-            self.real_fc0_real = nn.Linear(channel_n*3+extra_channels*3, hidden_size)
-            self.real_fc1_real = nn.Linear(hidden_size, channel_n, bias=False)
+        # ---------------- MODEL 1 -----------------
+        self.real_drop0 = nn.Dropout(drop_out_rate)
+        self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n+extra_channels)
+        self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
+        self.real_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#, groups=channel_n*2)
+        self.real_fc0_real = nn.Linear(channel_n*3+extra_channels*3, hidden_size)
+        #self.real_fc05_middle_real = nn.Linear(hidden_size, hidden_size)
+        self.real_fc1_real = nn.Linear(hidden_size, channel_n, bias=False)
 
-            self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real}
+        self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real}#, "fc05": self.real_fc05_middle_real}
+        
+        if False:
+            # ---------------- MODEL 2 -----------------
+            self.model2_drop0 = nn.Dropout(drop_out_rate)
+            self.model2_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2+extra_channels)
+            self.model2_p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#reflect, groups=channel_n*2)
+            self.model2_p1_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
+            self.model2_fc0_real = nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
+            self.model2_fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
+
+            self.model_2 = {"dropout": self.model2_drop0, "normalisation":self.model2_norm_real2, "conv0": self.model2_p0_real, "conv1": self.model2_p1_real, "fc0": self.model2_fc0_real, "fc1": self.model2_fc1_real}
+
+            # ---------------- MODEL 3 -----------------
+            self.model3_drop0 = nn.Dropout(drop_out_rate)
+            self.model3_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n+extra_channels)
+            self.model3_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
+            self.model3_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#, groups=channel_n*2)
+            self.model3_fc0_real = nn.Linear(channel_n*3+extra_channels*3, hidden_size)
+            self.model3_fc1_real = nn.Linear(hidden_size, channel_n, bias=False)
+
+            self.model_3 = {"dropout": self.model3_drop0, "normalisation":self.model3_norm_real2, "conv0": self.model3_p0_real, "conv1": self.model3_p1_real, "fc0": self.model3_fc0_real, "fc1": self.model3_fc1_real}
 
             #self.real
 
@@ -364,6 +372,10 @@ class DiffusionNCA_fft2(nn.Module):
 
         dx = model_dict["dropout"](dx)
 
+        #dx = model_dict["fc05"](dx)
+        #dx = F.leaky_relu(dx)
+        #dx = model_dict["dropout"](dx)
+
         dx = model_dict["fc1"](dx)
 
         if fire_rate is None:
@@ -421,53 +433,60 @@ class DiffusionNCA_fft2(nn.Module):
         # Convert to Fourier
         #print(x.shape)
 
-        x = x.transpose(1, 3) 
-        #print("FFT", torch.max(x), torch.min(x))
-        x = torch.fft.fft2(x, norm="forward")#, norm="forward")
-        #print("FFT_AFTER", torch.max(x.real), torch.min(x.real), torch.max(x.imag), torch.min(x.imag))
-        
-        
-        #min_real, max_real = -500, 500 #torch.max(x.real), torch.min(x.real)
-        #min_imag, max_imag = -256, 256 #torch.max(x.imag), torch.min(x.imag)
-        #x.real = (x.real - min_real) / (max_real - min_real)
-        #x.imag = (x.imag - min_imag) / (max_imag - min_imag)
 
-        #steps = 45
+        # ---------------- MODEL 0 -----------------
+        x = x.transpose(1, 3) 
+        x = torch.fft.fft2(x, norm="forward")#, norm="forward")
 
         x_old = x.clone()
         x = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
-        #print(x.shape)
 
         x = torch.concat((x.real, x.imag), 1)
         for step in range(steps):
-            #print(x.shape, scaled_t.shape)
-            
-            #x_update = self.update(x, fire_rate, alive_rate=1-(step/x.shape[2])) 
             x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_0) 
 
         x = x.transpose(1, 3)
         x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
         x = x.transpose(1, 3)
 
-            #x = torch.concat((x_update[..., 0:-6], x[..., -6:]), 3)#x_update
-            #x = x_update
-
         x_old[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)] = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
         x = x_old
+        x = torch.fft.ifft2(x, norm="forward").to(torch.float)#, norm="forward")
+        #x = x.to(torch.float) #double
 
-        #x.real = x.real * (max_real - min_real) + min_real#(x.real - min_real) / max_real
-        #x.imag = x.imag * (max_imag - min_imag) + min_imag
         
-        x = torch.fft.ifft2(x, norm="forward")#, norm="forward")
-
-        x = x.to(torch.float) #double
-
-        #raise Exception("STOP!")
-
+        # ---------------- MODEL 1 -----------------
         for step in range(steps):#int(steps/2)):
             #x_update = self.update_real(x, fire_rate, alive_rate=t) 
             #x = x_update
             x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1) 
+
+        if False:
+            # ---------------- MODEL 2 -----------------
+            #x = x.transpose(1, 3) 
+            x = torch.fft.fft2(x, norm="forward")#, norm="forward")
+
+            x_old = x.clone()
+            x = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
+
+            x = torch.concat((x.real, x.imag), 1)
+            for step in range(steps):
+                x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_2) 
+
+            x = x.transpose(1, 3)
+            x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
+            x = x.transpose(1, 3)
+
+            x_old[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)] = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
+            x = x_old
+            x = torch.fft.ifft2(x, norm="forward")#, norm="forward")
+            x = x.to(torch.float) #double
+
+            # ---------------- MODEL 3 -----------------
+            for step in range(steps):#int(steps/2)):
+                #x_update = self.update_real(x, fire_rate, alive_rate=t) 
+                #x = x_update
+                x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_3) 
 
         x = x.transpose(1, 3)
 

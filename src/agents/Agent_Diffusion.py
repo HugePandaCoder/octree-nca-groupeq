@@ -237,11 +237,12 @@ class Agent_Diffusion(Agent_Multi_NCA):
             loss = torch.mean(loss * alive)
 
         else:
-            loss = F.l1_loss(outputs, noise)
+            #loss = F.l1_loss(outputs, noise)
         #loss = loss * 
         #loss = F.smooth_l1_loss(outputs, noise)
 
-        #loss = F.mse_loss(outputs, noise)
+            #print("TENSOR TYPE", noise.type())
+            loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise)
 
         #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
         
@@ -279,7 +280,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
     def getNoiseLike(self, img, noisy=False, t=0):
 
         def getNoise():
-            rnd = torch.randn_like(img).to(self.device) 
+            rnd = torch.randn_like(img).to(self.device).to(torch.float) 
             # Range 0,1
             #rmax, rmin = torch.max(rnd), torch.min(rnd)
             #rnd = ((rnd - rmin) / (rmax - rmin))
@@ -336,6 +337,8 @@ class Agent_Diffusion(Agent_Multi_NCA):
             return model_mean + torch.sqrt(posterior_variance_t) * noise
 
     def intermediate_evaluation(self, dataloader, epoch):
+        if epoch % 10 == 0:
+            self.test_fid()
         self.test()
 
     def generateSamples(self, samples=1):
@@ -348,10 +351,43 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #return loss_log
 
     @torch.no_grad()
+    def test_fid(self, tag='0', samples=1, extra=False, **kwargs):
+        size = self.exp.get_from_config('input_size')
+
+        # Generate samples
+        noise, _ = self.getNoiseLike(torch.zeros((16, size[0], size[1], self.exp.get_from_config('input_channels'))))
+        img = self.make_seed(noise)
+        for step in reversed(range(self.timesteps)):
+            print(step)
+            #for i in range(2):
+            t = torch.full((1,), step, device=self.device, dtype=torch.long)
+            img_p = 0, img, 0
+            #print("NOISE HERE", torch.max(img), torch.min(img))
+            output, _ = self.get_outputs(img_p, t = step)
+            img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+            img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+
+        # Compose images
+        composition = np.zeros((4*size[0], 4*size[1], self.exp.get_from_config('input_channels')))
+        imgs = (img.detach().cpu().numpy()+1)/2
+        for b in range(img.shape[0]):
+            x = b % 4
+            y = int(math.floor(b/4))
+            composition[x*size[0]:(x+1)*size[0], y*size[0]:(y+1)*size[0], 0:self.exp.get_from_config('input_channels')] = imgs[b, ... , 0:self.exp.get_from_config('input_channels')] 
+        self.exp.write_img("Composition", composition, self.exp.currentStep, normalize=True) #context={'Image':s}, 
+
+        print(img.transpose(1,3).shape)
+        self.exp.fid.update((((img[..., 0:self.exp.get_from_config('input_channels')].transpose(1,3).detach().cpu()+1)/2)*256).to(torch.uint8), real=False)
+        print("FID: ", self.exp.fid.compute())
+        self.exp.write_scalar('FID', self.exp.fid.compute(), self.exp.currentStep)
+
+    @torch.no_grad()
     def test(self, tag='0', samples=1, extra=False, **kwargs):
         # Generate sample
         size = self.exp.get_from_config('input_size')
         
+
+        #self.test_fid()
         #noise = torch.randn_like(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))).to(self.device)
 
         #self.timesteps = 400
@@ -367,19 +403,6 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                 img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
             self.exp.write_img(tag, (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
-            #/2 +0.5
-        for s in range(samples):
-            noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
-            img = self.make_seed(noise)
-            for step in reversed(range(self.timesteps)):
-                for i in range(2):
-                    t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                    img_p = 0, img, 0
-                    #print("NOISE HERE", torch.max(img), torch.min(img))
-                    output, _ = self.get_outputs(img_p, t = step)
-                    img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                    img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-            self.exp.write_img(tag + '2', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
             #/2 +0.5
         if False:
             # Extra steps
@@ -434,4 +457,17 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                         img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
                 self.exp.write_img(tag + "doubleSteps", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+                #/2 +0.5
+            for s in range(samples):
+                noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
+                img = self.make_seed(noise)
+                for step in reversed(range(self.timesteps)):
+                    for i in range(2):
+                        t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                        img_p = 0, img, 0
+                        #print("NOISE HERE", torch.max(img), torch.min(img))
+                        output, _ = self.get_outputs(img_p, t = step)
+                        img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                        img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                self.exp.write_img(tag + '2', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
                 #/2 +0.5
