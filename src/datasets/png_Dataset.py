@@ -58,7 +58,7 @@ class png_Dataset(Dataset_NiiGz_3D):
             img = img.permute((2, 1, 0))
             #img = img * 2 -1
             #img = img
-            img = img/256/2.5 -1
+            img = img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
 
         return (id, img, label)
 

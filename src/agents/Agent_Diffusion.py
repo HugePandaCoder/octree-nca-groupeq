@@ -11,7 +11,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
     def initialize(self, beta_schedule='linear'): #'linear'): cosine
         super().initialize()
         self.timesteps = self.exp.get_from_config('timesteps')
-        self.beta_schedule = beta_schedule
+        self.beta_schedule = self.exp.get_from_config('schedule') #beta_schedule
         self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, self.betas, self.sqrt_recip_alphas, \
             self.posterior_variance = self.calc_schedule()
 
@@ -168,7 +168,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        t = torch.tensor((t+1)/self.timesteps).to(self.device)
+        t = torch.tensor(t/self.timesteps).to(self.device) # TODO: torch.tensor((t+1)/self.timesteps).to(self.device)
         #print("T", t)
         id, inputs, targets = data
         
@@ -188,6 +188,20 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #return outputs[..., 0:self.output_channels], targets
         return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets
 
+    def rescale_image(self, data):
+        id, img, label = data
+
+        random_fac = random.uniform(0.5,1)
+
+        img = img.transpose(1,3)
+        size = (int(img.shape[2]*random_fac), int(img.shape[3]*random_fac)) 
+
+        img = F.interpolate(img, size=size, mode='bilinear')
+        img = img.transpose(1,3)
+        #print("here", img.shape)
+
+        return id, img, label
+
     def batch_step(self, data, loss_f):
         r"""Execute a single batch training step
             #Args
@@ -203,6 +217,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
             #print(t)
         else:
             t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+
+
+        real_img = data[1].to(self.device).to(torch.float)
+
+        # Rescale img factor x
+        #data = self.rescale_image(data)
+        
         data, noise, label = self.prepare_data(data, t)
         id, img, _ = data
         outputs, _ = self.get_outputs(data, t=t)
@@ -217,11 +238,12 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
         if False:
-            outputs = outputs.transpose(1, 3)
-            outputs_fourier = torch.fft.fft2(outputs)
+            #outputs = outputs
+            #print(outputs.shape)
+            outputs_fourier = torch.fft.fft2(outputs.transpose(1, 3))
             #print(outputs.shape, outputs_fourier.shape)
-            noise = noise.transpose(1, 3)
-            noise_fourier = torch.fft.fft2(noise)
+            #noise = noise
+            noise_fourier = torch.fft.fft2(noise.transpose(1, 3))
             loss = F.l1_loss(outputs_fourier, noise_fourier, reduction='none')
 
             # WEIGHTING
@@ -234,7 +256,14 @@ class Agent_Diffusion(Agent_Multi_NCA):
             #plt.imshow(alive[0, 0, :, :].detach().cpu().numpy())
             #plt.show()
             #exit()
+            #print(loss.shape)
             loss = torch.mean(loss * alive)
+            loss2 = F.l1_loss(outputs, noise)
+            loss3 = F.mse_loss(outputs, noise)
+            #print(loss, loss2, loss3)
+
+            
+            loss = loss + loss2 + loss3 #+ (noise - outputs).square().sum(dim=(1, 2, 3)).mean(dim=0)#
 
         else:
             #loss = F.l1_loss(outputs, noise)
@@ -242,7 +271,39 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #loss = F.smooth_l1_loss(outputs, noise)
 
             #print("TENSOR TYPE", noise.type())
-            loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise)
+            if True:
+                loss = F.mse_loss(outputs, noise)
+                #loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise) #(noise - outputs).square().sum(dim=(1, 2, 3)).mean(dim=0)# + 
+            else:
+                #print("REAL", real_img.shape, outputs.shape)
+                model_noise = self.q_sample(x_start=real_img, t=t, noise=outputs)
+                #print(model_noise.shape, img.shape)
+
+                if False:
+                    outputs_fourier = torch.fft.fft2(model_noise.transpose(1, 3))
+                    noise_fourier = torch.fft.fft2(img[..., 0:self.exp.get_from_config(tag="input_channels")].transpose(1, 3))
+                    loss = F.l1_loss(outputs_fourier, noise_fourier, reduction='none') + F.l1_loss(outputs_fourier, noise_fourier, reduction='none')
+
+                    # WEIGHTING
+                    #x_count = torch.linspace(0.1, 1, loss.shape[2]).expand(1, 1, loss.shape[2], loss.shape[3]).to(self.device)#.transpose(1,3)
+                    x_count = torch.linspace(1, loss.shape[2]*2-1, loss.shape[2]).expand(1, 1, loss.shape[2], loss.shape[3]).to(self.device)
+                    y_count = torch.transpose(x_count, 2, 3)
+                    alive = 1/torch.maximum(y_count, x_count) #x_count[x_count > y_count] = y_count
+                    alive = alive 
+
+                    loss = torch.mean(loss * alive)
+                #loss2 = F.l1_loss(outputs, noise)
+                #loss3 = F.mse_loss(outputs, noise)
+
+                loss = F.l1_loss(model_noise, img[..., 0:self.exp.get_from_config(tag="input_channels")], reduction='none') + F.mse_loss(model_noise, img[..., 0:self.exp.get_from_config(tag="input_channels")], reduction='none')
+                #print(loss.shape)
+                loss, _ = torch.sort(torch.flatten(loss))
+                #print(loss.shape)
+
+                #loss = loss[int(len(loss)/10):int(-len(loss)/10)]
+                loss = loss * torch.linspace(1, 0.1, loss.shape[0]).to(self.device)
+                #print(loss.shape)
+                loss = torch.mean(loss)
 
         #loss = torch.mean(torch.sum(torch.square(noise - outputs), dim=(1, 2, 3)) , dim=0)
         
@@ -433,7 +494,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 self.exp.write_img("extra_steps" + str(100 + (i+1)*100) + "%", img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy(), self.exp.currentStep)
         if extra:
             for s in range(samples):
-                noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*2), int(size[1]*2), self.exp.get_from_config('input_channels'))))
+                noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*3), int(size[1]*3), self.exp.get_from_config('input_channels'))))
                 img = self.make_seed(noise)
                 for step in reversed(range(self.timesteps)):
                     for i in range(1):

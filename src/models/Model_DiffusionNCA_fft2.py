@@ -16,7 +16,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.device=device
 
-        kernelSize = 7
+        kernelSize = 3
         padding = int((kernelSize-1)/2)
 
         # ---------------- MODEL 0 -----------------
@@ -24,11 +24,18 @@ class DiffusionNCA_fft2(nn.Module):
         self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n*2+extra_channels)
         self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
         self.p1_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        self.fc0_real = nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
+        self.fc0_real = nn.Conv2d(channel_n*3*2+extra_channels*3, hidden_size, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
         #self.fc05_middle_real = nn.Linear(hidden_size, hidden_size)
-        self.fc1_real = nn.Linear(hidden_size, channel_n*2, bias=False)
+        #self.fc06_middle_real = nn.Linear(hidden_size, hidden_size)
+        #self.fc07_middle_real = nn.Linear(hidden_size, hidden_size)
+        self.fc1_real = nn.Conv2d(hidden_size, channel_n*2, kernel_size=1, stride=1, padding=0) #nn.Linear(hidden_size, channel_n*2, bias=False)
 
-        self.model_0 = {"dropout": self.drop0, "normalisation":self.norm_real2, "conv0": self.p0_real, "conv1": self.p1_real, "fc0": self.fc0_real, "fc1": self.fc1_real}#, "fc05": self.fc05_middle_real}
+        # combine pos and timestep
+        self.conv_pt_0 = nn.Conv2d(extra_channels, 16, kernel_size=1, stride=1, padding=0)
+        self.conv_pt_1 = nn.Conv2d(16, 16, kernel_size=1, stride=1, padding=0)
+        self.conv_pt_2 = nn.Conv2d(16, extra_channels, kernel_size=1, stride=1, padding=0)
+
+        self.model_0 = {"dropout": self.drop0, "normalisation":self.norm_real2, "conv0": self.p0_real, "conv1": self.p1_real, "fc0": self.fc0_real, "fc1": self.fc1_real, "pt0": self.conv_pt_0, "pt1": self.conv_pt_1, "pt2": self.conv_pt_2}#, "fc05": self.fc05_middle_real, "fc06": self.fc05_middle_real, "fc07": self.fc05_middle_real}
 
         if False:
             self.fc_mid = nn.Linear(hidden_size, hidden_size)
@@ -42,13 +49,20 @@ class DiffusionNCA_fft2(nn.Module):
         # ---------------- MODEL 1 -----------------
         self.real_drop0 = nn.Dropout(drop_out_rate)
         self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n+extra_channels)
-        self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
-        self.real_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect", groups=channel_n+extra_channels)#, groups=channel_n*2)
-        self.real_fc0_real = nn.Linear(channel_n*3+extra_channels*3, hidden_size)
+        self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect")#, groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
+        self.real_p1_real = nn.Conv2d(channel_n+extra_channels, channel_n+extra_channels, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect")#, groups=channel_n+extra_channels)#, groups=channel_n*2)
+        self.real_fc0_real = nn.Conv2d(channel_n*3+extra_channels*3, hidden_size, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3+extra_channels*3, hidden_size)
         #self.real_fc05_middle_real = nn.Linear(hidden_size, hidden_size)
-        self.real_fc1_real = nn.Linear(hidden_size, channel_n, bias=False)
+        #self.real_fc06_middle_real = nn.Linear(hidden_size, hidden_size)
+        #self.real_fc07_middle_real = nn.Linear(hidden_size, hidden_size)
+        self.real_fc1_real = nn.Conv2d(hidden_size, channel_n, kernel_size=1, stride=1, padding=0) #nn.Linear(hidden_size, channel_n, bias=False)
 
-        self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real}#, "fc05": self.real_fc05_middle_real}
+        # combine pos and timestep
+        self.conv_pt_0_real = nn.Conv2d(extra_channels, 16, kernel_size=1, stride=1, padding=0)
+        self.conv_pt_1_real = nn.Conv2d(16, 16, kernel_size=1, stride=1, padding=0)
+        self.conv_pt_2_real = nn.Conv2d(16, extra_channels, kernel_size=1, stride=1, padding=0)
+
+        self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real, "pt0": self.conv_pt_0_real, "pt1": self.conv_pt_1_real, "pt2": self.conv_pt_2_real}#, "fc05": self.real_fc05_middle_real, "fc06": self.real_fc05_middle_real, "fc07": self.real_fc05_middle_real}
         
         if False:
             # ---------------- MODEL 2 -----------------
@@ -352,7 +366,16 @@ class DiffusionNCA_fft2(nn.Module):
             #    dx = torch.concat((dx.real, dx.imag), 1)
 
             #print(dx.shape)
-            dx = torch.concat((dx, pos_x, pos_y, alive_rate), 1)
+
+            pos_t_enc = torch.concat((pos_x, pos_y, alive_rate), 1)
+            pos_t_enc = model_dict["pt0"](pos_t_enc)
+            pos_t_enc = F.leaky_relu(pos_t_enc)
+            pos_t_enc = model_dict["pt1"](pos_t_enc)
+            pos_t_enc = F.leaky_relu(pos_t_enc)
+            pos_t_enc = model_dict["pt2"](pos_t_enc)
+            pos_t_enc = F.leaky_relu(pos_t_enc)
+
+            dx = torch.concat((dx, pos_t_enc), 1)
 
 
 
@@ -361,11 +384,17 @@ class DiffusionNCA_fft2(nn.Module):
 
         dx = self.perceive_dict(dx, model_dict["conv0"], model_dict["conv1"])
 
-        dx = dx.transpose(1, 3)
+        
 
         dx = model_dict["fc0"](dx)
 
+
+        #dx = self.bn(dx)
+        dx = dx.transpose(1, 3)
+
+
         dx = F.leaky_relu(dx)
+
         #dx = F.relu(dx)
 
 
@@ -374,9 +403,15 @@ class DiffusionNCA_fft2(nn.Module):
 
         #dx = model_dict["fc05"](dx)
         #dx = F.leaky_relu(dx)
+        #dx = model_dict["fc06"](dx)
+        #dx = F.leaky_relu(dx)
+        #dx = model_dict["fc07"](dx)
+        #dx = F.leaky_relu(dx)
         #dx = model_dict["dropout"](dx)
 
+        dx = dx.transpose(1, 3)
         dx = model_dict["fc1"](dx)
+        dx = dx.transpose(1, 3)
 
         if fire_rate is None:
             fire_rate = self.fire_rate
@@ -439,7 +474,9 @@ class DiffusionNCA_fft2(nn.Module):
         x = torch.fft.fft2(x, norm="forward")#, norm="forward")
 
         x_old = x.clone()
-        x = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
+
+        factor = 5
+        x = x[..., 0:int(x_old.shape[2]/factor), 0:int(x_old.shape[3]/factor)]
 
         x = torch.concat((x.real, x.imag), 1)
         for step in range(steps):
@@ -449,9 +486,9 @@ class DiffusionNCA_fft2(nn.Module):
         x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
         x = x.transpose(1, 3)
 
-        x_old[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)] = x[..., 0:int(x_old.shape[2]/5), 0:int(x_old.shape[3]/5)]
+        x_old[..., 0:int(x_old.shape[2]/factor), 0:int(x_old.shape[3]/factor)] = x[..., 0:int(x_old.shape[2]/factor), 0:int(x_old.shape[3]/factor)]
         x = x_old
-        x = torch.fft.ifft2(x, norm="forward").to(torch.float)#, norm="forward")
+        x = torch.fft.ifft2(x, norm="forward").real #.to(torch.float)#, norm="forward")
         #x = x.to(torch.float) #double
 
         

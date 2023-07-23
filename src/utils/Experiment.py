@@ -154,7 +154,7 @@ class Experiment():
             self.fid = load_pickle_file(fid_path)
         else:
             self.set_model_state("train")
-            self.fid = FrechetInceptionDistance(feature=64, reset_real_features=False)
+            self.fid = FrechetInceptionDistance(feature=2048, reset_real_features=False)
             self.dataset.set_normalize(False)
             dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
             for i, data in enumerate(dataloader_fid):
