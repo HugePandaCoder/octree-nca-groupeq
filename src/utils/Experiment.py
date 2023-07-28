@@ -32,12 +32,13 @@ class Experiment():
         self.dataset = dataset
         self.model = model
         self.agent = agent
+        self.model_state = "train"
         self.general()
         if(os.path.isdir(os.path.join(self.config['model_path'], 'models'))):
             self.reload()
         else:
             self.setup()
-        self.initializeFID()
+        #self.initializeFID()
         self.currentStep = self.currentStep+1
         self.set_current_config()
 
@@ -138,12 +139,18 @@ class Experiment():
         #self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
         self.set_current_config()
         self.agent.set_exp(self)
+        self.fid = None
         #if self.currentStep == 0:
         #    self.write_text('config', str(self.projectConfig), 0)
 
         if self.get_from_config('unlock_CPU') is None or self.get_from_config('unlock_CPU') is False:
             print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
             torch.set_num_threads(1)
+
+    def getFID(self) -> FrechetInceptionDistance:
+        if self.fid is None:
+            self.initializeFID()
+        return self.fid
 
     def initializeFID(self) -> None:
         # Reload or generate FID Model
@@ -194,6 +201,7 @@ class Experiment():
 
     def set_model_state(self, state: str) -> None:
         r"""TODO: remove? """
+        self.model_state = state
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
         self.dataset.setState(state)
         

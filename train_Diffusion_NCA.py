@@ -16,7 +16,7 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    'name': r'DiffusionNCA_Run448_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep',
+    'name': r'DiffusionNCA_Run482_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep', #last 58
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -24,18 +24,18 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 2,
-    'evaluate_interval': 2,
+    'save_interval': 5,
+    'evaluate_interval': 5,
     'n_epoch': 100000,
-    'batch_size': 16,
+    'batch_size': 12,
     # Model
-    'channel_n': 96,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 30,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size': 396,
+    'hidden_size':  396,
     'schedule': 'linear',
     # Data
     'input_size': (64, 64),
@@ -72,7 +72,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-if True:
+if False:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)

@@ -10,6 +10,7 @@ import seaborn as sns
 import math
 from matplotlib import figure
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -195,7 +196,7 @@ class BaseAgent():
                 loss_log[m] = []
             self.initialize_epoch()
             print('Dataset size: ' + str(len(dataloader)))
-            for i, data in enumerate(dataloader):
+            for i, data in enumerate(tqdm(dataloader)):
                 loss_item = self.batch_step(data, loss_f)
                 for key in loss_item.keys():
                     loss_log[key].append(loss_item[key])
