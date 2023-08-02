@@ -480,7 +480,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         x = torch.concat((x.real, x.imag), 1)
         for step in range(steps):
-            x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_0) 
+            x = self.update_dict(x, 0, alive_rate=t, model_dict=self.model_0) 
 
         x = x.transpose(1, 3)
         x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])

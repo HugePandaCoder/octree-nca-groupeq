@@ -122,7 +122,8 @@ class Experiment():
         print(model_path)
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
-            self.agent.load_state(model_path)
+            self.agent.load_state(model_path)# is not True:
+            #    raise Exception("Model could not be loaded. Check if folder contains weights and architecture is identical.")
     
     def set_size(self) -> None:
         if isinstance(self.config['input_size'][0], tuple):

@@ -37,7 +37,7 @@ class BaseAgent():
             self.scheduler = []
             for m in range(len(self.model)):
                 self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                print("AdamW")
+                #print("SGD")
                 #self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
                 #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr')))
                 self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))

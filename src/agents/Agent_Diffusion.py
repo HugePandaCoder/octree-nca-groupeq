@@ -182,9 +182,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 #print(model_id)
             else:
                 model_id = math.floor(((t-0.0000001) * self.timesteps) / (self.timesteps / len(self.model)))  
-            outputs = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
+            outputs = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
         else:
-            outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t)
+            outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
         
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
@@ -226,7 +226,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         real_img = data[1].to(self.device).to(torch.float)
 
         # Rescale img factor x
-        data = self.rescale_image(data)
+        #data = self.rescale_image(data)
         
         data, noise, label = self.prepare_data(data, t)
         id, img, _ = data
@@ -300,7 +300,17 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     #print(F.mse_loss(outputs, noise, reduction='none').shape, stdd.shape)
                     loss = torch.mean(F.mse_loss(outputs, noise, reduction='none') * stdd)
                 else:
-                    loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise)        
+                    
+                    #outputs_fft = torch.fft.fft2(outputs.transpose(1, 3))[..., :20, :20]
+                    #noise_fft = torch.fft.fft2(noise.transpose(1, 3))[..., :20, :20]
+
+                    #x_count = torch.linspace(1, outputs_fft.real.shape[2]*2-1, outputs_fft.real.shape[2]).expand(1, 1, outputs_fft.real.shape[2], outputs_fft.real.shape[3]).to(self.device)
+                    #y_count = torch.transpose(x_count, 2, 3)
+                    #alive = 1/torch.maximum(y_count, x_count) #x_count[x_count > y_count] = y_count
+                    #plt.imshow(outputs_fft[0, 0, :, :].real.detach().cpu().numpy())
+                    #plt.show()
+
+                    loss = F.mse_loss(outputs, noise) #+ F.l1_loss(outputs, noise)#torch.mean(F.l1_loss(outputs_fft.real, noise_fft.real, reduction="none")*alive) #+ 10*torch.mean(F.l1_loss(outputs_fft.imag, noise_fft.imag, reduction="none")*alive)  #F.l1_loss(outputs, noise) # + 0.1*
             else:
                 #print("REAL", real_img.shape, outputs.shape)
                 model_noise = self.q_sample(x_start=real_img, t=t, noise=outputs)
@@ -355,6 +365,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         loss.backward()
         if isinstance(self.optimizer, list): 
             for m in range(len(self.optimizer)):
+                #torch.nn.utils.clip_grad_norm_(self.model[m].parameters(), 0.1)
                 self.optimizer[m].step()
         else:
             self.optimizer.step()
@@ -436,6 +447,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
             #Returns:
                 return (float): Average Dice score of test set. """
         #diceLoss = DiceLoss(useSigmoid=useSigmoid)
+        self.exp.set_model_state("test")
         self.test(tag="extra", samples=samples, extra=True)
 
         #return loss_log
@@ -531,6 +543,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
             for i, data in enumerate(dataloader):   
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
 
+                if i < 7:
+                    continue
+
                 # forward step to 80%
                 _, img, _ = data
                 img = img.to(self.device)
@@ -542,10 +557,10 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 img = F.interpolate(img, size=size, mode='bilinear')
                 img = img.transpose(1,3)
 
-                t = torch.full((1,), self.timesteps//10*5, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                t = torch.full((1,), self.timesteps//10*1, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
                 img = self.q_sample(x_start=img, t=t, noise=noise)
                 img = self.make_seed(img)
-                for step in tqdm(reversed(range(self.timesteps//10*5))):
+                for step in tqdm(reversed(range(self.timesteps//10*1))):
                     step = step
                     t = torch.full((1,), step, device=self.device, dtype=torch.long)
                     img_p = 0, img, 0
@@ -558,8 +573,12 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 break
 
             # Superresolution
-            for i, data in enumerate(dataloader):   
-                noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*5, size[1]*5, self.exp.get_from_config('input_channels'))))
+            for i, data in enumerate(dataloader):  
+                if i < 7:
+                    continue
+
+                sup_res = 3
+                noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*sup_res, size[1]*sup_res, self.exp.get_from_config('input_channels'))))
 
                 # forward step to 80%
                 _, img, _ = data
@@ -567,15 +586,15 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
                 #RESCALE IMAGE
                 img = img.transpose(1,3)
-                size_sup = (int(img.shape[2]*5), int(img.shape[3]*5)) 
+                size_sup = (int(img.shape[2]*sup_res), int(img.shape[3]*sup_res)) 
 
                 img = F.interpolate(img, size=size_sup, mode='bilinear')
                 img = img.transpose(1,3)
 
-                t = torch.full((1,), self.timesteps//4, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                t = torch.full((1,), self.timesteps//8, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
                 img = self.q_sample(x_start=img, t=t, noise=noise)
                 img = self.make_seed(img)
-                for step in tqdm(reversed(range(self.timesteps//4))):
+                for step in tqdm(reversed(range(self.timesteps//8))):
                     for i in range(1):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
@@ -587,18 +606,19 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 #/2 +0.5
                 break
 
-            for s in range(samples):
-                noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*3), int(size[1]*3), self.exp.get_from_config('input_channels'))))
-                img = self.make_seed(noise)
-                for step in tqdm(reversed(range(self.timesteps))):
-                    for i in range(1):
-                        t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                        img_p = 0, img, 0
-                        #print("NOISE HERE", torch.max(img), torch.min(img))
-                        output, _ = self.get_outputs(img_p, t = step)
-                        img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                        img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-                self.exp.write_img("bigger_size", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+            if False:
+                for s in range(samples):
+                    noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*3), int(size[1]*3), self.exp.get_from_config('input_channels'))))
+                    img = self.make_seed(noise)
+                    for step in tqdm(reversed(range(self.timesteps))):
+                        for i in range(1):
+                            t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                            img_p = 0, img, 0
+                            #print("NOISE HERE", torch.max(img), torch.min(img))
+                            output, _ = self.get_outputs(img_p, t = step)
+                            img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                            img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                    self.exp.write_img("bigger_size", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
 
             for s in range(samples):
                 noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
@@ -613,16 +633,31 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
                 self.exp.write_img(tag + "doubleSteps", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
                 #/2 +0.5
-            for s in range(samples):
-                noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
-                img = self.make_seed(noise)
-                for step in tqdm(reversed(range(self.timesteps))):
-                    for i in range(2):
+
+                sup_res = 3
+                noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*sup_res, size[1]*sup_res, self.exp.get_from_config('input_channels'))))
+
+                # forward step to 80%
+                img = img[..., 0:self.exp.get_from_config('input_channels')]
+
+                #RESCALE IMAGE
+                img = img.transpose(1,3)
+                size_sup = (int(img.shape[2]*sup_res), int(img.shape[3]*sup_res)) 
+
+                img = F.interpolate(img, size=size_sup, mode='bilinear')
+                img = img.transpose(1,3)
+
+                t = torch.full((1,), self.timesteps//10, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                img = self.q_sample(x_start=img, t=t, noise=noise)
+                img = self.make_seed(img)
+                for step in tqdm(reversed(range(self.timesteps//10))):
+                    for i in range(1):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))
                         output, _ = self.get_outputs(img_p, t = step)
                         img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                         img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-                self.exp.write_img(tag + '2', (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+                self.exp.write_img("Generate_Sup", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
                 #/2 +0.5
+
