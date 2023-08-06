@@ -7,6 +7,7 @@ class Data_Container():
 
     def __init__(self) -> None:
         self.data = {}
+        print("DATA INSTANCE CREATED")
 
     def get_data(self, key: str) -> tuple | bool:
         r"""Try to get data that has already been processed

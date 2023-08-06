@@ -199,7 +199,7 @@ class BaseAgent():
             for i, data in enumerate(tqdm(dataloader)):
                 loss_item = self.batch_step(data, loss_f)
                 for key in loss_item.keys():
-                    loss_log[key].append(loss_item[key])
+                    loss_log[key].append(loss_item[key].detach())
             self.intermediate_results(epoch, loss_log)
             if epoch % self.exp.get_from_config('evaluate_interval') == 0:
                 print("Evaluate model")

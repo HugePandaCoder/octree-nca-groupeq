@@ -11,9 +11,10 @@ class png_Dataset(Dataset_NiiGz_3D):
 
     normalize = True
 
-    def __init__(self, crop=False):
+    def __init__(self, crop=False, buffer=False):
         super().__init__()
         self.crop = crop
+        self.buffer = buffer
 
     def set_normalize(self, normalize=True):
         self.normalize = normalize
@@ -26,6 +27,10 @@ class png_Dataset(Dataset_NiiGz_3D):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if not self.crop:
             img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
+        else:
+            img = cv2.resize(img, dsize=(img.shape[1]//4,img.shape[0]//4), interpolation=cv2.INTER_CUBIC)
+
+        img = cv2.convertScaleAbs(img)
         #img = img/256 
         #img = img*2 -1
         #print("MINMAX", torch.max(img), torch.min(img))
@@ -40,18 +45,20 @@ class png_Dataset(Dataset_NiiGz_3D):
                 label (numpy): Label data
         """
 
-        img = self.data.get_data(key=self.images_list[idx])
-        
-        if True:
+        if self.buffer:
+            img = self.data.get_data(key=self.images_list[idx])
+
             if not img:
                 img_name, p_id, img_id = self.images_list[idx]
                 label_name, _, _ = self.labels_list[idx]
 
                 img = self.load_item(os.path.join(self.images_path, img_name))
-                label = self.load_item(os.path.join(self.labels_path, img_name))
+                label = 0#self.load_item(os.path.join(self.labels_path, img_name))
 
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
                 img = self.data.get_data(key=self.images_list[idx])
+                img_id, img, label = img
+                img = (img_id, img, img)
         else:
             img_name, p_id, img_id = self.images_list[idx]
             label_name, _, _ = self.labels_list[idx]

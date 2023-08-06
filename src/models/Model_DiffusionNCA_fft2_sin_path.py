@@ -77,41 +77,6 @@ class DiffusionNCA_fft2(nn.Module):
         kernelSize = 3
         padding = int((kernelSize-1)/2)
 
-        # ---------------- MODEL 0 -----------------
-        self.drop0 = nn.Dropout(drop_out_rate)
-        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
-        self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2, kernel_size=kernelSize, stride=1, padding=padding)#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        self.p1_real = 0#nn.Conv2d(channel_n*8+extra_channels, channel_n*8, kernel_size=kernelSize, stride=1, padding=padding)#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        self.fc0_real = nn.Conv2d(channel_n*2*2+extra_channels, hidden_size, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
-        #self.fc05_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
-        #self.fc06_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
-        #self.fc07_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
-        self.fc1_real = nn.Conv2d(hidden_size, channel_n*2, kernel_size=1, stride=1, padding=0) #nn.Linear(hidden_size, channel_n*2, bias=False)
-
-        # combine pos and timestep
-        #self.effBlock = self.EfficientBlock(hidden_size) 
-        self.conv_pt_0 = nn.Sequential(
-            nn.Conv2d(extra_channels*4, 256, kernel_size=1, stride=1, padding=0),
-            nn.SiLU(),
-            nn.Conv2d(256, extra_channels, kernel_size=1, stride=1, padding=0)
-        )#nn.Conv2d(extra_channels, 16, kernel_size=1, stride=1, padding=0)
-        #self.conv_pt_1 = nn.Conv2d(16, 16, kernel_size=1, stride=1, padding=0)
-        #self.conv_pt_2 = nn.Conv2d(16, extra_channels, kernel_size=1, stride=1, padding=0)
-
-        self.model_0 = {"dropout": self.drop0, "normalisation":self.norm_real2, "conv0": self.p0_real, "conv1": self.p1_real, "fc0": self.fc0_real, "fc1": self.fc1_real, "pt0": self.conv_pt_0}#, "pt1": self.conv_pt_1, "pt2": self.conv_pt_2}#, "fc05": self.fc05_middle_real, "fc06": self.fc05_middle_real, "fc07": self.fc05_middle_real}
-
-        kernelSize = 3
-        padding = int((kernelSize-1)/2)
-
-        if False:
-            self.fc_mid = nn.Linear(hidden_size, hidden_size)
-            self.norm_mid = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
-            self.fc_mid2 = nn.Linear(hidden_size, hidden_size)
-            self.norm_mid2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
-        #self.fc_mid3 = nn.Linear(hidden_size, hidden_size)
-
-        self.bn = nn.BatchNorm2d(hidden_size)
-
         # ---------------- MODEL 1 -----------------
         self.real_drop0 = nn.Dropout(drop_out_rate)
         self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
@@ -568,127 +533,17 @@ class DiffusionNCA_fft2(nn.Module):
         #x[:, :, :, -1:] = scaled_t
 
 
-        # Add pos
-        if False:
-            x_count = torch.linspace(0, 1, x.shape[1]).expand(x.shape[0], 1, x.shape[2], x.shape[1]).transpose(1,3)
-            y_count = torch.linspace(0, 1, x.shape[2]).expand(x.shape[0], x.shape[1], 1, x.shape[2]).transpose(2,3)
 
-            x[:, :, :, -2:-1] = x_count
-            x[:, :, :, -3:-2] = y_count
-            #x[:, :, :, -6:-3] = x[:, :, :, 0:3]
-
-
-            #x[:, :, :, 0:-6] = torch.randn_like(x[:, :, :, 0:-6])*0.01
-            
-            #x[:, :, :, 0:3] = torch.zeros_like(x[:, :, :, 0:3])
-
-        #x = x.type(torch.cfloat)
-        #if self.complex:
-        #    x = torch.fft.fftn(x)
-
-        # Convert to Fourier
-        #print(x.shape)
-
-
-        # ---------------- MODEL 0 -----------------
-        if False:
-            x = x.transpose(1, 3) 
-            x = torch.fft.fft2(x, norm="forward")#, norm="forward")
-
-            x_old = x.clone()
-            factor = 5
-            pixel_X = 20#int(x_old.shape[2]/factor)
-            pixel_Y = 20#int(x_old.shape[3]/factor)
-            x = x[..., 0:pixel_X, 0:pixel_Y]
-
-            x = torch.concat((x.real, x.imag), 1)
-            for step in range(steps):
-                x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_0) 
-
-            x = x.transpose(1, 3)
-            x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
-            x = x.transpose(1, 3)
-
-            x_old[..., 0:pixel_X, 0:pixel_Y] = x[..., 0:pixel_X, 0:pixel_Y]
-            x = x_old
-            x = torch.fft.ifft2(x, norm="forward").real #.to(torch.float)#, norm="forward")
-            #x = x.to(torch.float) #double
 
             
-            # ---------------- MODEL 1 -----------------
-            for step in range(steps):#int(steps/2)):
-                #x_update = self.update_real(x, fire_rate, alive_rate=t) 
-                #x = x_update
-                x = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1) 
-            x = x.transpose(1, 3)
-        else:
-            x = x.transpose(1, 3) 
-            
-            #fire_rate = 0
-            
-            factor = 5
-            pixel_X = 16#int(x_old.shape[2]/factor)
-            pixel_Y = 16#int(x_old.shape[3]/factor)
-            x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
-            x = torch.fft.fftshift(x, dim=(2,3))
-            x_old = x.clone()
-            x_start, y_start = x.shape[2]//2, x.shape[3]//2 # - pixel_X//2 - pixel_Y//2, 
-            x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
-
-
-            if False:
-                # FLIP X
-                x = torch.concat(
-                    (torch.split(x, int(x.shape[2]//2), dim=2)[0], 
-                    torch.flip(torch.split(x, int(x.shape[2]//2), dim=2)[1], dims=[2])
-                    ), 1)
-                # FLIP Y
-                x = torch.concat(
-                    (torch.split(x, int(x.shape[3]//2), dim=3)[0], 
-                    torch.flip(torch.split(x, int(x.shape[3]//2), dim=3)[1], dims=[3])
-                    ), 1)
-
-            steps_f = pixel_X
-            x = torch.concat((x.real, x.imag), 1)
-            for step in range(steps_f*2):
-                x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.model_0, step=step/(steps_f)) 
-                x[:, self.input_channels:self.channel_n, ...] = x_new[:, self.input_channels:self.channel_n, ...]
-                x[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...] = x_new[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...]
-
-            if False:
-                # BACK FLIP X
-                x = torch.concat(
-                    (torch.split(x, int(x.shape[1]//2), dim=1)[0], 
-                    torch.flip(
-                    torch.split(x, int(x.shape[1]//2), dim=1)[1], dims=[3])
-                    ), 3)
-                # BACK FLIP Y
-                x = torch.concat(
-                    (torch.split(x, int(x.shape[1]//2), dim=1)[0], 
-                    torch.flip(
-                    torch.split(x, int(x.shape[1]//2), dim=1)[1], dims=[2])
-                    ), 2)
-
-
-            x = x.transpose(1, 3)
-            x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
-            x = x.transpose(1, 3)
-
-            x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
-            #x = x_old
-            x_old = torch.fft.ifftshift(x_old, dim=(2,3))
-            x = torch.fft.ifft2(x_old, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
-            #x[:, 0:3, ...] = x_old[:, 0:3, ...]
-            #x = x.to(torch.float) #double
-
-            
-            # ---------------- MODEL 1 -----------------
-           # steps = min(1 + epoch // 45, steps)
-            for step in range(steps):#int(steps/2)):
-                #x_update = self.update_real(x, fire_rate, alive_rate=t) 
-                #x = x_update
-                x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
-            x = x.transpose(1, 3)
+        # ---------------- MODEL 1 -----------------
+        # steps = min(1 + epoch // 45, steps)
+        x = x.transpose(1, 3)
+        for step in range(steps):#int(steps/2)):
+            #x_update = self.update_real(x, fire_rate, alive_rate=t) 
+            #x = x_update
+            x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
+        x = x.transpose(1, 3)
 
         if False:
             # ---------------- MODEL 2 -----------------

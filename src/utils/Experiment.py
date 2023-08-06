@@ -16,6 +16,7 @@ from PIL import Image as PILImage
 import git
 from matplotlib import figure
 from torchmetrics.image.fid import FrechetInceptionDistance
+from tqdm import tqdm
 
 
 
@@ -146,12 +147,26 @@ class Experiment():
 
         if self.get_from_config('unlock_CPU') is None or self.get_from_config('unlock_CPU') is False:
             print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
-            torch.set_num_threads(1)
+            torch.set_num_threads(4)
 
     def getFID(self) -> FrechetInceptionDistance:
         if self.fid is None:
             self.initializeFID()
         return self.fid
+
+    def bufferData(self) -> None:
+        self.set_model_state("train")
+        dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+        for i, data in tqdm(enumerate(dataloader_fid)):
+            continue
+        self.set_model_state("val")
+        dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+        for i, data in tqdm(enumerate(dataloader_fid)):
+            continue
+        self.set_model_state("test")
+        dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+        for i, data in tqdm(enumerate(dataloader_fid)):
+            continue
 
     def initializeFID(self) -> None:
         # Reload or generate FID Model

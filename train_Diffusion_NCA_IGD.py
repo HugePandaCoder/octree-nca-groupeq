@@ -16,26 +16,26 @@ config = [{
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     #/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google
+    'img_path': r"/gris/gris-f/homestud/jkalkhof/datasets/img_align_celeba_64",
+    'label_path': r"/gris/gris-f/homestud/jkalkhof/datasets/img_align_celeba_64", #img_align_celeba, Emojis_Smiley, Emojis_Google
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep', #last 58
-    'device':"cuda:0",
+    'name': r'IGD_DiffusionNCA_Run18_CelebA_Normal', #last 58
+    'device':"cuda:3",
     'unlock_CPU': True,
     # Optimizer
     'lr': 16e-4, #32
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,
-    'evaluate_interval': 2,
-    'n_epoch': 100000,
-    'batch_size': 16,
+    'save_interval': 1,
+    'evaluate_interval': 1,
+    'n_epoch': 100,
+    'batch_size': 24,
     # Model
     'channel_n': 96,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 30,
+    'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
@@ -43,7 +43,7 @@ config = [{
     'schedule': 'linear',
     # Data
     'input_size': (64, 64),
-    'data_split': [0.80340968, 0.09806, 1], 
+    'data_split': [0.80340968, 0.09806, 1],
     'timesteps': 300,
     '2D': True,
     'unlock_CPU': False,
