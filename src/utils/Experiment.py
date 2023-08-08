@@ -179,14 +179,15 @@ class Experiment():
             self.set_model_state("train")
             self.fid = FrechetInceptionDistance(feature=2048, reset_real_features=False)
             self.dataset.set_normalize(False)
-            dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+            dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=16)
             for i, data in enumerate(dataloader_fid):
                 #print(data[1].shape)
                 sample = data[1].to(torch.uint8)
                 sample = sample.transpose(1,3)
                 self.fid.update(sample, real=True)
                 #self.fid.compute()
-                break
+                if i == 127:
+                    break
             print("FID CREATED")
             self.dataset.set_normalize(True)
 

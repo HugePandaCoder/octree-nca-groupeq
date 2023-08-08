@@ -5,7 +5,7 @@ from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
 from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
 from src.models.Model_DiffusionNCA_fft import DiffusionNCA_fft
-from src.models.Model_DiffusionNCA_fft2_sin import DiffusionNCA_fft2
+from src.models.Model_DiffusionNCA_fft2_sin_path import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_Diffusion import Agent_Diffusion
@@ -16,11 +16,11 @@ config = [{
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     #/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google
-    #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep', #last 58
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/EuroSAT/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/EuroSAT/",
+    'name': r'DiffusionNCA_Run583_EuroSAT', #last 58
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -28,30 +28,30 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,
+    'save_interval': 2,
     'evaluate_interval': 2,
     'n_epoch': 100000,
-    'batch_size': 16,
+    'batch_size': 4,
     # Model
     'channel_n': 96,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 30,
+    'inference_steps': 48,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  512,
+    'hidden_size':  396,
     'schedule': 'linear',
     # Data
     'input_size': (64, 64),
-    'data_split': [0.80340968, 0.09806, 1], 
+    'data_split': [0.2, 0, 1], 
     'timesteps': 300,
     '2D': True,
-    'unlock_CPU': False,
+    'unlock_CPU': True,
 }
 ]
 
 #dataset = Dataset_NiiGz_3D(slice=2)
-dataset = png_Dataset(buffer=True)
+dataset = png_Dataset(buffer=True)#, crop=True)
 device = torch.device(config[0]['device'])
 #ca = DiffusionNCA_Group(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 
@@ -71,7 +71,6 @@ print("PARAMETERS", sum(p.numel() for p in ca0.parameters() if p.requires_grad))
  
 agent = Agent_Diffusion(ca)
 exp = Experiment(config, dataset, ca, agent)
-#exp.bufferData()
 dataset.set_experiment(exp)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
@@ -82,8 +81,8 @@ if True:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
-    agent.test_fid()
-    #agent.generateSamples(samples=12)
+    #agent.test_fid()
+    agent.generateSamples(samples=1)
 
 
 # %%

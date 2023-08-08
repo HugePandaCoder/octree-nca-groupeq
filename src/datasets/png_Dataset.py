@@ -95,6 +95,7 @@ class png_Dataset(Dataset_NiiGz_3D):
             #img = img
             img = img/128 -1#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
 
+        #print(img.shape)
 
         return (id, img, label)
 

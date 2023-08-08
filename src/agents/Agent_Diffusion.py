@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import math
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+from copy import deepcopy
 
 class Agent_Diffusion(Agent_Multi_NCA):
     def initialize(self, beta_schedule='linear'): #'linear'): cosine
@@ -15,6 +16,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         self.beta_schedule = self.exp.get_from_config('schedule') #beta_schedule
         self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, self.betas, self.sqrt_recip_alphas, \
             self.posterior_variance = self.calc_schedule()
+        self.averages = False
 
     @staticmethod
     def extract(a, t, x_shape):
@@ -436,6 +438,8 @@ class Agent_Diffusion(Agent_Multi_NCA):
             return model_mean + torch.sqrt(posterior_variance_t) * noise
 
     def intermediate_evaluation(self, dataloader, epoch):
+        if not self.averages:
+            self.calculateAverages()
         self.exp.set_model_state("test")
         if epoch % 5 == 0:
             self.test_fid()
@@ -453,38 +457,174 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #return loss_log
 
     @torch.no_grad()
-    def test_fid(self, tag:str='0', samples:int=1, extra:bool=False, **kwargs):
+    def test_fid(self, tag:str='0', samples:int=1, extra:bool=False, optimized=False, **kwargs):
+        if not self.averages:
+            self.calculateAverages()
         size = self.exp.get_from_config('input_size')
 
+        if samples < 2: samples = 2
+
         # Generate samples
-        noise, _ = self.getNoiseLike(torch.zeros((16, size[0], size[1], self.exp.get_from_config('input_channels'))))
+        noise, _ = self.getNoiseLike(torch.zeros((samples, size[0], size[1], self.exp.get_from_config('input_channels'))))
         img = self.make_seed(noise)
-        for step in reversed(range(self.timesteps)):
-            print(step)
-            #for i in range(2):
-            t = torch.full((1,), step, device=self.device, dtype=torch.long)
-            img_p = 0, img, 0
-            #print("NOISE HERE", torch.max(img), torch.min(img))
-            output, _ = self.get_outputs(img_p, t = step)
-            img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-            img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+
+        if optimized:
+            for i in range(samples):
+                sample = self.optimizedImageGeneration(size)
+                img[i, ...] = sample
+                #img[i*4+1, ...] = sample
+                #img[i*4+2, ...] = sample
+                #img[i*4+3, ...] = sample
+            
+        else:
+            for step in tqdm(reversed(range(self.timesteps))):
+                #for i in range(2):
+                t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                img_p = 0, img, 0
+                #print("NOISE HERE", torch.max(img), torch.min(img))
+                output, _ = self.get_outputs(img_p, t = step)
+                img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
 
         # Compose images
-        composition = np.zeros((4*size[0], 4*size[1], self.exp.get_from_config('input_channels')))
+        factor = 4
+        composition = np.zeros((factor*size[0], factor*size[1], self.exp.get_from_config('input_channels')))
         imgs = (img.detach().cpu().numpy()+1)/2
-        for b in range(img.shape[0]):
+        for i, b in enumerate(range(img.shape[0])):
             x = b % 4
-            y = int(math.floor(b/4))
+            y = int(math.floor(b//factor))
             composition[x*size[0]:(x+1)*size[0], y*size[0]:(y+1)*size[0], 0:self.exp.get_from_config('input_channels')] = imgs[b, ... , 0:self.exp.get_from_config('input_channels')] 
+            if i == (factor*factor -1): break
         self.exp.write_img("Composition", composition, self.exp.currentStep, normalize=True) #context={'Image':s}, 
 
         print(img.transpose(1,3).shape)
-        self.exp.getFID().update((((img[..., 0:self.exp.get_from_config('input_channels')].transpose(1,3).detach().cpu()+1)/2)*256).to(torch.uint8), real=False)
-        print("FID: ", self.exp.fid.compute())
-        self.exp.write_scalar('FID', self.exp.fid.compute(), self.exp.currentStep)
+
+        sample = (((img[..., 0:self.exp.get_from_config('input_channels')].transpose(1,3).detach().cpu()+1)/2)*256) #
+        sample = torch.clip(sample, 0, 255).to(torch.uint8)
+        print(torch.min(sample), torch.max(sample))
+        self.exp.getFID().update(sample, real=False)
+        fid_score = self.exp.fid.compute()
+        print("FID: ", fid_score)
+        self.exp.write_scalar('FID', fid_score, self.exp.currentStep)
+
+
+    def calculateSDV(self, image): 
+        total_noise_std_dev = 0
+
+        for channel in range(3):
+            # Extract the specific color channel
+            single_channel = image[:, :, channel]
+
+            # Calculate the difference between neighboring pixels horizontally
+            diff_horizontal = single_channel[:, 1:] - single_channel[:, :-1]
+
+            # Calculate the difference between neighboring pixels vertically
+            diff_vertical = single_channel[1:, :] - single_channel[:-1, :]
+
+            # Combine the horizontal and vertical differences
+            diff_combined = np.hstack((diff_horizontal.flatten(), diff_vertical.flatten()))
+
+            # Estimate the standard deviation of the differences for this channel
+            noise_std_dev = np.std(diff_combined)
+
+            # Add the standard deviation for this channel to the total
+            total_noise_std_dev += noise_std_dev
+
+            #print(f'Channel {channel}: Estimated Gaussian noise standard deviation: {noise_std_dev}')
+        
+        return total_noise_std_dev
+    
+    def calculateAverages(self):
+        self.exp.set_model_state('test')
+        dataset = self.exp.dataset
+        size = self.exp.get_from_config('input_size')
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        list_key = []
+        list_val = []
+        for i, data in tqdm(enumerate(dataloader)):  
+            _, img, _ = data
+            img = img.to(self.device)
+
+            for step in range(self.timesteps):
+                t = torch.full((1,), step, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))          
+                img_noisy = self.q_sample(x_start=img, t=t, noise=noise).detach().cpu().numpy()
+                
+                image = img_noisy[0, ...]
+                total_noise_std_dev = self.calculateSDV(image)
+                list_key.append(step)
+                list_val.append(total_noise_std_dev)
+                #dic[ts] = total_noise_std_dev
+
+            if i > 100:
+                import seaborn as sns
+                sns.scatterplot(x=list_key, y=list_val)
+                plt.show()
+
+                # Calculate average of each entry
+                from collections import defaultdict
+                id_values = defaultdict(lambda: {'sum': 0, 'count': 0})
+
+                for id, value in zip(list_key, list_val):
+                    id_values[id]['sum'] += value
+                    id_values[id]['count'] += 1
+
+                averages = []
+                for id, data in id_values.items():
+                    avg = data['sum'] / data['count']
+                    averages.append((id, avg))
+
+                #print(averages)
+                self.averages = averages
+                break
+
+    def optimizedImageGeneration(self, size):
+            noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]), int(size[1]), self.exp.get_from_config('input_channels'))))
+            img = self.make_seed(noise)
+
+            currentTimestep = range(self.timesteps)[-1]
+            pbar = tqdm(total=self.timesteps)
+            while True:#
+            #for step in tqdm(reversed(range(self.timesteps))):
+                step = int(currentTimestep)#/self.timesteps
+                #print(step)
+                t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                img_p = 0, img, 0
+                #print("NOISE HERE", torch.max(img), torch.min(img))
+                output, _ = self.get_outputs(img_p, t = step)
+                img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+
+                # Find closest timestep
+                min_difference = 10
+                min_pos = 400
+                image = img[0, ..., 0:3].detach().cpu().numpy()
+                total_noise_std_dev = self.calculateSDV(image)
+                for i, l in enumerate(self.averages):
+                    st, val = l
+                    if abs(total_noise_std_dev-val) < min_difference:
+                        min_difference = abs(total_noise_std_dev-val)
+                        min_pos = i
+                
+                if step == 0:
+                    break
+
+                currentTimestep, _ = self.averages[min_pos]
+                if step < 40:# and currentTimestep < step-1:
+                    currentTimestep = step-1
+
+                pbar.n = self.timesteps-currentTimestep
+                pbar.refresh()
+
+            return img
+            
+
 
     @torch.no_grad()
     def test(self, tag='0', samples=1, extra=False, **kwargs):
+        if not self.averages:
+            self.calculateAverages()
+
         # Generate sample
         size = self.exp.get_from_config('input_size')
         
@@ -495,18 +635,20 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #self.test_fid()
         #noise = torch.randn_like(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))).to(self.device)
 
-        #self.timesteps = 400
+        self.timesteps = 300
+
+
+
+
         for s in range(samples):
-            noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
-            img = self.make_seed(noise)
-            for step in tqdm(reversed(range(self.timesteps))):
-                t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                img_p = 0, img, 0
-                #print("NOISE HERE", torch.max(img), torch.min(img))
-                output, _ = self.get_outputs(img_p, t = step)
-                img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+            size_loc = deepcopy(size)
+            #size_loc[0] *= 3 #1.23
+            #size_loc[1] *= 3
+            img = self.optimizedImageGeneration(size=size_loc)
+
             self.exp.write_img(tag, (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+            
+            
             #/2 +0.5
 
         if False:
@@ -575,7 +717,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
             # Superresolution
             for i, data in enumerate(dataloader):  
-                if i < 7:
+                if i < 12:
                     continue
 
                 sup_res = 3
@@ -591,11 +733,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
                 img = F.interpolate(img, size=size_sup, mode='bilinear')
                 img = img.transpose(1,3)
+                self.exp.write_img("Before Superresolution", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
+                                
 
-                t = torch.full((1,), self.timesteps//8, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                t = torch.full((1,), self.timesteps//10, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
                 img = self.q_sample(x_start=img, t=t, noise=noise)
                 img = self.make_seed(img)
-                for step in tqdm(reversed(range(self.timesteps//8))):
+                for step in tqdm(reversed(range(self.timesteps//10))):
                     for i in range(1):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0

@@ -71,19 +71,19 @@ print("PARAMETERS", sum(p.numel() for p in ca0.parameters() if p.requires_grad))
  
 agent = Agent_Diffusion(ca)
 exp = Experiment(config, dataset, ca, agent)
-exp.bufferData()
 dataset.set_experiment(exp)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceBCELoss() 
 
-if True:
+if False:
+    exp.bufferData()
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
-    #agent.test_fid()
-    agent.generateSamples(samples=1)
+    agent.test_fid(samples=128, optimized=False)
+    #agent.generateSamples(samples=1)
 
 
 # %%
