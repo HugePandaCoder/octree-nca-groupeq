@@ -82,7 +82,8 @@ if False:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
-    agent.test_fid(samples=32, optimized=True)
+    agent.calculateFID_fromFiles(samples=100)
+    #agent.test_fid(samples=2048, optimized=True, saveImg=True)
     #agent.generateSamples(samples=1)
 
 

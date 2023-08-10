@@ -16,6 +16,7 @@ from PIL import Image as PILImage
 import git
 from matplotlib import figure
 from torchmetrics.image.fid import FrechetInceptionDistance
+from torchmetrics.image.kid import KernelInceptionDistance
 from tqdm import tqdm
 
 
@@ -64,6 +65,8 @@ class Experiment():
         # Basic Configs
         if 'model_path' not in self.projectConfig[0]:
             self.projectConfig[0]['model_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig[0]['name'])
+        if 'generate_path' not in self.projectConfig[0]:
+            self.projectConfig[0]['generate_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig[0]['name'], 'Generated')
         # Git hash
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
@@ -142,6 +145,7 @@ class Experiment():
         self.set_current_config()
         self.agent.set_exp(self)
         self.fid = None
+        self.kid = None
         #if self.currentStep == 0:
         #    self.write_text('config', str(self.projectConfig), 0)
 
@@ -153,6 +157,11 @@ class Experiment():
         if self.fid is None:
             self.initializeFID()
         return self.fid
+    
+    def getKID(self) -> KernelInceptionDistance:
+        if self.kid is None:
+            self.initializeKID()
+        return self.kid
 
     def bufferData(self) -> None:
         self.set_model_state("train")
@@ -168,6 +177,25 @@ class Experiment():
         for i, data in tqdm(enumerate(dataloader_fid)):
             continue
 
+    def initializeKID(self) -> None:
+        # Reload or generate FID Model
+        fid_path = os.path.join(pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
+
+        self.set_model_state("train")
+        self.kid = KernelInceptionDistance(feature=2048, reset_real_features=False, subset_size=10)
+        self.dataset.set_normalize(False)
+        dataloader_kid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
+        for i, data in enumerate(dataloader_kid):
+            #print(data[1].shape)
+            sample = data[1].to(torch.uint8)
+            sample = sample.transpose(1,3)
+            self.kid.update(sample, real=True)
+            #self.fid.compute()
+            break
+        print("KID CREATED")
+        self.dataset.set_normalize(True)
+
+
     def initializeFID(self) -> None:
         # Reload or generate FID Model
         fid_path = os.path.join(pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
@@ -179,15 +207,14 @@ class Experiment():
             self.set_model_state("train")
             self.fid = FrechetInceptionDistance(feature=2048, reset_real_features=False)
             self.dataset.set_normalize(False)
-            dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=16)
+            dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
             for i, data in enumerate(dataloader_fid):
                 #print(data[1].shape)
                 sample = data[1].to(torch.uint8)
                 sample = sample.transpose(1,3)
                 self.fid.update(sample, real=True)
                 #self.fid.compute()
-                if i == 127:
-                    break
+                break
             print("FID CREATED")
             self.dataset.set_normalize(True)
 

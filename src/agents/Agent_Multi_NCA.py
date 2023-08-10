@@ -48,6 +48,6 @@ class Agent_Multi_NCA(Agent_NCA):
         """
         for id, z in enumerate(zip(self.model, self.optimizer, self.scheduler)):
             m, o, s = z
-            m.load_state_dict(torch.load(os.path.join(model_path, 'model'+ str(id) +'.pth')))
-            o.load_state_dict(torch.load(os.path.join(model_path, 'optimizer'+ str(id) +'.pth')))
-            s.load_state_dict(torch.load(os.path.join(model_path, 'scheduler'+ str(id) +'.pth')))
+            m.load_state_dict(torch.load(os.path.join(model_path, 'model'+ str(id) +'.pth'), map_location=self.device))
+            o.load_state_dict(torch.load(os.path.join(model_path, 'optimizer'+ str(id) +'.pth'), map_location=self.device))
+            s.load_state_dict(torch.load(os.path.join(model_path, 'scheduler'+ str(id) +'.pth'), map_location=self.device))
