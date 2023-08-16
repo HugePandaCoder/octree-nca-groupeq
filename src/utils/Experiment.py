@@ -248,6 +248,12 @@ class Experiment():
         self.model_state = state
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
         self.dataset.setState(state)
+
+        for m in self.model:
+            if self.model_state == "train":
+                m.train()
+            else:
+                m.eval()
         
     def get_from_config(self, tag: str) -> any:
         r"""Get from config
