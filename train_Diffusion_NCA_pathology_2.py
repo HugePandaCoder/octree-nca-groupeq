@@ -20,7 +20,7 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
     'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run583_Pathology', #last 58
+    'name': r'DiffusionNCA_Run584_Pathology', #last 58
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -51,7 +51,7 @@ config = [{
 ]
 
 #dataset = Dataset_NiiGz_3D(slice=2)
-dataset = png_Dataset(buffer=True, crop=True)
+dataset = png_Dataset(buffer=True, crop=True, downscale=16)
 device = torch.device(config[0]['device'])
 #ca = DiffusionNCA_Group(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 

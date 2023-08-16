@@ -20,8 +20,8 @@ config = [{
     'label_path': r"/gris/gris-f/homestud/jkalkhof/datasets/img_align_celeba_64", #img_align_celeba, Emojis_Smiley, Emojis_Google
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'IGD7_DiffusionNCA_Run8_CelebA_Normal', #last 58
-    'device':"cuda:1",
+    'name': r'IGD7_DiffusionNCA_Run9_CelebA_Normal', #last 58
+    'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
     'lr': 16e-4, #32
@@ -31,11 +31,11 @@ config = [{
     'save_interval': 1,
     'evaluate_interval': 1,
     'n_epoch': 100,
-    'batch_size': 16,
+    'batch_size': 32,
     # Model
     'channel_n': 48,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 20,
+    'inference_steps': 10,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
@@ -77,14 +77,14 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-if True:
-    #exp.bufferData()
+if False:
+    exp.bufferData()
     exp.set_model_state('train')
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
     agent.calculateFID_fromFiles(samples=100)
-    agent.test_fid(samples=860, optimized=True, saveImg=True)
+    agent.test_fid(samples=2048, optimized=True, saveImg=True)
     #agent.generateSamples(samples=1)
 
 

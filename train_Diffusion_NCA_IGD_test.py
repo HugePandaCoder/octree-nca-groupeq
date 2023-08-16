@@ -77,14 +77,14 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-if True:
+if False:
     #exp.bufferData()
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
-    agent.calculateFID_fromFiles(samples=100)
+    #agent.calculateFID_fromFiles(samples=100)
     #agent.test_fid(samples=860, optimized=True, saveImg=True)
-    #agent.generateSamples(samples=1)
+    agent.generateSamples(samples=1, normal=False)
 
 
 # %%

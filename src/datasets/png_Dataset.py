@@ -11,10 +11,11 @@ class png_Dataset(Dataset_NiiGz_3D):
 
     normalize = True
 
-    def __init__(self, crop=False, buffer=False):
+    def __init__(self, crop=False, buffer=False, downscale=4):
         super().__init__()
         self.crop = crop
         self.buffer = buffer
+        self.downscale = downscale
 
     def set_normalize(self, normalize=True):
         self.normalize = normalize
@@ -28,7 +29,7 @@ class png_Dataset(Dataset_NiiGz_3D):
         if not self.crop:
             img = cv2.resize(img, dsize=self.size, interpolation=cv2.INTER_CUBIC)
         else:
-            img = cv2.resize(img, dsize=(img.shape[1]//4,img.shape[0]//4), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, dsize=(img.shape[1]//self.downscale,img.shape[0]//self.downscale), interpolation=cv2.INTER_CUBIC)
 
         img = cv2.convertScaleAbs(img)
         #img = img/256 

@@ -449,13 +449,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
         self.test()
         self.exp.set_model_state("train")
 
-    def generateSamples(self, samples:int=1):
+    def generateSamples(self, samples:int=1, normal=True):
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
         #diceLoss = DiceLoss(useSigmoid=useSigmoid)
         self.exp.set_model_state("test")
-        self.test(tag="extra", samples=samples, extra=True)
+        self.test(tag="extra", samples=samples, extra=True, normal=normal)
 
         #return loss_log
 
@@ -525,7 +525,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
     def calculateFID_fromFiles(self, samples):
         path = os.path.join(self.exp.get_from_config('model_path'), "models", "epoch_" + str(self.exp.currentStep-1), "Generated")
-
+        #path = r"/home/jkalkhof_locale/Documents/GitHub/vnca2/Synth/"
         imgs = None
         for i, file in tqdm(enumerate(os.listdir(path)), total=len(os.listdir(path))):
             img = torch.unsqueeze(torch.tensor(cv2.cvtColor(cv2.imread(os.path.join(path, file)), cv2.COLOR_BGR2RGB)).to(torch.uint8), dim=0)
@@ -661,7 +661,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
     @torch.no_grad()
-    def test(self, tag='0', samples=1, extra=False, **kwargs):
+    def test(self, tag='0', samples=1, extra=False, normal=True, **kwargs):
 
         # Generate sample
         size = self.exp.get_from_config('input_size')
@@ -677,9 +677,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
 
-        if True:
+        if normal:
             for s in range(samples):
-                if False:
+                if True:
                     noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
                     img = self.make_seed(noise)
                     for step in tqdm(reversed(range(self.timesteps))):
@@ -692,8 +692,8 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     self.exp.write_img(tag, (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
                 else:
                     size_loc = deepcopy(size)
-                    size_loc[0] *= 2 #1.23
-                    size_loc[1] *= 2
+                    size_loc[0] *= 1.23 #1.23
+                    size_loc[1] *= 1#2
                     img = self.optimizedImageGeneration(size=size_loc)
 
                     self.exp.write_img(tag, (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
@@ -805,41 +805,53 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     break
 
             # Superresolution
-            if False:
+            if True:
+                print("SUPERSAMPLE")
                 for i, data in enumerate(dataloader):  
-                    if i < 42:
-                        continue
+                    
+                    
+                    sup_res = 1.5 #1.44
+                    if False:
+                        if i < 42:
+                            continue
 
-                    sup_res = 3
-                    noise, _ = self.getNoiseLike(torch.zeros((1, size[0]*sup_res, size[1]*sup_res, self.exp.get_from_config('input_channels'))))
 
-                    # forward step to 80%
-                    _, img, _ = data
+
+                        # forward step to 80%
+                        _, img, _ = data
+                    else:
+                        img = cv2.imread("/home/jkalkhof_locale/Downloads/565005978_2.png")
+                        img = (torch.unsqueeze(torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), dtype=torch.float64), dim=0)/128)-1
                     img = img.to(self.device)
 
                     #RESCALE IMAGE
+                    print(img.shape)
                     self.exp.write_img("Before Superresolution", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, normalize=True) #/2+0.5 #{'Image':s}
             
-                    img = img.transpose(1,3)
-                    size_sup = (int(img.shape[2]*sup_res), int(img.shape[3]*sup_res)) 
+                    for l in range(1):
+                        print(img.shape)
+                        img = img.transpose(1,3)
+                        size_sup = (int(img.shape[2]*sup_res), int(img.shape[3]*sup_res)) 
+                        img = F.interpolate(img, size=size_sup, mode='nearest')
+                        img = img.transpose(1,3)
 
+                        print(img.shape)
+                        noise, _ = self.getNoiseLike(torch.zeros((1, img.shape[1], img.shape[2], self.exp.get_from_config('input_channels'))))
+                        print(noise.shape)
 
-                    img = F.interpolate(img, size=size_sup, mode='bilinear')
-                    img = img.transpose(1,3)
-                        
-
-                    t = torch.full((1,), self.timesteps//10, device=self.exp.get_from_config(tag="device"), dtype=torch.long)
-                    img = self.q_sample(x_start=img, t=t, noise=noise)
-                    img = self.make_seed(img)
-                    for step in tqdm(reversed(range(self.timesteps//10))):
-                        for i in range(1):
-                            t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                            img_p = 0, img, 0
-                            #print("NOISE HERE", torch.max(img), torch.min(img))
-                            output, _ = self.get_outputs(img_p, t = step)
-                            img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                            img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
-                    self.exp.write_img("Superresolution", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, normalize=True) #/2+0.5 #{'Image':s}
+                        t = torch.full((1,), self.timesteps//int(14*(l+1)), device=self.exp.get_from_config(tag="device"), dtype=torch.long)
+                        img = self.q_sample(x_start=img, t=t, noise=noise)
+                        img = self.make_seed(img)
+                        for step in tqdm(reversed(range(self.timesteps//int(14*(l+1))))):
+                            for i in range(1):
+                                t = torch.full((1,), step, device=self.device, dtype=torch.long)
+                                img_p = 0, img, 0
+                                #print("NOISE HERE", torch.max(img), torch.min(img))
+                                output, _ = self.get_outputs(img_p, t = step)
+                                img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
+                                img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                        img = img[0:1, ..., 0:self.exp.get_from_config('input_channels')]
+                    self.exp.write_img("Superresolution", (img[0].detach().cpu().numpy()+1)/2, self.exp.currentStep, normalize=True) #/2+0.5 #{'Image':s}
                     #/2 +0.5
                     break
 
