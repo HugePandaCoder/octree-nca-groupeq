@@ -199,7 +199,10 @@ class BaseAgent():
             for i, data in enumerate(tqdm(dataloader)):
                 loss_item = self.batch_step(data, loss_f)
                 for key in loss_item.keys():
-                    loss_log[key].append(loss_item[key].detach())
+                    if isinstance(loss_item[key], float):
+                        loss_log[key].append(loss_item[key])
+                    else:
+                        loss_log[key].append(loss_item[key].detach())
             self.intermediate_results(epoch, loss_log)
             if epoch % self.exp.get_from_config('evaluate_interval') == 0:
                 print("Evaluate model")
@@ -370,7 +373,9 @@ class BaseAgent():
                     # Add image to tensorboard
                     if i in save_img: 
                         self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                           merge_img_label_gt(inputs.detach().cpu().numpy(), torch.sigmoid(outputs.detach().cpu().numpy()), targets.detach().cpu().numpy()), 
+                                           merge_img_label_gt(np.squeeze(inputs.detach().cpu().numpy()), 
+                                                              torch.sigmoid(outputs).detach().cpu().numpy(), 
+                                                              targets.detach().cpu().numpy()), 
                                            self.exp.currentStep)
                                            
                         #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 

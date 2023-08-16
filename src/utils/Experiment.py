@@ -249,7 +249,8 @@ class Experiment():
         self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
         self.dataset.setState(state)
 
-        for m in self.model:
+        models = [self.model] if not isinstance(self.model, list) else self.model
+        for m in models:
             if self.model_state == "train":
                 m.train()
             else:
