@@ -5,10 +5,10 @@ from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
 from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
 from src.models.Model_DiffusionNCA_fft import DiffusionNCA_fft
-from src.models.Model_DiffusionNCA_fft2_sin import DiffusionNCA_fft2
+from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
-from src.agents.Agent_Diffusion import Agent_Diffusion
+from src.agents.Agent_Diffusion_eff import Agent_Diffusion
 from src.datasets.Dataset_BCSS import Dataset_BCSS
 
 config = [{
@@ -17,34 +17,34 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
     #/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run669_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-4, #32
+    'lr': 16e-4, #32 16e-4
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,
-    'evaluate_interval': 2,
+    'save_interval': 10,
+    'evaluate_interval': 10,
     'n_epoch': 100000,
-    'batch_size': 16,
+    'batch_size': 24,
     # Model
     'channel_n': 96,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 30,
+    'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  512,
+    'hidden_size':  384,
     'schedule': 'linear',
     # Data
     'input_size': (64, 64),
-    'data_split': [0.80340968, 0.09806, 1], 
-    'timesteps': 300,
+    'data_split': [0.008, 0.991, 0.001],#[0.80340968, 0.09806, 1], 
+    'timesteps': 32,
     '2D': True,
     'unlock_CPU': False,
 }
@@ -82,9 +82,9 @@ if False:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
-    agent.calculateFID_fromFiles(samples=100)
-    agent.test_fid(samples=556, optimized=True, saveImg=True)
-    #agent.generateSamples(samples=12)
+    #agent.calculateFID_fromFiles(samples=100)
+    #agent.test_fid(samples=556, optimized=True, saveImg=True)
+    agent.generateSamples(samples=3)#, optimized=True)
 
 
 # %%

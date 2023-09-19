@@ -116,7 +116,6 @@ def merge_img_label_gt(img, label, gt):
     img = np.stack((img, img, img), axis=-1)
     label_overlay = np.zeros(img.shape)
     #print(label_overlay.shape, label.shape)
-    print(label_overlay.shape)
     label_overlay[..., 0] = label
     #label_overlay = np.clip(label_overlay, 0, 1)
     #print(np.unique(label_overlay))

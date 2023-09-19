@@ -2,7 +2,6 @@ import numpy as np
 from src.agents.Agent_NCA import Agent_NCA
 from src.agents.Agent_Multi_NCA import Agent_Multi_NCA
 import torch
-import torchvision
 import random
 import torch.nn.functional as F
 import math
@@ -29,22 +28,40 @@ class Agent_Diffusion(Agent_Multi_NCA):
         return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
 
     def q_sample(self, x_start, t, noise=None):
-        #print("X_START", torch.max(x_start), torch.min(x_start))
-        #print("NOISE", torch.max(noise), torch.min(noise))
-        sqrt_alphas_cumprod_t = self.extract(self.sqrt_alphas_cumprod, t, x_start.shape)
-        sqrt_one_minus_alphas_cumprod_t = self.extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
-        )
 
-        # (sqrt_alphas_cumprod_t.get_device(), x_start.get_device(), sqrt_one_minus_alphas_cumprod_t.get_device(),noise.get_device())
-        #print("ALPHAS_sQRt", sqrt_alphas_cumprod_t)
-        #print("ALPHAS_sQRt_onemINUS", sqrt_one_minus_alphas_cumprod_t)
-        noisy_image = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
+        if False:
+            sqrt_alphas_cumprod_t = self.extract(self.sqrt_alphas_cumprod, t, x_start.shape)
+            sqrt_one_minus_alphas_cumprod_t = self.extract(
+                self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
+            )
+
+            noisy_image = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
+        else:
+            x_start = x_start.transpose(1,3)
+            x_start = torch.fft.fft2(x_start, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+            x_start = torch.fft.fftshift(x_start, dim=(2,3))
+
+            #noise = noise.transpose(1,3)
+            #noise = torch.fft.fft2(noise, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+            #noise = torch.fft.fftshift(noise, dim=(2,3))
+
+            for b in range(x_start.shape[0]):
+                patch = int(t[b])*2
+                half_x = x_start.shape[2]//2 - patch//2
+                half_y = x_start.shape[3]//2 - patch//2
+                x_temp = x_start[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+                x_start[b, :, :, :] = 0 #noise[b, :, :, :] 
+                x_start[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+
+            x_start = torch.fft.ifftshift(x_start, dim=(2,3))
+            x_start = torch.fft.ifft2(x_start, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+            x_start = x_start.transpose(1,3)
+            
+            #plt.imshow(x_start.real[0, :, :, 0:3].detach().cpu().numpy())
+            #plt.show()
+            noisy_image = x_start
         
-        #print("NOISY_IMAGE", torch.max(noisy_image), torch.min(noisy_image))
-        #rmax, rmin = torch.max(noisy_image), torch.min(noisy_image)
-        #noisy_image = ((noisy_image - rmin) / (rmax - rmin)) *2 -1
-
+        
         return noisy_image
 
     @staticmethod
@@ -162,7 +179,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         #print("IMG NOISy", torch.max(img_noisy), torch.min(img_noisy))
         
         img_noisy = self.make_seed(img_noisy)
-        if not eval:
+        if not eval and self.exp.get_from_config('batch_duplication')!=1:
             img_noisy, noise = self.repeatBatch(img_noisy, noise, self.exp.get_from_config('batch_duplication'))
         data_noisy = (id, img_noisy, img_noisy)
 
@@ -222,11 +239,11 @@ class Agent_Diffusion(Agent_Multi_NCA):
         """
         if isinstance(self.model, list):
             rang = int((self.timesteps / len(self.model)) * np.random.randint(0, len(self.model)))
-            t = torch.randint(0, int(self.timesteps / len(self.model)), (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+            t = torch.randint(1, int(self.timesteps / len(self.model)), (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
             t = torch.add(t, rang)
             #print(t)
         else:
-            t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+            t = torch.randint(1, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
 
 
         real_img = data[1].to(self.device).to(torch.float)
@@ -315,31 +332,98 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     #alive = 1/torch.maximum(y_count, x_count) #x_count[x_count > y_count] = y_count
                     #plt.imshow(outputs_fft[0, 0, :, :].real.detach().cpu().numpy())
                     #plt.show()
-                    #t = torch.full((outputs.shape[0],), 1, device=self.device, dtype=torch.long)
-                    #print("TTTTTTT", t[0])
-                    
-                    denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
 
-                    denoised_realimg = self.p_sample_mean(noise, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
+                    #print(outputs.shape, img.shape)
+                    #ct = real_img[..., 0:self.input_channels]
+                    #plt.imshow(outputs[0, :, :, 0:3].real.detach().cpu().numpy())
+                    #plt.show()
+                    #loss = F.l1_loss(outputs, ct) + F.mse_loss(outputs, ct)
+                    #loss = F.mse_loss(outputs, noise) + F.l1_loss(outputs, noise)
+
+                    loss = 0
+
 
                     if False:
-                        plt.imshow((outputs[..., 0:self.exp.get_from_config(tag="input_channels")][0, ...].detach().cpu().numpy()+1)/2)
-                        plt.show()
-                        plt.imshow((img[..., 0:self.exp.get_from_config(tag="input_channels")][0, ...].detach().cpu().numpy()+1)/2)
-                        plt.show()
-                        plt.imshow((denoised_img[0, ...].detach().cpu().numpy()+1)/2)
-                        plt.show() 
-                        plt.imshow(((img[..., 0:self.exp.get_from_config(tag="input_channels")][0, ...].detach().cpu().numpy()+1)/2 - (denoised_img[0, ...].detach().cpu().numpy()+1)/2)*100)
-                        plt.show() 
-                        plt.imshow((denoised_realimg[0, ...].detach().cpu().numpy()+1)/2)
-                        plt.show()
-                        plt.imshow((real_img[0, ...].detach().cpu().numpy()+1)/2)
-                        plt.show()
-                        exit()
+                        # Transform outputs
+                        outputs = outputs.transpose(1,3)
+                        outputs = torch.fft.fft2(outputs, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+                        outputs = torch.fft.fftshift(outputs, dim=(2,3))
 
-                    #F.mse_loss(outputs, noise) + 
-                    #torchvision.transforms.GaussianBlur(3)
-                    loss = F.mse_loss(denoised_img, denoised_realimg) #+ F.l1_loss(outputs, noise)#torch.mean(F.l1_loss(outputs_fft.real, noise_fft.real, reduction="none")*alive) #+ 10*torch.mean(F.l1_loss(outputs_fft.imag, noise_fft.imag, reduction="none")*alive)  #F.l1_loss(outputs, noise) # + 0.1*
+                        img = img.transpose(1,3)
+                        img = torch.fft.fft2(img, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+                        img = torch.fft.fftshift(img, dim=(2,3))
+
+                        #plt.imshow(img.transpose(1,3)[0, :, :, 0:3].real.detach().cpu().numpy()*100)
+                        #plt.show()
+
+                        #plt.imshow(outputs.transpose(1,3)[0, :, :, 0:3].real.detach().cpu().numpy()*100)
+                        #plt.show()
+
+
+                        real_img = real_img.transpose(1,3)
+                        real_img = torch.fft.fft2(real_img, norm="forward")
+                        real_img = torch.fft.fftshift(real_img, dim=(2,3))
+
+                        num_el = t.clone()
+
+                        for b in range(outputs.shape[0]):
+
+                            patch = int(t[b]+1)*2
+                            half_x = outputs.shape[2]//2 - patch//2
+                            half_y = outputs.shape[3]//2 - patch//2
+                            x_temp = outputs[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+                            outputs[b, :, :, :] = 0
+                            outputs[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+                            outputs[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = 0
+
+                            #plt.imshow(outputs.transpose(1,3)[b, :, :, 0:3].real.detach().cpu().numpy()*100)
+                            #plt.show()
+
+                            x_temp = real_img[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+                            real_img[b, :, :, :] = 0
+                            real_img[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+                            real_img[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = 0
+
+                            #num_el[b] = torch.numel(real_img[real_img!=0])
+
+                            #loss = loss + F.l1_loss(outputs, real_img)
+
+                            #plt.imshow(real_img.transpose(1,3)[b, :, :, 0:3].real.detach().cpu().numpy()*100)
+                            #plt.show()
+
+
+
+                        #loss = torch.mean(torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))*num_el + torch.mean(F.mse_loss(outputs.imag, real_img.imag, reduction='none'), dim=(1, 2, 3))*num_el)
+
+                        if True:
+                            outputs = torch.fft.ifftshift(outputs, dim=(2,3))
+                            outputs = torch.fft.ifft2(outputs, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+                            
+                            
+
+                            real_img = torch.fft.ifftshift(real_img, dim=(2,3))
+                            real_img = torch.fft.ifft2(real_img, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+
+                            #normalize = torch.sum(torch.abs(real_img))
+                            outputs = outputs.transpose(1,3)
+                            real_img = real_img.transpose(1,3)
+
+
+                            loss = torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))
+
+                            loss = torch.mean(loss)
+                    else:
+                        loss = torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))*t
+                        loss = torch.mean(loss)
+
+                    #plt.imshow(outputs[0, :, :, 0:3].real.detach().cpu().numpy())
+                    #plt.show()
+
+                    #plt.imshow(real_img[0, :, :, 0:3].real.detach().cpu().numpy())
+                    #plt.show()
+                    
+                    
+                    #torch.mean(F.l1_loss(outputs_fft.real, noise_fft.real, reduction="none")*alive) #+ 10*torch.mean(F.l1_loss(outputs_fft.imag, noise_fft.imag, reduction="none")*alive)  #F.l1_loss(outputs, noise) # + 0.1*
             else:
                 #print("REAL", real_img.shape, outputs.shape)
                 model_noise = self.q_sample(x_start=real_img, t=t, noise=outputs)
@@ -443,59 +527,80 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
     @torch.no_grad()
     def p_sample(self, output, x, t, t_index):
-        betas_t = self.extract(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = self.extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x.shape
-        )
-        sqrt_recip_alphas_t = self.extract(self.sqrt_recip_alphas, t, x.shape)
 
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        #print(x.shape, betas_t.shape, output.shape, sqrt_one_minus_alphas_cumprod_t.shape)
-        model_mean = sqrt_recip_alphas_t * (
-                x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
-        )
-        # return output
-        if t_index == 0:
-            return model_mean
-        else:
-            posterior_variance_t = self.extract(self.posterior_variance, t, x.shape)
-            noise, _ = self.getNoiseLike(x) #torch.randn_like(x)
-            # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise
-        
-    def p_sample_mean(self, output, x, t, t_index):
-        betas_t = self.extract(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = self.extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x.shape
-        )
-        sqrt_recip_alphas_t = self.extract(self.sqrt_recip_alphas, t, x.shape)
+        output = output.transpose(1,3)
+        output = torch.fft.fft2(output, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+        output = torch.fft.fftshift(output, dim=(2,3))
 
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        #print(x.shape, betas_t.shape, output.shape, sqrt_one_minus_alphas_cumprod_t.shape)
-        #print("BETAS", betas_t[0], sum(self.betas))
-        model_mean = x - output * sqrt_one_minus_alphas_cumprod_t#sqrt_recip_alphas_t * (
-                #x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
-        #)
-        return model_mean
+        plt.imshow((x[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)
+        plt.show()
+
+        x = x.transpose(1,3)
+        x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+        x = torch.fft.fftshift(x, dim=(2,3))
+
+        for b in range(output.shape[0]):
+            patch = int(t[b]+1)*2
+            half_x = output.shape[2]//2 - patch//2
+            half_y = output.shape[3]//2 - patch//2
+
+
+            x_clone = x.clone()
+
+            x[b, :, half_x:half_x+patch, half_y:half_y+patch] = output[b, :, half_x:half_x+patch, half_y:half_y+patch]
+            x[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = x_clone[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1]
+
+        #plt.imshow(x.transpose(1,3)[0, :, :, 0:3].real.detach().cpu().numpy()*100)
+        #plt.show()
+
+        x = torch.fft.ifftshift(x, dim=(2,3))
+        x = torch.fft.ifft2(x, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+        x = x.transpose(1,3)
+
+
+
+
+
+        return x
+
+        if False:
+            betas_t = self.extract(self.betas, t, x.shape)
+            sqrt_one_minus_alphas_cumprod_t = self.extract(
+                self.sqrt_one_minus_alphas_cumprod, t, x.shape
+            )
+            sqrt_recip_alphas_t = self.extract(self.sqrt_recip_alphas, t, x.shape)
+
+            # Equation 11 in the paper
+            # Use our model (noise predictor) to predict the mean
+            #print(x.shape, betas_t.shape, output.shape, sqrt_one_minus_alphas_cumprod_t.shape)
+            model_mean = sqrt_recip_alphas_t * (
+                    x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
+            )
+            # return output
+            if t_index == 0:
+                return model_mean
+            else:
+                posterior_variance_t = self.extract(self.posterior_variance, t, x.shape)
+                noise, _ = self.getNoiseLike(x) #torch.randn_like(x)
+                # Algorithm 2 line 4:
+                return model_mean + torch.sqrt(posterior_variance_t) * noise
 
     def intermediate_evaluation(self, dataloader, epoch):
         if not self.averages:
             self.calculateAverages()
         self.exp.set_model_state("test")
-        if epoch % 5 == 0:
-            self.test_fid()
+        #if epoch % 5 == 0:
+        #    self.test_fid()
         self.test()
         self.exp.set_model_state("train")
 
-    def generateSamples(self, samples:int=1, normal=True, optimized=False):
+    def generateSamples(self, samples:int=1, normal=True):
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
         #diceLoss = DiceLoss(useSigmoid=useSigmoid)
         self.exp.set_model_state("test")
-        self.test(tag="extra", samples=samples, extra=True, normal=normal, optimized=optimized)
+        self.test(tag="extra", samples=samples, extra=False, normal=normal)
 
         #return loss_log
 
@@ -533,7 +638,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
             #noise, _ = self.getNoiseLike(torch.zeros((samples, int(size[0]), int(size[1]), self.exp.get_from_config('input_channels'))))
             #img = self.make_seed(noise)
             print(img.shape)
-            for step in tqdm(reversed(range(self.timesteps))):
+            for step in tqdm(reversed(range(1))): #self.timesteps
                 #for i in range(2):
                 t = torch.full((samples,), step, device=self.device, dtype=torch.long)
                 img_p = 0, img, 0
@@ -701,13 +806,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
     @torch.no_grad()
-    def test(self, tag='0', samples=1, extra=False, normal=True, **kwargs):
+    def test(self, tag='0', samples=3, extra=False, normal=True, **kwargs):
 
         # Generate sample
         size = self.exp.get_from_config('input_size')
         
         dataset = self.exp.dataset
-        self.exp.set_model_state('test')
+        self.exp.set_model_state('train')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
 
         #self.test_fid()
@@ -720,15 +825,44 @@ class Agent_Diffusion(Agent_Multi_NCA):
         if normal:
             for s in range(samples):
                 if True:
-                    noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
-                    img = self.make_seed(noise)
-                    for step in tqdm(reversed(range(self.timesteps))):
+
+                    #noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
+                    noise = torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))
+                    if True:
+                        for i, data in enumerate(dataloader):  
+                            
+                            # forward step to 80%
+                            _, img, _ = data
+                            #img, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
+                            if i == s:
+                                break
+                    else:
+                        img = self.make_seed(noise)
+
+                    #noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
+                    
+    
+                    #plt.imshow((img[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)
+                    #plt.show()
+
+                    img = self.make_seed(self.q_sample(img, torch.full((1,), 1, device=self.device, dtype=torch.long), noise).to(self.device))
+                    
+                    #print("TIMESTEPS", self.timesteps)
+                    for step in range(1, self.timesteps, 1): #self.timesteps
+                        print("SSTTEEEEEEEEP", step)
+                        
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
                         img_p = 0, img, 0
                         #print("NOISE HERE", torch.max(img), torch.min(img))
                         output, _ = self.get_outputs(img_p, t = step)
+
+                        #img = output
+                        #plt.imshow(output[0, :, :, 0:3].real.detach().cpu().numpy())
+                        #plt.show()
+
+                        #t = torch.full((1,), 0, device=self.device, dtype=torch.long)
                         img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
-                        img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
+                        img = self.make_seed(img)#img[..., self.exp.get_from_config('input_channels'):self.exp.get_from_config('output_channels')])
                     self.exp.write_img(tag, (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}
                 else:
                     size_loc = deepcopy(size)
