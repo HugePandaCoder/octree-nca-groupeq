@@ -21,6 +21,8 @@ class Agent_Diffusion(Agent_Multi_NCA):
             self.posterior_variance = self.calc_schedule()
         self.averages = False
 
+        self.gif = 0
+
     @staticmethod
     def extract(a, t, x_shape):
         batch_size = t.shape[0]
@@ -41,23 +43,32 @@ class Agent_Diffusion(Agent_Multi_NCA):
             x_start = torch.fft.fft2(x_start, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
             x_start = torch.fft.fftshift(x_start, dim=(2,3))
 
-            #noise = noise.transpose(1,3)
-            #noise = torch.fft.fft2(noise, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
-            #noise = torch.fft.fftshift(noise, dim=(2,3))
+            noise = noise.transpose(1,3)
+            noise = torch.fft.fft2(noise, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+            noise = torch.fft.fftshift(noise, dim=(2,3))
 
             for b in range(x_start.shape[0]):
-                patch = int(t[b])*2
+                patch = int(t[b])*2 +1
                 half_x = x_start.shape[2]//2 - patch//2
                 half_y = x_start.shape[3]//2 - patch//2
-                x_temp = x_start[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
-                x_start[b, :, :, :] = 0 #noise[b, :, :, :] 
-                x_start[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+
+                #x_temp = x_start[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+                #x_start[b, :, :, :] = x_start[b, :, :, :] + noise[b, :, :, :] 
+                #x_start[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+
+                noise[b, :, half_x:half_x+patch, half_y:half_y+patch] = 0
+
+            noise = torch.fft.ifftshift(noise, dim=(2,3))
+            noise = torch.fft.ifft2(noise, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
 
             x_start = torch.fft.ifftshift(x_start, dim=(2,3))
             x_start = torch.fft.ifft2(x_start, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+            
+            x_start = noise + x_start
             x_start = x_start.transpose(1,3)
             
-            #plt.imshow(x_start.real[0, :, :, 0:3].detach().cpu().numpy())
+            #print(t[0])
+            #plt.imshow((x_start.real[0, :, :, 0:3].detach().cpu().numpy()+1)/2)
             #plt.show()
             noisy_image = x_start
         
@@ -243,7 +254,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
             t = torch.add(t, rang)
             #print(t)
         else:
-            t = torch.randint(1, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+            t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
 
 
         real_img = data[1].to(self.device).to(torch.float)
@@ -343,15 +354,15 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     loss = 0
 
 
-                    if False:
+                    if True:
                         # Transform outputs
                         outputs = outputs.transpose(1,3)
                         outputs = torch.fft.fft2(outputs, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
                         outputs = torch.fft.fftshift(outputs, dim=(2,3))
 
-                        img = img.transpose(1,3)
-                        img = torch.fft.fft2(img, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
-                        img = torch.fft.fftshift(img, dim=(2,3))
+                        noise = noise.transpose(1,3) #[:, :, :, 0:self.exp.get_from_config(tag="input_channels")]
+                        noise = torch.fft.fft2(noise, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+                        noise = torch.fft.fftshift(noise, dim=(2,3))
 
                         #plt.imshow(img.transpose(1,3)[0, :, :, 0:3].real.detach().cpu().numpy()*100)
                         #plt.show()
@@ -360,9 +371,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         #plt.show()
 
 
-                        real_img = real_img.transpose(1,3)
-                        real_img = torch.fft.fft2(real_img, norm="forward")
-                        real_img = torch.fft.fftshift(real_img, dim=(2,3))
+                        #real_img = real_img.transpose(1,3)
+                        #real_img = torch.fft.fft2(real_img, norm="forward")
+                        #real_img = torch.fft.fftshift(real_img, dim=(2,3))
 
                         num_el = t.clone()
 
@@ -379,10 +390,10 @@ class Agent_Diffusion(Agent_Multi_NCA):
                             #plt.imshow(outputs.transpose(1,3)[b, :, :, 0:3].real.detach().cpu().numpy()*100)
                             #plt.show()
 
-                            x_temp = real_img[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
-                            real_img[b, :, :, :] = 0
-                            real_img[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
-                            real_img[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = 0
+                            x_temp = noise[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+                            noise[b, :, :, :] = 0
+                            noise[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+                            noise[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = 0
 
                             #num_el[b] = torch.numel(real_img[real_img!=0])
 
@@ -390,12 +401,23 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
                             #plt.imshow(real_img.transpose(1,3)[b, :, :, 0:3].real.detach().cpu().numpy()*100)
                             #plt.show()
+                        
+                        noise = torch.fft.fftshift(noise, dim=(2,3))
+                        noise = torch.fft.ifft2(noise, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+                        noise = noise.transpose(1,3)
 
+                        outputs = torch.fft.fftshift(outputs, dim=(2,3))
+                        outputs = torch.fft.ifft2(outputs, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+                        outputs = outputs.transpose(1,3)
+
+                        #print(noise.shape, outputs.shape)
+                        #print(img[..., 0:self.exp.get_from_config(tag="input_channels")].shape, outputs.real.shape)
+                        loss = F.mse_loss(real_img, img[..., 0:self.exp.get_from_config(tag="input_channels")] - outputs.real) #+ F.l1_loss(noise.real, outputs.real) 
 
 
                         #loss = torch.mean(torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))*num_el + torch.mean(F.mse_loss(outputs.imag, real_img.imag, reduction='none'), dim=(1, 2, 3))*num_el)
 
-                        if True:
+                        if False:
                             outputs = torch.fft.ifftshift(outputs, dim=(2,3))
                             outputs = torch.fft.ifft2(outputs, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
                             
@@ -413,7 +435,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
                             loss = torch.mean(loss)
                     else:
-                        loss = torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))*t
+                        loss = torch.mean(F.mse_loss(outputs.real, real_img.real, reduction='none'), dim=(1, 2, 3))
                         loss = torch.mean(loss)
 
                     #plt.imshow(outputs[0, :, :, 0:3].real.detach().cpu().numpy())
@@ -492,7 +514,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
     def getNoiseLike(self, img, noisy=False, t=0):
 
         def getNoise():
-            rnd = torch.randn_like(img).to(self.device).to(torch.float) 
+            rnd = torch.randn_like(img).to(self.device).to(torch.float) /5
             # Range 0,1
             #rmax, rmin = torch.max(rnd), torch.min(rnd)
             #rnd = ((rnd - rmin) / (rmax - rmin))
@@ -532,29 +554,41 @@ class Agent_Diffusion(Agent_Multi_NCA):
         output = torch.fft.fft2(output, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
         output = torch.fft.fftshift(output, dim=(2,3))
 
-        plt.imshow((x[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)
-        plt.show()
+        #plt.imshow((x[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)
+        #plt.show()
 
         x = x.transpose(1,3)
         x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
         x = torch.fft.fftshift(x, dim=(2,3))
 
         for b in range(output.shape[0]):
-            patch = int(t[b]+1)*2
+            patch = int(t[b]+1)*2 +1
             half_x = output.shape[2]//2 - patch//2
             half_y = output.shape[3]//2 - patch//2
 
 
             x_clone = x.clone()
 
-            x[b, :, half_x:half_x+patch, half_y:half_y+patch] = output[b, :, half_x:half_x+patch, half_y:half_y+patch]
-            x[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = x_clone[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1]
+            #x_temp = x[b, :, half_x:half_x+patch, half_y:half_y+patch].clone()
+            #x[b, :, :, :] = 0
+            #x[b, :, half_x:half_x+patch, half_y:half_y+patch] = x_temp
+
+            output[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = 0
+
+            #x[b, :, half_x:half_x+patch, half_y:half_y+patch] = output[b, :, half_x:half_x+patch, half_y:half_y+patch]
+            #x[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1] = x_clone[b, :, half_x+1:half_x+patch-1, half_y+1:half_y+patch-1]
 
         #plt.imshow(x.transpose(1,3)[0, :, :, 0:3].real.detach().cpu().numpy()*100)
         #plt.show()
 
         x = torch.fft.ifftshift(x, dim=(2,3))
         x = torch.fft.ifft2(x, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+
+        output = torch.fft.ifftshift(output, dim=(2,3))
+        output = torch.fft.ifft2(output, norm="forward").real #.to(torch.float)#, norm="forward") #, norm="forward"
+
+        x = x - output
+
         x = x.transpose(1,3)
 
 
@@ -826,9 +860,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
             for s in range(samples):
                 if True:
 
-                    #noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
-                    noise = torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))
-                    if True:
+                    noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
+                    #noise = torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels')))
+                    if False:
                         for i, data in enumerate(dataloader):  
                             
                             # forward step to 80%
@@ -837,7 +871,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                             if i == s:
                                 break
                     else:
-                        img = self.make_seed(noise)
+                        img, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
 
                     #noise, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
                     
@@ -845,10 +879,10 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     #plt.imshow((img[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)
                     #plt.show()
 
-                    img = self.make_seed(self.q_sample(img, torch.full((1,), 1, device=self.device, dtype=torch.long), noise).to(self.device))
+                    img = self.make_seed(self.q_sample(img.to(self.device), torch.full((1,), 0, device=self.device, dtype=torch.long), noise).to(self.device))
                     
                     #print("TIMESTEPS", self.timesteps)
-                    for step in range(1, self.timesteps, 1): #self.timesteps
+                    for step in range(0, self.timesteps, 1): #self.timesteps
                         print("SSTTEEEEEEEEP", step)
                         
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)

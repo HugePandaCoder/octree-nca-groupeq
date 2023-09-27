@@ -4,11 +4,11 @@ import torch
 from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
 from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
-from src.models.Model_DiffusionNCA_fft import DiffusionNCA_fft
 from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
+#from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
-from src.agents.Agent_Diffusion_eff import Agent_Diffusion
+from src.agents.Agent_Diffusion import Agent_Diffusion
 from src.datasets.Dataset_BCSS import Dataset_BCSS
 
 config = [{
@@ -20,7 +20,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run669_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run739_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -28,23 +28,23 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 10,
-    'evaluate_interval': 10,
+    'save_interval': 1,
+    'evaluate_interval': 1,
     'n_epoch': 100000,
-    'batch_size': 24,
+    'batch_size': 96,
     # Model
-    'channel_n': 96,        # Number of CA state channels
+    'channel_n': 72,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 20,
+    'inference_steps': 10,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
     'hidden_size':  384,
     'schedule': 'linear',
     # Data
-    'input_size': (64, 64),
-    'data_split': [0.008, 0.991, 0.001],#[0.80340968, 0.09806, 1], 
-    'timesteps': 32,
+    'input_size': (35, 35),
+    'data_split': [0.08, 0.91, 0.01],#[0.80340968, 0.09806, 1], 
+    'timesteps': 300,
     '2D': True,
     'unlock_CPU': False,
 }
@@ -78,7 +78,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-if False:
+if True:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)

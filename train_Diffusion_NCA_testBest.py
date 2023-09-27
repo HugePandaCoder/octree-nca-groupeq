@@ -83,8 +83,8 @@ if False:
 else:
     #torch.manual_seed(142)
     #agent.calculateFID_fromFiles(samples=100) #/home/jkalkhof_locale/Documents/GitHub/vnca2/Synth/
-    agent.test_fid(samples=556, optimized=True, saveImg=True)
-    #agent.generateSamples(samples=12, normal=False)
+    #agent.test_fid(samples=556, optimized=True, saveImg=True)
+    agent.generateSamples(samples=12, normal=True)
 
 
 # %%

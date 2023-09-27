@@ -135,13 +135,16 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real, "pt0": self.conv_pt_0_real}#, "pt1": self.conv_pt_1_real, "pt2": self.conv_pt_2_real}#, "fc05": self.real_fc05_middle_real, "fc06": self.real_fc05_middle_real, "fc07": self.real_fc05_middle_real}
         
+
+        # DNA Network
         if True:
-            self.dna_lay1 = nn.Conv2d(channel_n, 32, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay1 = nn.Conv2d(channel_n, hidden_size*2, kernel_size=5, stride=1, padding=2, padding_mode="circular")
             self.dna_lay2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n)
 
-            self.dna_lay3 = nn.Conv2d(32, 16, kernel_size=3, stride=1, padding=1, padding_mode="circular")
-            self.dna_lay4 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1, padding_mode="circular")#nn.ConvTranspose2d(hidden_size*10, channel_n, kernel_size=5, stride=5, padding=0)
-            self.dna_lay5 = nn.Conv2d(16, self.input_channels, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay3 = nn.Conv2d(hidden_size*2, hidden_size*2, kernel_size=1, stride=1, padding=0)
+            self.dna_lay4 = nn.Conv2d(hidden_size*2, channel_n, kernel_size=5, stride=1, padding=2, padding_mode="circular")#nn.ConvTranspose2d(hidden_size*10, channel_n, kernel_size=5, stride=5, padding=0)
+
+            self.dna_dropout = nn.Dropout(drop_out_rate)
 
         if False:
             # ---------------- MODEL 2 -----------------
@@ -659,7 +662,7 @@ class DiffusionNCA_fft2(nn.Module):
             steps_f = pixel_X
             x = torch.concat((x.real, x.imag), 1)
             for step in range(int(steps_f*1.5)):
-                x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.model_0, step=step/(steps_f)) 
+                x_new = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_0, step=step/(steps_f)) 
                 x[:, self.input_channels:self.channel_n, ...] = x_new[:, self.input_channels:self.channel_n, ...]
                 x[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...] = x_new[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...]
 
@@ -696,30 +699,23 @@ class DiffusionNCA_fft2(nn.Module):
                 #x_update = self.update_real(x, fire_rate, alive_rate=t) 
                 #x = x_update
                 x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
-
-            if True:
-                #print(x.shape)
-
-                # Normlisation
-                x_up = self.dna_lay2(x)
-                x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
-                # 1x1 conv
-                x_up = self.dna_lay1(x_up)
-                x_up = F.leaky_relu(x_up, 0.2)
-                x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
-                # 1x1 conv
-                x_up = self.dna_lay3(x_up)
-                x_up = F.leaky_relu(x_up, 0.2)
-                x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
-                # 1x1 conv
-                x_up = self.dna_lay4(x_up)
-                x_up = F.leaky_relu(x_up, 0.2)
-                x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
-                # 1x1 conv
-                x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
-                x_up = self.dna_lay5(x_up)
-                x = torch.cat((x[:, 0:self.input_channels, ...], x_up), 1)
-
+            
+            x_up = self.dna_lay2(x)
+            x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+            #print(x_up.shape)
+            x_up = self.dna_lay1(x_up)
+            
+            #print(x_up.shape)
+            x_up = F.leaky_relu(x_up)
+            x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+            #x_up = self.dna_dropout(x_up)
+            x_up = self.dna_lay3(x_up)
+            
+            #print(x_up.shape)
+            x_up = F.leaky_relu(x_up)
+            x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+            x = self.dna_lay4(x_up)
+            
             x = x.transpose(1, 3)
 
         if False:

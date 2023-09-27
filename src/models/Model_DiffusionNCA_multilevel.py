@@ -139,6 +139,22 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p0_real_dil3, "conv2": self.real_p0_real_dil7, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real, "pt0": self.conv_pt_0_real}#, "pt1": self.conv_pt_1_real, "pt2": self.conv_pt_2_real}#, "fc05": self.real_fc05_middle_real, "fc06": self.real_fc05_middle_real, "fc07": self.real_fc05_middle_real}
         
+
+        # DNA Network
+        if True:
+            self.dna_norm = nn.GroupNorm(num_groups =  1, num_channels=channel_n)
+            self.dna_lay1 = nn.Conv2d(channel_n, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay1_bn = nn.BatchNorm2d(hidden_size)
+            self.dna_lay2 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay2_bn = nn.BatchNorm2d(hidden_size)
+            self.dna_lay3 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay3_bn = nn.BatchNorm2d(hidden_size)
+            self.dna_lay4 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")#nn.ConvTranspose2d(hidden_size*10, channel_n, kernel_size=5, stride=5, padding=0)
+            self.dna_lay4_bn = nn.BatchNorm2d(hidden_size)
+            self.dna_lay5 = nn.Conv2d(hidden_size, self.input_channels, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+
+
+
         if False:
             # ---------------- MODEL 2 -----------------
             self.model2_drop0 = nn.Dropout(drop_out_rate)
@@ -637,19 +653,75 @@ class DiffusionNCA_fft2(nn.Module):
         else:
             x = x_input.transpose(1, 3) 
 
-            x_lowres = F.interpolate(x, size=(x.shape[2]//4, x.shape[3]//4), mode='bilinear')
+            x_lowres = F.interpolate(x, size=(x.shape[2]//5, x.shape[3]//5), mode='bilinear')
             for step in range(steps):
                 x_lowres[:, self.input_channels:, ...] = self.update_dict(x_lowres, fire_rate, alive_rate=t, model_dict=self.model_0, step=step/steps)[:, self.input_channels:, ...] 
 
-            up = torch.nn.Upsample(scale_factor=4, mode='bilinear')
 
-            x_upscaled = up(x_lowres)
-            x[:, self.input_channels:, ...] = x_upscaled[:, self.input_channels:, ...]
+            # DNA Network
+            if False:
+                #print(x_lowres.shape)
+                x_up = self.dna_lay2(x_lowres)
+                x_up = self.dna_lay1(x_up)
+                #print(x_up.shape)
+                #print(x_up.shape)
+                x_up = F.leaky_relu(x_up)
+                x_up = self.dna_dropout(x_up)
+                #print(x_up.shape)
+                x_up = self.dna_lay3(x_up)
+
+                x_up = F.leaky_relu(x_up)
+                x_up = self.dna_dropout(x_up)
+
+                x_up = self.dna_lay4(x_up)
+                #print(x_up.shape)
+
+                up = torch.nn.Upsample(scale_factor=5, mode='bilinear')
+                x_up = up(x_up)
+
+                x[:, self.input_channels:, ...] = x_up[:, self.input_channels:, ...]
+            else:
+
+                up = torch.nn.Upsample(scale_factor=5, mode='nearest')
+                x_upscaled = up(x_lowres)
+                x[:, self.input_channels:, ...] = x_upscaled[:, self.input_channels:, ...]
 
 
             for step in range(steps):
                 x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
+
+            if True:
+                #print(x.shape)
+
+                # Normlisation
+                x_up = self.dna_norm(x)
+                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                # 1x1 conv
+                x_up = self.dna_lay1(x_up)
+                x_up = self.dna_lay1_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up, 0.2)
+                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
                 
+                x_up = self.dna_lay2(x_up_conv)
+                x_up = self.dna_lay2_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up, 0.2) + x_up_conv
+                
+                # 1x1 conv
+                x_up = self.dna_lay3(x_up_conv)
+                x_up = self.dna_lay3_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up_conv, 0.2) + x_up_conv
+                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                # 1x1 conv
+                x_up = self.dna_lay4(x_up_conv)
+                x_up = self.dna_lay4_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up_conv, 0.2) + x_up_conv
+                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                # 1x1 conv
+                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                x_up = self.dna_lay5(x_up)
+                x = torch.cat((x[:, 0:self.input_channels, ...], x_up), 1)
+
+
             x = x.transpose(1, 3)
         
         return x
