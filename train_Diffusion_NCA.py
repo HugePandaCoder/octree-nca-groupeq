@@ -20,7 +20,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run739_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run748_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -33,13 +33,13 @@ config = [{
     'n_epoch': 100000,
     'batch_size': 96,
     # Model
-    'channel_n': 72,        # Number of CA state channels
+    'channel_n': 66,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 10,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  384,
+    'hidden_size':  256,
     'schedule': 'linear',
     # Data
     'input_size': (35, 35),
@@ -79,6 +79,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceBCELoss() 
 
 if True:
+    #with torch.autograd.detect_anomaly():
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)

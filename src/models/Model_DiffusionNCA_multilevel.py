@@ -142,16 +142,23 @@ class DiffusionNCA_fft2(nn.Module):
 
         # DNA Network
         if True:
+
+            self.dna_emb = nn.Sequential(
+                nn.Conv2d((extra_channels-1)*2, 256, kernel_size=1, stride=1, padding=0),
+                nn.SiLU(),
+                nn.Conv2d(256, extra_channels-1, kernel_size=1, stride=1, padding=0)
+            )
+
             self.dna_norm = nn.GroupNorm(num_groups =  1, num_channels=channel_n)
-            self.dna_lay1 = nn.Conv2d(channel_n, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
-            self.dna_lay1_bn = nn.BatchNorm2d(hidden_size)
-            self.dna_lay2 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
-            self.dna_lay2_bn = nn.BatchNorm2d(hidden_size)
-            self.dna_lay3 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")
-            self.dna_lay3_bn = nn.BatchNorm2d(hidden_size)
-            self.dna_lay4 = nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1, padding_mode="circular")#nn.ConvTranspose2d(hidden_size*10, channel_n, kernel_size=5, stride=5, padding=0)
-            self.dna_lay4_bn = nn.BatchNorm2d(hidden_size)
-            self.dna_lay5 = nn.Conv2d(hidden_size, self.input_channels, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay1 = nn.Conv2d(channel_n, hidden_size*5, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay1_bn = nn.BatchNorm2d(hidden_size*5)
+            self.dna_lay2 = nn.Conv2d(hidden_size*5, hidden_size*5, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay2_bn = nn.BatchNorm2d(hidden_size*5)
+            self.dna_lay3 = nn.Conv2d(hidden_size*5, hidden_size*5, kernel_size=3, stride=1, padding=1, padding_mode="circular")
+            self.dna_lay3_bn = nn.BatchNorm2d(hidden_size*5)
+            self.dna_lay4 = nn.Conv2d(hidden_size*5, hidden_size*5, kernel_size=3, stride=1, padding=1, padding_mode="circular")#nn.ConvTranspose2d(hidden_size*10, channel_n, kernel_size=5, stride=5, padding=0)
+            self.dna_lay4_bn = nn.BatchNorm2d(hidden_size*5)
+            self.dna_lay5 = nn.Conv2d(hidden_size*5, self.input_channels, kernel_size=3, stride=1, padding=1, padding_mode="circular")
 
 
 
@@ -502,6 +509,8 @@ class DiffusionNCA_fft2(nn.Module):
 
             #print(dx.shape)
 
+            #print(pos_x.shape, pos_y.shape, alive_rate.shape, step.shape)
+
             pos_t_enc = self.channel_embedding_4d(torch.concat((pos_x, pos_y, alive_rate, step), 1))
             pos_t_enc = model_dict["pt0"](pos_t_enc)
             #pos_t_enc = F.leaky_relu(pos_t_enc)
@@ -693,29 +702,45 @@ class DiffusionNCA_fft2(nn.Module):
             if True:
                 #print(x.shape)
 
+                # Embedding
+                if True:
+                    pos_x = torch.linspace(1, 0, x.shape[3]).expand(x.shape[0], 1, x.shape[2], x.shape[3]).to(self.device)
+                    pos_y = torch.linspace(1, 0, x.shape[2]).expand(x.shape[0], 1, x.shape[3], x.shape[2]).to(self.device).transpose(2,3)#torch.transpose(alive, 2,3)
+                    alive_rate = t.expand_as(pos_x.transpose(0, 3)).transpose(0, 3)
+                    #step = torch.tensor(step).expand(x.shape[0], 1, x.shape[2], x.shape[3]).to(self.device)
+                    pos_t_enc = torch.concat((pos_x, pos_y, alive_rate), 1) #self.channel_embedding_4d(torch.concat((pos_x, pos_y, alive_rate, step), 1))
+
+                    pos_t_enc = self.channel_embedding_4d(pos_t_enc)
+                    pos_t_enc = self.dna_emb(pos_t_enc)
+
                 # Normlisation
                 x_up = self.dna_norm(x)
-                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                x_up = torch.cat((x[:, 0:self.input_channels, ...], pos_t_enc, x_up[:, self.input_channels+3:, ...]), 1)
+                #x_up[:, self.input_channels:self.input_channels+3, ...] = x[:, self.input_channels:self.input_channels+3, ...]
                 # 1x1 conv
                 x_up = self.dna_lay1(x_up)
-                x_up = self.dna_lay1_bn(x_up)
+                #x_up = self.dna_lay1_bn(x_up)
                 x_up_conv = F.leaky_relu(x_up, 0.2)
-                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                x_up = torch.cat((x[:, 0:self.input_channels, ...], pos_t_enc, x_up[:, self.input_channels+3:, ...]), 1)
+                #x_up[:, self.input_channels:self.input_channels+3, ...] = pos_t_enc
                 
                 x_up = self.dna_lay2(x_up_conv)
-                x_up = self.dna_lay2_bn(x_up)
-                x_up_conv = F.leaky_relu(x_up, 0.2) + x_up_conv
-                
+                #x_up = self.dna_lay2_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up, 0.2)
+                x_up = torch.cat((x[:, 0:self.input_channels, ...], pos_t_enc, x_up[:, self.input_channels+3:, ...]), 1)
+                #x_up[:, self.input_channels:self.input_channels+3, ...] = pos_t_enc
                 # 1x1 conv
                 x_up = self.dna_lay3(x_up_conv)
-                x_up = self.dna_lay3_bn(x_up)
-                x_up_conv = F.leaky_relu(x_up_conv, 0.2) + x_up_conv
-                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                #x_up = self.dna_lay3_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up_conv, 0.2)
+                x_up = torch.cat((x[:, 0:self.input_channels, ...], pos_t_enc, x_up[:, self.input_channels+3:, ...]), 1)
+                #x_up[:, self.input_channels:self.input_channels+3, ...] = pos_t_enc
                 # 1x1 conv
                 x_up = self.dna_lay4(x_up_conv)
-                x_up = self.dna_lay4_bn(x_up)
-                x_up_conv = F.leaky_relu(x_up_conv, 0.2) + x_up_conv
-                #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
+                #x_up = self.dna_lay4_bn(x_up)
+                x_up_conv = F.leaky_relu(x_up_conv, 0.2)
+                x_up = torch.cat((x[:, 0:self.input_channels, ...], pos_t_enc, x_up[:, self.input_channels+3:, ...]), 1)
+                #x_up[:, self.input_channels:self.input_channels+3, ...] = pos_t_enc
                 # 1x1 conv
                 #x_up[:, 0:self.input_channels, ...] = x[:, 0:self.input_channels, ...]
                 x_up = self.dna_lay5(x_up)

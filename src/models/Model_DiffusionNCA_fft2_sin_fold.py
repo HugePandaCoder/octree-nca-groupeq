@@ -506,6 +506,7 @@ class DiffusionNCA_fft2(nn.Module):
 
             #print(dx.shape)
 
+
             pos_t_enc = self.channel_embedding_4d(torch.concat((pos_x, pos_y, alive_rate, step), 1))
             pos_t_enc = model_dict["pt0"](pos_t_enc)
             #pos_t_enc = F.leaky_relu(pos_t_enc)
