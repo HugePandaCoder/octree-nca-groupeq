@@ -141,7 +141,7 @@ class DiffusionNCA_fft2(nn.Module):
         
 
         # DNA Network
-        if True:
+        if False:
 
             self.dna_emb = nn.Sequential(
                 nn.Conv2d((extra_channels-1)*2, 256, kernel_size=1, stride=1, padding=0),
@@ -699,7 +699,7 @@ class DiffusionNCA_fft2(nn.Module):
             for step in range(steps):
                 x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
 
-            if True:
+            if False:
                 #print(x.shape)
 
                 # Embedding

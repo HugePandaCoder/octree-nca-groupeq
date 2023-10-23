@@ -79,14 +79,14 @@ class DiffusionNCA_fft2(nn.Module):
 
         # ---------------- MODEL 0 -----------------
         self.drop0 = nn.Dropout(drop_out_rate)
-        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size*16)
         self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="circular")#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
         self.p1_real = 0#nn.Conv2d(channel_n*8+extra_channels, channel_n*8, kernel_size=kernelSize, stride=1, padding=padding)#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
-        self.fc0_real = nn.Conv2d(channel_n*2*2+extra_channels, hidden_size, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
+        self.fc0_real = nn.Conv2d(channel_n*2*2+extra_channels, hidden_size*16, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3*2+extra_channels*3, hidden_size)
         #self.fc05_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
         #self.fc06_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
         #self.fc07_middle_real = self.ResNetBlock(hidden_size)#nn.Linear(hidden_size, hidden_size)
-        self.fc1_real = nn.Conv2d(hidden_size, channel_n*2, kernel_size=1, stride=1, padding=0) #nn.Linear(hidden_size, channel_n*2, bias=False)
+        self.fc1_real = nn.Conv2d(hidden_size*16, channel_n*2, kernel_size=1, stride=1, padding=0) #nn.Linear(hidden_size, channel_n*2, bias=False)
 
         # combine pos and timestep
         #self.effBlock = self.EfficientBlock(hidden_size) 
@@ -135,7 +135,7 @@ class DiffusionNCA_fft2(nn.Module):
 
         self.model_1 = {"dropout": self.real_drop0, "normalisation":self.real_norm_real2, "conv0": self.real_p0_real, "conv1": self.real_p1_real, "fc0": self.real_fc0_real, "fc1": self.real_fc1_real, "pt0": self.conv_pt_0_real}#, "pt1": self.conv_pt_1_real, "pt2": self.conv_pt_2_real}#, "fc05": self.real_fc05_middle_real, "fc06": self.real_fc05_middle_real, "fc07": self.real_fc05_middle_real}
         
-        if True:
+        if False:
             self.dna_lay1 = nn.Conv2d(channel_n, 32, kernel_size=3, stride=1, padding=1, padding_mode="circular")
             self.dna_lay2 = nn.GroupNorm(num_groups =  1, num_channels=channel_n)
 
@@ -559,7 +559,53 @@ class DiffusionNCA_fft2(nn.Module):
 
         return x
     
+
     def forward(self, x, steps=10, fire_rate=None, t=0, epoch=0, **kwargs):
+        r"""
+        forward pass from NCA
+        :param x: perception
+        :param steps: number of steps, such that far pixel can communicate
+        :param fire_rate:
+        :param angle: rotation
+        :return: updated input
+        """
+        x = x.transpose(1, 3) 
+        
+        factor = 5
+        pixel_X = 12
+        pixel_Y = 12
+
+        steps_f = pixel_X
+        
+        for step in range(int(steps_f)):
+
+            # FFT Space
+            x = torch.fft.rfft2(x, norm="forward")
+            x = torch.fft.fftshift(x, dim=(2,3))
+            x_old = x.clone()
+            x_start, y_start = x.shape[2]//2, x.shape[3]//2
+            x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
+
+            x = torch.concat((x.real, x.imag), 1)
+            x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.model_0, step=step/(steps_f)) 
+            x[:, self.channel_n//2:self.channel_n, ...] = x_new[:, self.channel_n//2:self.channel_n, ...]
+            x[:, self.channel_n+self.channel_n//2:self.channel_n+self.channel_n, ...] = x_new[:, self.channel_n+self.channel_n//2:self.channel_n+self.channel_n, ...]
+            
+            x = x.transpose(1, 3)
+            x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
+            x = x.transpose(1, 3)
+            
+            # Image space
+            x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
+            x_old = torch.fft.ifftshift(x_old, dim=(2,3))
+            x = torch.fft.irfft2(x_old, norm="forward").real
+
+            x[:, self.input_channels:self.channel_n//2, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:self.channel_n//2, ...] 
+
+        x = x.transpose(1, 3)
+        return x
+
+    def forward_old(self, x, steps=10, fire_rate=None, t=0, epoch=0, **kwargs):
         r"""
         forward pass from NCA
         :param x: perception
@@ -635,8 +681,8 @@ class DiffusionNCA_fft2(nn.Module):
             #fire_rate = 0
             
             factor = 5
-            pixel_X = 16#int(x_old.shape[2]/factor)
-            pixel_Y = 16#int(x_old.shape[3]/factor)
+            pixel_X = 12#int(x_old.shape[2]/factor)
+            pixel_Y = 12#int(x_old.shape[3]/factor)
             x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
             x = torch.fft.fftshift(x, dim=(2,3))
             x_old = x.clone()
@@ -658,7 +704,7 @@ class DiffusionNCA_fft2(nn.Module):
 
             steps_f = pixel_X
             x = torch.concat((x.real, x.imag), 1)
-            for step in range(int(steps_f*1.5)):
+            for step in range(int(steps_f)):
                 x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.model_0, step=step/(steps_f)) 
                 x[:, self.input_channels:self.channel_n, ...] = x_new[:, self.input_channels:self.channel_n, ...]
                 x[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...] = x_new[:, self.input_channels+self.channel_n:self.channel_n+self.channel_n, ...]
@@ -697,7 +743,7 @@ class DiffusionNCA_fft2(nn.Module):
                 #x = x_update
                 x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.model_1, step=step/steps)[:, self.input_channels:, ...] 
 
-            if True:
+            if False:
                 #print(x.shape)
 
                 # Normlisation

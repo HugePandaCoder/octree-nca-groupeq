@@ -4,8 +4,8 @@ from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.utils.Experiment import Experiment
 import torch
 from src.losses.LossFunctions import DiceBCELoss
-from src.agents.Agent_UNet import Agent
 from src.agents.Agent_MedNCA_Simple import MedNCAAgent
+from src.agents.Agent_UNet import Agent
 
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
@@ -35,7 +35,7 @@ config = [{
 dataset = Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
 ca = MedNCA(channel_n=17, fire_rate=0.5, steps=64, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
-agent = MedNCAAgent(ca)
+agent = Agent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 dataset.set_experiment(exp)

@@ -4,7 +4,8 @@ import torch
 from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
 from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
-from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
+#from src.models.Model_DiffusionNCA_n_level import DiffusionNCA_fft2
+from src.models.Model_DiffusionNCA_fft2_sin import DiffusionNCA_fft2
 #from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
@@ -20,7 +21,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run748_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run771_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -28,22 +29,22 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 1,
-    'evaluate_interval': 1,
+    'save_interval': 20,
+    'evaluate_interval': 20,
     'n_epoch': 100000,
-    'batch_size': 96,
+    'batch_size': 48,
     # Model
     'channel_n': 66,        # Number of CA state channels
     'batch_duplication': 1,
-    'inference_steps': 10,
+    'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
     'hidden_size':  256,
     'schedule': 'linear',
     # Data
-    'input_size': (35, 35),
-    'data_split': [0.08, 0.91, 0.01],#[0.80340968, 0.09806, 1], 
+    'input_size': (32, 32),
+    'data_split': [0.02, 0.97, 0.01],#[0.80340968, 0.09806, 1], 
     'timesteps': 300,
     '2D': True,
     'unlock_CPU': False,
@@ -52,7 +53,7 @@ config = [{
 
 #dataset = Dataset_NiiGz_3D(slice=2)
 dataset = png_Dataset(buffer=True)
-device = torch.device(config[0]['device'])
+device = torch.device(config[0]['device']) 
 #ca = DiffusionNCA_Group(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 
 ca1 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
@@ -79,7 +80,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceBCELoss() 
 
 if True:
-    #with torch.autograd.detect_anomaly():
+    #with torch.autograd.detect_anomaly(): 
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
