@@ -7,9 +7,10 @@ class Dataset_3D(Dataset_Base):
     r"""Base class to load 3D datasets
         .. WARNING:: Not to be used directly!
     """
-    def __init__(self, slice: int =None, resize: bool =True) -> None: 
+    def __init__(self, slice: int =None, resize: bool =True, store: bool = True) -> None: 
         self.slice = slice
         self.count = 42
+        self.store = store
         super().__init__(resize)
 
     def getImagePaths(self) -> list:

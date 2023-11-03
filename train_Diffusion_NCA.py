@@ -5,7 +5,7 @@ from src.datasets.png_Dataset import png_Dataset
 from src.models.Model_DiffusionNCA import DiffusionNCA
 from src.models.Model_DiffusionNCA_Group import DiffusionNCA_Group
 #from src.models.Model_DiffusionNCA_n_level import DiffusionNCA_fft2
-from src.models.Model_DiffusionNCA_fft2_sin import DiffusionNCA_fft2
+from src.models.Model_DiffusionNCA_fft2_sin_submission import DiffusionNCA_fft2
 #from src.models.Model_DiffusionNCA_multilevel import DiffusionNCA_fft2
 from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
@@ -21,7 +21,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run771_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run778_CelebA_fourier', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -29,22 +29,22 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 20,
-    'evaluate_interval': 20,
+    'save_interval': 1,
+    'evaluate_interval': 1,
     'n_epoch': 100000,
-    'batch_size': 48,
+    'batch_size': 12,
     # Model
-    'channel_n': 66,        # Number of CA state channels
+    'channel_n': 96,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  256,
+    'hidden_size':  512,
     'schedule': 'linear',
     # Data
-    'input_size': (32, 32),
-    'data_split': [0.02, 0.97, 0.01],#[0.80340968, 0.09806, 1], 
+    'input_size': (64, 64),
+    'data_split': [0.10, 0.89, 0.01],#[0.80340968, 0.09806, 1], 
     'timesteps': 300,
     '2D': True,
     'unlock_CPU': False,

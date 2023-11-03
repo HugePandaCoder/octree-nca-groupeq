@@ -10,6 +10,8 @@ from src.losses.LossFunctions import DiceBCELoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_Diffusion import Agent_Diffusion
 from src.datasets.Dataset_BCSS import Dataset_BCSS
+from torch.profiler import profile, record_function, ProfilerActivity
+import time
 
 config = [{
     # Basic
@@ -78,13 +80,37 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
+def print_profiler_output(prof):
+    for avg in prof.key_averages():
+        print(
+            f"{avg.key}: {avg.self_cpu_time_total} CPU time, "
+            f"{avg.self_cuda_time_total} CUDA time, "
+            f"{avg.cpu_memory_usage} CPU memory, "
+            f"{avg.cuda_memory_usage} CUDA memory"
+        )
+
 if False:
     agent.train(data_loader, loss_function)
 else:
     #torch.manual_seed(142)
     #agent.calculateFID_fromFiles(samples=100) #/home/jkalkhof_locale/Documents/GitHub/vnca2/Synth/
-    agent.test_fid(samples=556, optimized=True, saveImg=True)
-    agent.generateSamples(samples=12, normal=True)
+    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], 
+             schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=1),
+             on_trace_ready=torch.profiler.tensorboard_trace_handler('./log'),
+             record_shapes=True,
+             profile_memory=True,  # Note: This can be very memory intensive
+             with_stack=True) as prof:
+
+        start_time = time.perf_counter()    
+        #agent.test_fid(samples=1, optimized=False, saveImg=True)
+        agent.generateSamples(samples=1, normal=True)
+        end_time = time.perf_counter()
+
+        elapsed_time = end_time - start_time
+        print(f"The function took {elapsed_time} seconds to execute.")
+
+    print_profiler_output(prof)
+        
 
 
 # %%

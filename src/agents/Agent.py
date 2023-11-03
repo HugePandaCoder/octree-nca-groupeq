@@ -95,12 +95,12 @@ class BaseAgent():
         loss = 0
         loss_ret = {}
         if len(outputs.shape) == 5:
-            for m in range(outputs.shape[-1]):
+            for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
                 loss = loss + loss_loc
                 loss_ret[m] = loss_loc.item()
         else:
-            for m in range(outputs.shape[-1]):
+            for m in range(targets.shape[-1]):
                 if 1 in targets[..., m]:
                     loss_loc = loss_f(outputs[..., m], targets[..., m])
                     loss = loss + loss_loc
@@ -304,7 +304,7 @@ class BaseAgent():
             for m in range(self.output_channels):
                 loss_log[m] = {}
             if save_img == None:
-                save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
+                save_img = []#1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
             # For each data sample
             for i, data in enumerate(dataloader):
@@ -349,7 +349,7 @@ class BaseAgent():
                     # If next patient
                     if id != patient_id and patient_id != None:
                         out = patient_id + ", "
-                        for m in range(patient_3d_image.shape[3]):
+                        for m in range(patient_3d_label.shape[3]):
                             if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                                 loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
 
@@ -396,7 +396,7 @@ class BaseAgent():
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
                         print(",",loss_log[m][patient_id])
                         # Add image to tensorboard
-                        if True: 
+                        if False: 
                             if len(patient_3d_label.shape) == 4:
                                 patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
                             middle_slice = int(patient_3d_real_Img.shape[3] /2)
@@ -424,7 +424,7 @@ class BaseAgent():
             # If 2D
             if dataset.slice is not None:
                 out = patient_id + ", "
-                for m in range(patient_3d_image.shape[3]):
+                for m in range(patient_3d_label.shape[-1]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() 
                         out = out + str(loss_log[m][patient_id]) + ", "

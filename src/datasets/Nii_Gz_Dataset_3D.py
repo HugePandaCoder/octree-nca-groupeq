@@ -83,7 +83,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img (numpy): numpy array
         """
         if len(self.size) == 3:
-            size = (self.size[0], self.size[1])
+            size = (self.size[1], self.size[0])
             size2 = (self.size[2], self.size[0])
         else:
             size = (self.size[0], self.size[1])
@@ -261,8 +261,11 @@ class Dataset_NiiGz_3D(Dataset_3D):
                     label = np.expand_dims(label, axis=-1)
             img_id = "_" + str(p_id) + "_" + str(img_id)
             
-            self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
-            img = self.data.get_data(key=self.images_list[idx])
+            if self.store:
+                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+                img = self.data.get_data(key=self.images_list[idx])
+            else:
+                img = (img_id, img, label)
            
 
         id, img, label = img

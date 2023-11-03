@@ -72,8 +72,8 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceFocalLoss() 
 
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
-agent.getAverageDiceScore(pseudo_ensemble=True)
+agent.getAverageDiceScore(pseudo_ensemble=False)
 
 

@@ -17,7 +17,7 @@ class M3DNCAAgent(Agent):
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
         inputs, targets = self.model(inputs, targets)
-        return inputs, targets
+        return inputs, targets 
         #if len(inputs.shape) == 4:
         #    return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
         #else:
