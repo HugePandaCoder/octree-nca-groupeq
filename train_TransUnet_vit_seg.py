@@ -91,7 +91,7 @@ loss_function = DiceBCELoss()
 # Number of parameters
 print("Nr. Params.: ", sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
 
 
 start_time = time.perf_counter()

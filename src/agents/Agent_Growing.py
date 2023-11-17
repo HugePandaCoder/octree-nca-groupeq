@@ -1,8 +1,8 @@
 import numpy as np
-from src.agents.Agent_NCA import Agent
+from src.agents.Agent_NCA import Agent_NCA
 
-class Agent_Growing(Agent):
-    def get_outputs(self, data, full_img=False):
+class Agent_Growing(Agent_NCA):
+    def get_outputs(self, data, full_img=False, **kwargs):
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets

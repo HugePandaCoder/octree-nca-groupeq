@@ -14,12 +14,12 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'M3D_NCA_Run56_rewritten_alive', #12 or 13, 54 opt, 
+    'name': r'M3D_NCA_Run69_rewritten', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
     'lr': 16e-4,
-    'lr_gamma': 0.9999,
+    'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
     'save_interval': 50,
@@ -46,7 +46,7 @@ config = [{
 
 dataset = Dataset_NiiGz_3D(store=True)
 device = torch.device(config[0]['device'])
-ca1 = M3DNCA_alive(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=7, input_channels=config[0]['input_channels'], levels=2, scale_factor=4, steps=20).to(device)
+ca1 = M3DNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=7, input_channels=config[0]['input_channels'], levels=2, scale_factor=4, steps=20).to(device)
 ca = ca1
 agent = M3DNCAAgent(ca)
 exp = Experiment(config, dataset, ca, agent)
@@ -56,6 +56,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceFocalLoss() 
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)
 
 start_time = time.perf_counter()

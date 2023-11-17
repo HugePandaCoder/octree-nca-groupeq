@@ -29,6 +29,8 @@ class M3DNCA(nn.Module):
         self.steps = steps
         self.scale_factor = scale_factor
         self.levels = levels
+        self.fast_inf = False
+        self.margin = 20
 
         self.model = nn.ModuleList()
         for i in range(self.levels):
@@ -53,7 +55,7 @@ class M3DNCA(nn.Module):
         # print(memory_use_values)
         return memory_use_values
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=2):
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=1):
         x = x.to(self.device)
         #x = x.transpose(1,4)
         #y = y.transpose(1,4)
@@ -246,7 +248,7 @@ class M3DNCA(nn.Module):
 
         full_res = x
 
-        no_optim = False
+        no_optim = not self.fast_inf
 
         with torch.no_grad():
             # Start with low res lvl and go to high res level
@@ -260,7 +262,7 @@ class M3DNCA(nn.Module):
                             outputs = self.model[m](inputs_loc, steps=1, fire_rate=self.fire_rate)
                             inputs_loc = outputs
                         else:
-                            min_idx, max_idx = self.compute_bbox(t_sig, margin=7)
+                            min_idx, max_idx = self.compute_bbox(t_sig, margin=self.margin)
                             out = self.model[m](outputs[:, min_idx[0]:max_idx[0]+1, min_idx[2]:max_idx[2]+1, min_idx[1]:max_idx[1]+1, :], steps=1, fire_rate=self.fire_rate)
                             skipped += (out.shape[1]*out.shape[2]*out.shape[3])
                             print(min_idx, max_idx, out.shape, outputs.shape)
@@ -278,7 +280,7 @@ class M3DNCA(nn.Module):
                             outputs = self.model[m](inputs_loc, steps=1, fire_rate=self.fire_rate)
                             inputs_loc = outputs
                         else:
-                            min_idx, max_idx = self.compute_bbox(t_sig, margin=7)
+                            min_idx, max_idx = self.compute_bbox(t_sig, margin=self.margin)
                             out = self.model[m](outputs[:, min_idx[2]:max_idx[2]+1, min_idx[0]:max_idx[0]+1, min_idx[1]:max_idx[1]+1, :], steps=1, fire_rate=self.fire_rate)
                             outputs[:, min_idx[2]:max_idx[2]+1, min_idx[0]:max_idx[0]+1, min_idx[1]:max_idx[1]+1, :] = out
                             inputs_loc = outputs

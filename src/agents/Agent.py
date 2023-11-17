@@ -81,7 +81,7 @@ class BaseAgent():
         """
         return
 
-    def batch_step(self, data: tuple, loss_f: torch.nn.Module) -> dict:
+    def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step
             #Args
                 data (tensor, tensor): inputs, targets
@@ -108,6 +108,25 @@ class BaseAgent():
 
         if loss != 0:
             loss.backward()
+
+            if gradient_norm:
+                max_norm = 1.0
+                # Gradient normalization
+                total_norm = 0
+                for p in self.model.parameters():
+                    if p.grad is not None:
+                        param_norm = p.grad.data.norm(2)
+                        total_norm += param_norm.item() ** 2
+                total_norm = total_norm ** 0.5
+
+                # Calculate scaling factor and scale gradients if necessary
+                scale_factor = max_norm / (total_norm + 1e-6)
+                if scale_factor < 1:
+                    for p in self.model.parameters():
+                        if p.grad is not None:
+                            p.grad.data.mul_(scale_factor)
+
+
             self.optimizer.step()
             self.scheduler.step()
         return loss_ret
@@ -315,7 +334,8 @@ class BaseAgent():
                 if isinstance(data_id, str):
                     _, id, slice = dataset.__getname__(data_id).split('_')
                 else:
-                    text = data_id[0].split('_')
+                    print("DATA_ID", data_id)
+                    text = str(data_id[0]).split('_')
                     if len(text) == 3:
                         _, id, slice = text
                     else:
@@ -348,7 +368,7 @@ class BaseAgent():
                 if dataset.slice is not None:
                     # If next patient
                     if id != patient_id and patient_id != None:
-                        out = patient_id + ", "
+                        out = str(patient_id) + ", "
                         for m in range(patient_3d_label.shape[3]):
                             if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                                 loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
@@ -423,7 +443,7 @@ class BaseAgent():
 
             # If 2D
             if dataset.slice is not None:
-                out = patient_id + ", "
+                out = str(patient_id) + ", "
                 for m in range(patient_3d_label.shape[-1]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() 

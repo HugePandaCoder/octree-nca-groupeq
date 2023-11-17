@@ -23,7 +23,7 @@ config = [{
     'n_epoch': 1000,
     'batch_size': 2,
     # Data
-    'input_size': (384, 384, 64),
+    'input_size': (320, 320, 24),
     'data_split': [0.7, 0, 0.3], 
 
 }]

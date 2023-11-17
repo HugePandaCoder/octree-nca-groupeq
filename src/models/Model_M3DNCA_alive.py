@@ -31,9 +31,11 @@ class M3DNCA_alive(M3DNCA):
         self.steps = steps
         self.scale_factor = scale_factor
         self.levels = levels
+        self.fast_inf = True
+        self.margin = 7
 
         self.model = nn.ModuleList()
-        for i in range(self.levels):
+        for i in range(self.levels):    
             if i == 0:
                 self.model.append(BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size))
             else:

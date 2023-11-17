@@ -16,6 +16,7 @@ class png_Dataset(Dataset_NiiGz_3D):
         self.crop = crop
         self.buffer = buffer
         self.downscale = downscale
+        self.slice = 2
 
     def set_normalize(self, normalize=True):
         self.normalize = normalize

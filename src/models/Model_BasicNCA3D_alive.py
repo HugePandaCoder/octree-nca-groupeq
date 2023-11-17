@@ -6,7 +6,9 @@ from src.models.Model_BasicNCA3D import BasicNCA3D
 class BasicNCA3D_alive(BasicNCA3D):
 
     def alive(self, x):
-        return F.max_pool3d(x[:, self.input_channels:self.input_channels+1, ...], kernel_size=7, stride=1, padding=3) > 0
+        #print("SHAPE", F.max_pool3d(x[:, self.input_channels:self.input_channels+1, ...], kernel_size=7, stride=1, padding=3).shape)
+        return F.max_pool3d(F.max_pool3d(x[:, self.input_channels:self.input_channels+1, ...], kernel_size=7, stride=1, padding=3), kernel_size=7, stride=1, padding=3) > 0
+        #return F.max_pool3d(x[:, self.input_channels:self.input_channels+1, ...], kernel_size=7, stride=1, padding=3) > 0
 
     def update(self, x_in, fire_rate):
         r"""Update function runs same nca rule on each cell of an image with a random activation
@@ -29,6 +31,7 @@ class BasicNCA3D_alive(BasicNCA3D):
         if fire_rate is None:
             fire_rate=self.fire_rate
         stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2), dx.size(3),1])>fire_rate
+        #stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2), dx.size(3),dx.size(4)])>fire_rate
         stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
         dx = dx.transpose(1,4)

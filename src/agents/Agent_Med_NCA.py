@@ -30,9 +30,9 @@ class Agent_Med_NCA(Agent_Multi_NCA):
                 # Start with low res lvl and go to high res level
                 for m in range(self.exp.get_from_config('train_model')+1):
                     if m == self.exp.get_from_config('train_model'):
-                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                     else:
-                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                        outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                         # Upscale lowres features to high res
                         up = torch.nn.Upsample(scale_factor=4, mode='nearest')
                         outputs = torch.permute(outputs, (0, 3, 1, 2))
@@ -47,9 +47,9 @@ class Agent_Med_NCA(Agent_Multi_NCA):
             # Start with low res lvl and go to high res level
             for m in range(self.exp.get_from_config('train_model')+1):
                 if m == self.exp.get_from_config('train_model'):
-                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
                 else:
-                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+                    outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
 
                     # Upscale lowres features to high res
                     up = torch.nn.Upsample(scale_factor=4, mode='nearest')
