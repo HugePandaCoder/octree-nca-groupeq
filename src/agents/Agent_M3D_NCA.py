@@ -1,12 +1,13 @@
 import torch
 import numpy as np
 from src.agents.Agent_Multi_NCA import Agent_Multi_NCA
+from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
 import os
 import random
 import math
 import nibabel as nib
 
-class Agent_M3D_NCA(Agent_Multi_NCA):
+class Agent_M3D_NCA(Agent_Multi_NCA, Agent_MedSeg3D):
     """M3D-NCA training agent that uses 3d patches across n-levels during training to optimize VRAM.
     """
     def initialize(self):

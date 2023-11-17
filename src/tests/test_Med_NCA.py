@@ -10,6 +10,8 @@ from ..utils.Experiment import Experiment
 from ..agents.Agent_Med_NCA import Agent_Med_NCA
 from ..utils.ProjectConfiguration import ProjectConfiguration
 import pytest 
+from ..agents.Agent_MedNCA_Simple import MedNCAAgent
+from ..models.Model_MedNCA import MedNCA
 
 # Create a function to generate and save random noise data to a NIfTI file
 def create_temp_noise_nifti(shape, filename):
@@ -110,4 +112,59 @@ def test_MedNCA():
     agent.getAverageDiceScore()
 
 def test_MedNCA_simplified():
-    pytest.skip("Test not implemented yet")
+    ProjectConfiguration.STUDY_PATH = tempfile.mkdtemp()
+
+    path_img, path_label = create_testdata()
+
+    config = [{
+    'img_path': path_img,
+    'label_path': path_label,
+    'name': r'test', #12 or 13, 54 opt, 
+    'device':"cuda:0",
+    'unlock_CPU': True,
+    # Optimizer
+    'lr': 16e-4,
+    'lr_gamma': 0.9999,#0.9999,
+    'betas': (0.9, 0.99),
+    # Training
+    'save_interval': 1,
+    'evaluate_interval': 1,
+    'n_epoch': 1,
+    'batch_duplication': 1,
+    # Model
+    'channel_n': 16,        # Number of CA state channels
+    'inference_steps': [4, 4],
+    'cell_fire_rate': 0.5,
+    'batch_size': 4,
+    'input_channels': 1,
+    'output_channels': 1,
+    'hidden_size': 64,
+    'train_model':1,
+    # Data
+    'input_size': [(16, 16, 16), (64, 64, 64)] ,
+    'scale_factor': 2,
+    'data_split': [0.7, 0, 0.3], 
+    'keep_original_scale': False,
+    'rescale': True,
+    }
+    ]
+
+    # Define Experiment
+    dataset = Dataset_NiiGz_3D(slice=2)
+    device = torch.device(config[0]['device'])
+    ca = MedNCA(channel_n=17, fire_rate=0.5, steps=64, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
+    agent = MedNCAAgent(ca)
+    exp = Experiment(config, dataset, ca, agent)
+    exp.set_model_state('train')
+    dataset.set_experiment(exp)
+    data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
+    loss_function = DiceBCELoss() 
+
+    # Number of parameters
+    print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
+
+    # Train Model
+    agent.train(data_loader, loss_function)
+
+    # Average Dice Score on Test set
+    agent.getAverageDiceScore()

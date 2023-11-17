@@ -1,7 +1,9 @@
 import torch
 from src.agents.Agent import BaseAgent
+from src.agents.Agent_MedSeg2D import Agent_MedSeg2D
+from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
 
-class Agent(BaseAgent):
+class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
     """Base agent for training UNet models
     """
     def initialize(self):
@@ -44,3 +46,10 @@ class Agent(BaseAgent):
                 image (tensor): image
         """
         return image
+    
+    def test(self, *args, **kwargs):
+        dataset = self.exp.dataset
+        if dataset.slice is not None:
+            Agent_MedSeg2D.test(self, *args, **kwargs)
+        else:
+            Agent_MedSeg3D.test(self, *args, **kwargs)

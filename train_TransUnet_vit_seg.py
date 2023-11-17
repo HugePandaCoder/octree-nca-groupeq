@@ -5,10 +5,8 @@ from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.utils.Experiment import Experiment
 import torch
 from src.losses.LossFunctions import DiceBCELoss
-from src.agents.Agent_UNet import Agent
+from src.agents.Agent_UNet import UNetAgent
 import time
-#from transunet import TransUNet
-from src.models.Model_TransUnet import TransUNet
 import numpy as np
 import argparse
 from src.models.vit_seg_modeling import VisionTransformer as ViT_seg
@@ -81,7 +79,7 @@ net.load_from(weights=np.load(r"/home/jkalkhof_locale/Documents/GitHub/Pretraine
 
 # Load TransUNet weights
 
-agent = Agent(net)
+agent = UNetAgent(net)
 exp = Experiment(config, dataset, net, agent)
 exp.set_model_state('train')
 dataset.set_experiment(exp)

@@ -1,9 +1,10 @@
 import torch
-from src.agents.Agent_UNet import Agent
+from src.agents.Agent_UNet import UNetAgent
 import torch.nn.functional as F
 import random
+from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
 
-class M3DNCAAgent(Agent):
+class M3DNCAAgent(UNetAgent):
     """Base agent for training UNet models
     """
     def initialize(self):

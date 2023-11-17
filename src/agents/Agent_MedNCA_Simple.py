@@ -1,7 +1,8 @@
 import torch
-from src.agents.Agent_UNet import Agent
+from src.agents.Agent_UNet import UNetAgent
+from src.agents.Agent_MedSeg2D import Agent_MedSeg2D
 
-class MedNCAAgent(Agent):
+class MedNCAAgent(UNetAgent):
     """Base agent for training UNet models
     """
     def initialize(self):

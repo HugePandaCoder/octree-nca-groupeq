@@ -303,7 +303,23 @@ class BaseAgent():
 
         return
 
+    @staticmethod
+    def standard_deviation(loss_log: dict) -> float:
+        r"""Calculate the standard deviation
+            #Args
+                loss_log: losses
+        """
+        mean = sum(loss_log.values())/len(loss_log)
+        stdd = 0
+        for e in loss_log.values():
+            stdd = stdd + pow(e - mean, 2)
+        stdd = stdd / len(loss_log)
+        stdd = math.sqrt(stdd)
+        return stdd
+
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, **kwargs):
+        raise NotImplementedError
+    
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -455,20 +471,7 @@ class BaseAgent():
             for key in loss_log.keys():
                 if len(loss_log[key]) > 0:
                     print("Average Dice Loss 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
-                    print("Standard Deviation 3d: " + str(key) + ", " + str(standard_deviation(loss_log[key])))
+                    print("Standard Deviation 3d: " + str(key) + ", " + str(self.standard_deviation(loss_log[key])))
 
             self.exp.set_model_state('train')
             return loss_log
-
-def standard_deviation(loss_log: dict) -> float:
-    r"""Calculate the standard deviation
-        #Args
-            loss_log: losses
-    """
-    mean = sum(loss_log.values())/len(loss_log)
-    stdd = 0
-    for e in loss_log.values():
-        stdd = stdd + pow(e - mean, 2)
-    stdd = stdd / len(loss_log)
-    stdd = math.sqrt(stdd)
-    return stdd
