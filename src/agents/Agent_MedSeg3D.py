@@ -1,6 +1,6 @@
 import torch
 from src.agents.Agent import BaseAgent
-from src.utils.helper import convert_image, merge_img_label_gt
+from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
 import numpy as np
 import math 
 
@@ -72,17 +72,18 @@ class Agent_MedSeg3D(BaseAgent):
                 patient_id = id
                 print(patient_id)
 
-                print(patient_3d_image.shape,patient_3d_label.shape )
                 for m in range(patient_3d_image.shape[-1]):
                     loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
                     print(",",loss_log[m][patient_id])
                     # Add image to tensorboard
-                    if False: 
+                    if True: 
                         if len(patient_3d_label.shape) == 4:
                             patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
                         middle_slice = int(patient_3d_real_Img.shape[3] /2)
+                        print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
                         self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                        merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                        merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label),
+                                        #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                         self.exp.currentStep)
                         #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                         #convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 

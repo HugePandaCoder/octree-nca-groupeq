@@ -10,7 +10,7 @@ from ..tests.test_FourierDiff_NCA import create_testdata
 import pytest
 
 def test_GrowingNCA():
-    pytest.skip("Test not implemented yet")
+    #pytest.skip("Test not implemented yet")
     ProjectConfiguration.STUDY_PATH = tempfile.mkdtemp()
 
     path_img, path_label = create_testdata()

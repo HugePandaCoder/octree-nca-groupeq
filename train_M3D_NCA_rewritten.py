@@ -14,7 +14,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'M3D_NCA_Run69_rewritten', #12 or 13, 54 opt, 
+    'name': r'M3D_NCA_Run70_rewritten', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -22,8 +22,8 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 50,
-    'evaluate_interval': 25,
+    'save_interval': 10,
+    'evaluate_interval': 10,
     'n_epoch': 3000,
     'batch_duplication': 1,
     # Model

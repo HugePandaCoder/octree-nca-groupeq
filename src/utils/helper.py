@@ -14,6 +14,7 @@ import io
 import datetime
 import nibabel as nib
 import os
+import torch
 
 def dump_pickle_file(file, path):
     r"""Dump pickle file in path
@@ -108,6 +109,24 @@ def visualize_perceptive_range(img, cell_fire_rate=0.5):
         img = np.dstack((img_new, img_new, img_new))
 
     return img
+
+def merge_img_label_gt_simplified(img, label, gt):
+    print(img.shape, label.shape, gt.shape)
+
+    img = torch.squeeze(img)
+    label = torch.squeeze(label)
+    gt = torch.squeeze(gt)
+
+    if len(img.shape) - len(label.shape) == 1:
+        img = torch.squeeze(img)[..., 0]
+
+    merged_image = torch.cat((img, label, gt)).numpy()
+    # If 3D
+    if len(img.shape) == 3:
+       merged_image = merged_image[..., merged_image.shape[2]//2]
+    
+    return merged_image
+
 
 def merge_img_label_gt(img, label, gt):
     img, label, gt = np.squeeze(img), np.squeeze(label), np.squeeze(gt)
