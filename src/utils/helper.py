@@ -392,3 +392,8 @@ r"""Plot individual patient scores
 """
 def loss_log_to_image(loss_log):
     sns.scatterplot(data=loss_log, x="id", y="Dice")
+
+def merge_config(self, config_parent: dict, config_child: dict) -> None:
+    r"""Merge config with current config
+    """
+    return {**self.config_parent, **config_child}

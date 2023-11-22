@@ -59,8 +59,8 @@ def test_M3DNCA():
     ca = [ca1, ca2, ca3, ca4]
     agent = Agent_M3D_NCA(ca)
     exp = Experiment(config, dataset, ca, agent)
-    dataset.set_experiment(exp)
-    exp.set_model_state('train')
+    #dataset.set_experiment(exp)
+    #exp.set_model_state('train')
     data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
     loss_function = DiceFocalLoss() 

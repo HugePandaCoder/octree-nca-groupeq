@@ -28,9 +28,13 @@ class Experiment():
             - Datasets
     """
     def __init__(self, config: dict, dataset: Dataset, model: nn.Module, agent) -> None:
+        # Backward compatibility
+        if isinstance(config, list):
+            config = config[0]
+
         self.projectConfig = config
         self.add_required_to_config()
-        self.config = self.projectConfig[0]
+        self.config = self.projectConfig
         self.dataset = dataset
         self.model = model
         self.agent = agent
@@ -42,36 +46,44 @@ class Experiment():
             self.setup()
         #self.initializeFID()
         self.currentStep = self.currentStep+1
-        self.set_current_config()
+        #self.set_current_config()
 
     def add_required_to_config(self) -> None:
         r"""Fills config with basic setup if not defined otherwise
         """
-        if 'Persistence' not in self.projectConfig[0]:
-            self.projectConfig[0]['Persistence'] = False
-        if 'batch_duplication' not in self.projectConfig[0]:
-            self.projectConfig[0]['batch_duplication'] = 1
-        if 'keep_original_scale' not in self.projectConfig[0]:
-            self.projectConfig[0]['keep_original_scale'] = False
-        if 'rescale' not in self.projectConfig[0]:
-            self.projectConfig[0]['rescale'] = True
-        if 'channel_n' not in self.projectConfig[0]:
-            self.projectConfig[0]['channel_n'] = 16
-        if 'cell_fire_rate' not in self.projectConfig[0]:
-            self.projectConfig[0]['cell_fire_rate'] = 0.5
-        if 'output_channels' not in self.projectConfig[0]:
-            self.projectConfig[0]['output_channels'] = 1
+        if 'Persistence' not in self.projectConfig:
+            self.projectConfig['Persistence'] = False
+        if 'batch_duplication' not in self.projectConfig:
+            self.projectConfig['batch_duplication'] = 1
+        if 'keep_original_scale' not in self.projectConfig:
+            self.projectConfig['keep_original_scale'] = False
+        if 'rescale' not in self.projectConfig:
+            self.projectConfig['rescale'] = True
+        if 'channel_n' not in self.projectConfig:
+            self.projectConfig['channel_n'] = 16
+        if 'cell_fire_rate' not in self.projectConfig:
+            self.projectConfig['cell_fire_rate'] = 0.5
+        if 'output_channels' not in self.projectConfig:
+            self.projectConfig['output_channels'] = 1
+        if 'description' not in self.projectConfig:
+            self.projectConfig['description'] = "None"
 
         # Basic Configs
-        if 'model_path' not in self.projectConfig[0]:
-            self.projectConfig[0]['model_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig[0]['name'])
-        if 'generate_path' not in self.projectConfig[0]:
-            self.projectConfig[0]['generate_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig[0]['name'], 'Generated')
+        if 'model_path' not in self.projectConfig:
+            self.projectConfig['model_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig['name'] + "_" + self.projectConfig['description'])
+        if 'generate_path' not in self.projectConfig:
+            self.projectConfig['generate_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig['name'], 'Generated')
         # Git hash
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        self.projectConfig[0]['git_hash'] = sha
+        self.projectConfig['git_hash'] = sha
         
+    def set_loss_function(self, loss_function) -> None:
+        self.loss_function = loss_function
+
+    def set_data_loader(self, data_loader) -> None:
+        self.data_loader = data_loader
+
     def setup(self) -> None:
         r"""Initial experiment setup when first started
         """
@@ -81,11 +93,13 @@ class Experiment():
         #os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
         # Create Run
         self.run = Run(experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
-        self.projectConfig[0]['hash'] = self.run.hash
+        self.run.description = self.projectConfig['description']
+        self.projectConfig['hash'] = self.run.hash
         self.run['hparams'] = self.config
 
         # Create basic configuration
         self.data_split = self.new_datasplit()
+        self.set_model_state("train")
         dump_pickle_file(self.data_split, os.path.join(self.config['model_path'], 'data_split.dt'))
         dump_json_file(self.projectConfig, os.path.join(self.config['model_path'], 'config.dt'))
 
@@ -98,14 +112,14 @@ class Experiment():
         """
         print("WARNING: NEVER USE \'temporarly_overwrite_config\' FUNCTION DURING TRAINING.")
         self.projectConfig = config
-        self.set_current_config()
+        #self.set_current_config()
         self.data_split = self.new_datasplit()
         self.set_size()
 
     def get_max_steps(self) -> int:
         r"""Get max defined training steps of experiment
         """
-        return self.projectConfig[-1]['n_epoch']
+        return self.projectConfig['n_epoch']
 
     def reload(self) -> None:
         r"""Reload old experiment to continue training
@@ -117,11 +131,13 @@ class Experiment():
         self.data_split = load_pickle_file(os.path.join(self.config['model_path'], 'data_split.dt'))
         self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
 
-        # Find most recent Experiment with name and reload
-        print(self.projectConfig[0]['hash'])
-        self.run = Run(run_hash=self.projectConfig[0]['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+        self.set_model_state("train")
 
-        self.config = self.projectConfig[0]
+        # Find most recent Experiment with name and reload
+        print(self.projectConfig['hash'])
+        self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+
+        self.config = self.projectConfig
         model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
         print(model_path)
         if os.path.exists(model_path):
@@ -142,10 +158,11 @@ class Experiment():
         self.currentStep = self.current_step()
         self.set_size()
         #self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
-        self.set_current_config()
+        #self.set_current_config()
         self.agent.set_exp(self)
         self.fid = None
         self.kid = None
+        self.dataset.set_experiment(self)
         #if self.currentStep == 0:
         #    self.write_text('config', str(self.projectConfig), 0)
 
@@ -266,6 +283,7 @@ class Experiment():
         else:
             return None
 
+    @DeprecationWarning
     def set_current_config(self) -> None:
         r"""Set current config. This can change during training and will always 
             overwrite previous settings, but keep everything else
@@ -281,7 +299,7 @@ class Experiment():
         r"""Increase current epoch
         """
         self.currentStep = self.currentStep +1
-        self.set_current_config()
+        #self.set_current_config()
 
     def get_current_config(self) -> dict:
         r"""TODO: remove?"""
@@ -391,3 +409,11 @@ class DataSplit():
         """
         return  dataset.getFilesInPath(path) 
     
+def merge_config(config_parent: dict, config_child: dict) -> None:
+    r"""Merge config with current config
+    """
+    #try:
+    #    config_child['name'] = config_parent['name'] + "_" + config_child['name']
+    #except:
+    #    print('MISSING NAME IN CONFIG')
+    return {**config_parent, **config_child}

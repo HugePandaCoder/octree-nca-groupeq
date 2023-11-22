@@ -10,6 +10,7 @@ from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from ..utils.ProjectConfiguration import ProjectConfiguration
 import tempfile
 from ..tests.test_Med_NCA import create_testdata
+from ..losses.LossFunctions import DiceBCELoss
 
 def test_UNet2D():
     pytest.skip("Test not implemented yet")
@@ -89,7 +90,7 @@ def test_TransNet2D():
         config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
     # Load TransUNet weights
-    net.load_from(weights=np.load(r"/home/jkalkhof_locale/Documents/GitHub/PretrainedVITs/imagenet21k_R50+ViT-B_16.npz"))#config_vit.pretrained_path))
+    net.load_from(weights=np.load(ProjectConfiguration.VITB16_WEIGHTS))#config_vit.pretrained_path))
 
     
 
@@ -97,7 +98,10 @@ def test_TransNet2D():
     exp = Experiment(config, dataset, net, agent)
     exp.set_model_state('train')
     dataset.set_experiment(exp)
+    loss_function = DiceBCELoss() 
+    data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
+    agent.train(data_loader, loss_function)
     agent.getAverageDiceScore(pseudo_ensemble=False)
 
 
