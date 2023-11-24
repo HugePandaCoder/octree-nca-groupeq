@@ -6,7 +6,7 @@ class Study():
             - Running multiple experiments at once
     """
 
-    def __init__(self) -> None:
+    def __init__(self, study_config : dict = {}) -> None:
         self.experiments = []
 
     def add_experiment(self, experiment: Experiment) -> None:

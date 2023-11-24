@@ -13,8 +13,6 @@ from src.utils.BaselineConfigs import EXP_UNet2D, EXP_M3DNCA, EXP_TransUNet
 
 print(ProjectConfiguration.STUDY_PATH)
 
-study = Study()
-
 study_config = {
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
@@ -37,6 +35,8 @@ study_config = {
     'keep_original_scale': False,
     'rescale': True,
 }
+
+study = Study(study_config)
 
 
 ###### Define specific model setups here and save them in list ######

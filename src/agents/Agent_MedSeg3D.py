@@ -30,7 +30,7 @@ class Agent_MedSeg3D(BaseAgent):
             # For each data sample
             for i, data in enumerate(dataloader):
                 data = self.prepare_data(data, eval=True)
-                data_id, inputs, _ = data
+                data_id, inputs, *_ = data
                 outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
                 if isinstance(data_id, str):
