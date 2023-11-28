@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from ..models.Model_BasicNCA3D import BasicNCA3D
  
 class GenNCA(nn.Module):
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False, extra_channels=8):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -23,7 +23,7 @@ class GenNCA(nn.Module):
         self.input_channels = input_channels
 
         # This is the embeddding for the information
-        extra_channels = 8
+        self.extra_channels = extra_channels
 
         self.embedding_backpropTrick = nn.Conv3d(extra_channels, extra_channels, kernel_size=1, stride=1, padding=0, groups=extra_channels)
         self.embedding = nn.Sequential(

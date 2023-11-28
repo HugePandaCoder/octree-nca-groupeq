@@ -38,6 +38,7 @@ class Experiment():
         self.dataset = dataset
         self.model = model
         self.agent = agent
+        self.storage = {}
         self.model_state = "train"
         self.general()
         if(os.path.isdir(os.path.join(self.config['model_path'], 'models'))):

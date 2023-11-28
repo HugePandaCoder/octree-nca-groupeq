@@ -13,7 +13,7 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'name': r"genMRIseg_4",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"genMRIseg_33",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -21,10 +21,10 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 10,
-    'evaluate_interval': 10,
+    'save_interval': 5,#
+    'evaluate_interval': 5,
     'n_epoch': 1000,
-    'batch_size': 8,
+    'batch_size': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': 10,
@@ -38,10 +38,10 @@ config = [{
 }
 ]
 
-dataset = Dataset_NiiGz_3D_gen()
+dataset = Dataset_NiiGz_3D_gen(extra_channels=2)
 device = torch.device(config[0]['device'])
 
-ca = GenNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels']).to(device)
+ca = GenNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=2).to(device)
 agent = Agent_NCA_gen(ca)
 
 #ca = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels']).to(device)

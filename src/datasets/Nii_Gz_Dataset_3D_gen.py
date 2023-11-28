@@ -6,9 +6,14 @@ import cv2
 import random
 import torchio
 import matplotlib.pyplot as plt
+import torch
 
 class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
     """This dataset additionally stores an input vector that is updated"""
+
+    def __init__(self, slice: int =None, resize: bool =True, store: bool = True, extra_channels = 8) -> None: 
+        self.extra_channels = extra_channels
+        super().__init__(slice, resize, store)
 
     def set_vec(self, idx: str, vec) -> tuple:
         #print("INDEX", idx)
@@ -30,7 +35,9 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
         """
         rescale = torchio.RescaleIntensity(out_min_max=(0,1), percentiles=(0.5, 99.5))
         znormalisation = torchio.ZNormalization()
-        flip = torchio.RandomFlip(axes=(0, 0, 1), p=0.5)
+        #torch.manual_seed(idx)
+        #random.seed(idx)
+        #np.random.seed(idx)
 
         img = self.data.get_data(key=self.images_list[idx])
         if not img:
@@ -59,10 +66,21 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
             else:
                 if len(img.shape) == 4:
                     img = img[..., 0]
+                    
+
                 img = np.expand_dims(img, axis=0)
                 img = rescale(img) 
-                img = flip(img)
+                label = np.expand_dims(label, axis=0)
+                if idx % 2 == 1:
+                    #img = np.max(img) - img
+                    #img = np.flip(img, axis=1)#flip(img)
+                    label = 2 - label
+                    #label = np.flip(label, axis=1)#flip(label)
                 img = np.squeeze(img)
+                label = np.squeeze(label)
+                #np.random.seed()
+                #random.seed()
+                #torch.seed()
                 # random flip for two clusters
                 #plt.imshow(img[:, :, img.shape[2]//2], cmap='gray')
                 #plt.show()
@@ -77,7 +95,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
                     label = np.expand_dims(label, axis=-1)
             img_id = str(idx) + "_" + str(p_id) + "_" + str(img_id)
 
-            img_vec = np.random.randn(8).astype(np.float32)
+            img_vec = np.random.randn(self.extra_channels).astype(np.float32)
             
             if self.store:
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, img_vec))
