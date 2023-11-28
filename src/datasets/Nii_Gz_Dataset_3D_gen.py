@@ -71,7 +71,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
                 img = np.expand_dims(img, axis=0)
                 img = rescale(img) 
                 label = np.expand_dims(label, axis=0)
-                if idx % 2 == 1:
+                if idx % 2 == 1 and False:
                     #img = np.max(img) - img
                     #img = np.flip(img, axis=1)#flip(img)
                     label = 2 - label
@@ -96,6 +96,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
             img_id = str(idx) + "_" + str(p_id) + "_" + str(img_id)
 
             img_vec = np.random.randn(self.extra_channels).astype(np.float32)
+            #img_vec = np.array([-15,0]).astype(np.float32)#*15#np.ones(self.extra_channels).astype(np.float32)#*15
             
             if self.store:
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, img_vec))

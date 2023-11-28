@@ -102,40 +102,55 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
 
             # FOR element in batch
             
-            self.optimizer_backpropTrick.zero_grad()
-            loss.backward()
-            self.optimizer_backpropTrick.step()
+            standard = True
+            if standard:
+                self.optimizer_backpropTrick.zero_grad()
+                loss.backward()
+                self.optimizer_backpropTrick.step()
+
             for i, v in enumerate(vec):
             # Add optimizer trick here
                 
                 # BACKWARD LOSS VEC   
-                
-                #vec_loss = loss_f(outputs[i, ...], targets[i, ...])
-                #vec_loss.backward(retain_graph=True)
+                if not standard:
+                    self.optimizer_backpropTrick.zero_grad()
+                    vec_loss = loss_f(outputs[i, ...], targets[i, ...])
+                    vec_loss.backward(retain_graph=True)
+                    self.optimizer_backpropTrick.step()
                 
                 
                 # MOVE loss to vector
                 v_id = str(id[i])
                 v_id = int(v_id.split('_')[0])
-                v = v.to(self.device) - (1.0-self.model.embedding_backpropTrick.weight.squeeze()).detach()*100
+                v = v.to(self.device) - (1.0-self.model.embedding_backpropTrick.weight.squeeze()).detach()*10
                 #v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
+                if not standard:
+                    self.reset_weights()  
             # reset weights
-            new_weight = self.model.embedding_backpropTrick.weight.data.clone()
-
-            # Modify the cloned tensor
-            new_weight[new_weight != 1] = 1.0
-            self.model.embedding_backpropTrick.weight.data = new_weight         
-                
+            if standard:
+                self.reset_weights() 
+            else:      
+                loss.backward()
             
             
             self.optimizer.step()
             self.scheduler.step()
+            self.reset_weights() 
             self.z_score_normalize()
 
 
         return loss_ret
-    
+
+    def reset_weights(self):
+        # reset weights
+        new_weight = self.model.embedding_backpropTrick.weight.data.clone()
+
+        # Modify the cloned tensor
+        new_weight[new_weight != 1] = 1.0
+        self.model.embedding_backpropTrick.weight.data = new_weight         
+                
+
     def z_score_normalize(self):
         #self.exp.set_model_state('train')
         data_loader = torch.utils.data.DataLoader(self.exp.dataset, shuffle=True, batch_size=10000) 
