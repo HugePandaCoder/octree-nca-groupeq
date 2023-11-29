@@ -15,7 +15,7 @@ class M3DNCAAgent(UNetAgent):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        _, inputs, targets = data
+        inputs, targets = data['image'], data['label']
         
         inputs = inputs.permute(0, 2, 3, 4, 1)
 

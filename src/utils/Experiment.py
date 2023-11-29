@@ -204,8 +204,8 @@ class Experiment():
         self.dataset.set_normalize(False)
         dataloader_kid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
         for i, data in enumerate(dataloader_kid):
-            #print(data[1].shape)
-            sample = data[1].to(torch.uint8)
+            #print(data['image'].shape)
+            sample = data['image'].to(torch.uint8)
             sample = sample.transpose(1,3)
             self.kid.update(sample, real=True)
             #self.fid.compute()
@@ -227,8 +227,8 @@ class Experiment():
             self.dataset.set_normalize(False)
             dataloader_fid = torch.utils.data.DataLoader(self.dataset, shuffle=False, batch_size=2048)
             for i, data in enumerate(dataloader_fid):
-                #print(data[1].shape)
-                sample = data[1].to(torch.uint8)
+                #print(data['image'].shape)
+                sample = data['image'].to(torch.uint8)
                 sample = sample.transpose(1,3)
                 self.fid.update(sample, real=True)
                 #self.fid.compute()

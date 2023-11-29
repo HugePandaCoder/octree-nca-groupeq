@@ -10,7 +10,6 @@ from ..agents.Agent_M3DNCA_Simple import M3DNCAAgent
 from ..tests.test_Med_NCA import create_temp_noise_nifti, create_temp_ones_zeros_nifti, create_testdata
 from ..utils.ProjectConfiguration import ProjectConfiguration
 
-
 def test_M3DNCA():
     ProjectConfiguration.STUDY_PATH = tempfile.mkdtemp()
 

@@ -12,7 +12,9 @@ from ..utils.ProjectConfiguration import ProjectConfiguration
 import pytest 
 from ..agents.Agent_MedNCA_Simple import MedNCAAgent
 from ..models.Model_MedNCA import MedNCA
+import os
 
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 # Create a function to generate and save random noise data to a NIfTI file
 def create_temp_noise_nifti(shape, filename):
     noise_data = np.random.rand(*shape)

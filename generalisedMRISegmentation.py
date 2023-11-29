@@ -8,12 +8,16 @@ from src.agents.Agent_NCA_gen import Agent_NCA_gen
 
 from src.models.Model_BasicNCA3D import BasicNCA3D
 from src.agents.Agent_NCA import Agent_NCA
+import os
+
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+
 
 config = [{
     # Basic
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'name': r"genMRIseg_40_noShift_hipPros",#_baseline", 75% with vec, 77.5% baseline
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate/labelsTr/",
+    'name': r"genMRIseg_43_noShift_hipPros",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -24,7 +28,7 @@ config = [{
     'save_interval': 5,#
     'evaluate_interval': 5,
     'n_epoch': 1000,
-    'batch_size': 1,
+    'batch_size': 4,
     # Model
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': 10,

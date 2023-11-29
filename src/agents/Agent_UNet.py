@@ -19,22 +19,25 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
                 inputs (tensor): Input to model
                 targets (tensor): Target of model
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         if self.exp.dataset.slice is None:
             inputs, targets = torch.unsqueeze(inputs, 1), targets #torch.unsqueeze(targets, 1) 
         if len(inputs.shape) == 4:
-            return id, inputs.permute(0, 3, 1, 2), targets.permute(0, 3, 1, 2)
-        else:
-            return id, inputs, targets
+            inputs = inputs.permute(0, 3, 1, 2)
+            targets = targets.permute(0, 3, 1, 2)
+        
+        data = {'id': id, 'image': inputs, 'label': targets}
+
+        return data
 
     def get_outputs(self, data: tuple, **kwargs) -> tuple:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        _, inputs, targets = data
+        _, inputs, targets = data['id'], data['image'], data['label']
         if len(inputs.shape) == 4:
             return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
         else:

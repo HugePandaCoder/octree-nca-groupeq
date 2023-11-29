@@ -99,5 +99,11 @@ class png_Dataset(Dataset_NiiGz_3D):
 
         #print(img.shape)
 
-        return (id, img, label)
+        data_dict = {}
+        data_dict['id'] = id
+        data_dict['image'] = img
+        data_dict['label'] = label
+
+
+        return data_dict
 

@@ -20,7 +20,7 @@ class Agent_M3D_NCA(Agent_Multi_NCA, Agent_MedSeg3D):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
 
         if len(targets.shape) < 5:
             targets = torch.unsqueeze(targets, 4)

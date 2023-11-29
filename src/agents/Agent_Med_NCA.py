@@ -18,7 +18,7 @@ class Agent_Med_NCA(Agent_Multi_NCA, Agent_MedSeg2D):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
 
         # Create down-scaled image
         down_scaled_size = (int(inputs.shape[1] / 4), int(inputs.shape[2] / 4))

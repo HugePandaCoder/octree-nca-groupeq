@@ -21,7 +21,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                 inputs (tensor): Input to model
                 targets (tensor): Target of model
         """
-        id, inputs, targets, vec = data
+        id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         inputs = self.make_seed(inputs)
@@ -36,7 +36,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        id, inputs, targets, vec = data
+        id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         outputs = self.model(inputs, vec, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
         #outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
         if self.exp.get_from_config('Persistence'):
@@ -80,7 +80,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                 loss item
         """
         data = self.prepare_data(data)
-        id, inputs, targets, vec = data
+        id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
         loss = 0
@@ -156,9 +156,8 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         data_loader = torch.utils.data.DataLoader(self.exp.dataset, shuffle=True, batch_size=10000) 
         vec = []
         for data in data_loader:
-            vec = data[3].detach().cpu().numpy()
-            id = data[0]
-
+            vec = data['image_vec'].detach().cpu().numpy()
+            id = data['id']
 
         normalized = vec
 
@@ -184,7 +183,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                 loss item
         """
         data = self.prepare_data(data)
-        id, inputs, targets, vec = data
+        id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         outputs, targets = self.get_outputs(data)
         for m in range(self.exp.get_from_config('train_model')+1):
             self.optimizer[m].zero_grad()
@@ -227,8 +226,8 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         data_loader = torch.utils.data.DataLoader(self.exp.dataset, shuffle=True, batch_size=10000) 
         vec = []
         for data in data_loader:
-            vec = data[3].detach().cpu().numpy()
-            id = data[0]
+            vec = data['image_vec'].detach().cpu().numpy()
+            id = data['id']
 
         labels = []
         for i in id:

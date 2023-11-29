@@ -13,7 +13,7 @@ class MedNCAAgent(UNetAgent):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        _, inputs, targets = data
+        inputs, targets = data['image'], data['label']
         
         inputs, targets = self.model(inputs, targets)
         return inputs, targets

@@ -164,6 +164,10 @@ class Dataset_BCSS(Dataset_Base):
         #    #print(mask.shape)
         #    label_mask[mask, label_id] = 1
 
-        return img_loc, img_loc
+        data_dict = {}
+        data_dict['image'] = img_loc
+        data_dict['label'] = img_loc
+
+        return data_dict
    
         #print(unique_labels)

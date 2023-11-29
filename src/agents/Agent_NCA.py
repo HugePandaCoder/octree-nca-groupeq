@@ -103,7 +103,7 @@ class Agent_NCA(BaseAgent):
                 inputs (tensor): Input to model
                 targets (tensor): Target of model
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         inputs = self.make_seed(inputs)
@@ -111,14 +111,17 @@ class Agent_NCA(BaseAgent):
             if self.exp.get_from_config('Persistence'):
                 inputs = self.pool.getFromPool(inputs, id, self.device)
             inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('batch_duplication'))
-        return id, inputs, targets
+        
+        data = {'id': id, 'image': inputs, 'label': targets}
+
+        return data
 
     def get_outputs(self, data, full_img=False, **kwargs):
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
         outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):

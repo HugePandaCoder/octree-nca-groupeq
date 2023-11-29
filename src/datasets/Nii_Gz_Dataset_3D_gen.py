@@ -96,7 +96,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
             img_id = str(idx) + "_" + str(p_id) + "_" + str(img_id)
 
             img_vec = np.random.randn(self.extra_channels).astype(np.float32)
-            #img_vec = np.array([-15,0]).astype(np.float32)#*15#np.ones(self.extra_channels).astype(np.float32)#*15
+            #img_vec = np.array([-0.2,-0.2]).astype(np.float32)#*15#np.ones(self.extra_channels).astype(np.float32)#*15
             
             if self.store:
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, img_vec))
@@ -133,4 +133,10 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
 
         #print("GETITEM INDEX", self.images_list[idx])
 
-        return (id, img, label, img_vec)#(id, img, label, img_vec)
+        data_dict = {}
+        data_dict['id'] = id
+        data_dict['image'] = img
+        data_dict['label'] = label
+        data_dict['image_vec'] = img_vec
+
+        return data_dict#(id, img, label, img_vec)#(id, img, label, img_vec)

@@ -294,4 +294,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
             img = img[..., :self.exp.get_from_config('input_channels')]
             label = label[..., :self.exp.get_from_config('output_channels')]
 
-        return (id, img, label)
+        data_dict = {}
+        data_dict['id'] = id
+        data_dict['image'] = img
+        data_dict['label'] = label
+
+        return data_dict

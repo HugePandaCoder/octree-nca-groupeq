@@ -66,4 +66,4 @@ class Dataset_3D(Dataset_Base):
 
     def __getitem__() -> None:
         r"""Placeholder function for getting a dataset value"""
-        return None, None, None
+        raise NotImplementedError

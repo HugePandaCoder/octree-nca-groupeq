@@ -8,7 +8,7 @@ class Agent_Growing(Agent_NCA):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
         outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
@@ -29,7 +29,7 @@ class Agent_Growing(Agent_NCA):
         # For each data sample
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
-            data_id, inputs, _ = data
+            data_id, inputs, _ = data['id'], data['image'], data['label']
             outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
         outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate')).detach().cpu().numpy()

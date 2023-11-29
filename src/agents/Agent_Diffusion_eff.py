@@ -162,7 +162,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         :param label:
         :return: corrupt images, associated noise
         """
-        id, img, _ = data
+        id, img, _ = data['id'], data['image'], data['label']
         img = img.to(self.device)
         
         #noise = img.clone()
@@ -194,9 +194,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
             img_noisy, noise = self.repeatBatch(img_noisy, noise, self.exp.get_from_config('batch_duplication'))
         data_noisy = (id, img_noisy, img_noisy)
 
+        data = {'id': id, 'image': img_noisy, 'label': img_noisy, 'noise': label}
 
-
-        return data_noisy, noise, label
+        return data
 
     def get_outputs(self, data, full_img=False, t=0, **kwargs):
         r"""Get the outputs of the model
@@ -205,7 +205,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         """
         t = torch.tensor(t/self.timesteps).to(self.device) # TODO: torch.tensor((t+1)/self.timesteps).to(self.device)
         #print("T", t)
-        id, inputs, targets = data
+        id, inputs, targets = data['id'], data['image'], data['label']
         if self.exp.model_state == "train":
             #print("TTTTTTT<-------------------", t.shape)
             t = t.repeat(self.exp.get_from_config('batch_duplication'))
@@ -227,7 +227,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets
 
     def rescale_image(self, data):
-        id, img, label = data
+        id, img, label = data['id'], data['image'], data['label']
 
         random_fac = random.uniform(0.5,1)
 
@@ -257,13 +257,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
             t = torch.randint(0, self.timesteps, (data[1].shape[0],), device=self.exp.get_from_config(tag="device")).long()
 
 
-        real_img = data[1].to(self.device).to(torch.float)
+        real_img = data['image'].to(self.device).to(torch.float)
 
         # Rescale img factor x
         #data = self.rescale_image(data)
         
-        data, noise, label = self.prepare_data(data, t)
-        id, img, _ = data
+        data = self.prepare_data(data, t) #data, noise, label = self.prepare_data
+        id, img, _, noise, label = data['id'], data['image'], data['label'], data['noise'], data['label']
         outputs, _ = self.get_outputs(data, t=t)
 
         if isinstance(self.optimizer, list): 
@@ -759,7 +759,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         list_key = []
         list_val = []
         for i, data in tqdm(enumerate(dataloader)):  
-            _, img, _ = data
+            _, img, _ = data['id'], data['image'], data['label']
             img = img.to(self.device)
 
             for step in range(self.timesteps):
@@ -866,7 +866,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         for i, data in enumerate(dataloader):  
                             
                             # forward step to 80%
-                            _, img, _ = data
+                            _, img, _ = data['id'], data['image'], data['label']
                             #img, _ = self.getNoiseLike(torch.zeros((1, size[0], size[1], self.exp.get_from_config('input_channels'))))
                             if i == s:
                                 break
@@ -945,7 +945,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         continue
 
                     for s in range(samples):
-                        _, img, _ = data
+                        _, img, _ = data['id'], data['image'], data['label']
                         img = img.to(self.device)
 
                         start_x = 32
@@ -987,7 +987,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         continue
 
                     # forward step to 80%
-                    _, img, _ = data
+                    _, img, _ = data['id'], data['image'], data['label']
                     img = img.to(self.device)
 
                     #RESCALE IMAGE
@@ -1026,7 +1026,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
                         # forward step to 80%
-                        _, img, _ = data
+                        _, img, _ = data['id'], data['image'], data['label']
                     else:
                         img = cv2.imread("/home/jkalkhof_locale/Downloads/565005978_2.png")
                         img = (torch.unsqueeze(torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), dtype=torch.float64), dim=0)/128)-1
