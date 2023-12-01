@@ -8,10 +8,29 @@ import umap
 import matplotlib.pyplot as plt
 import hdbscan
 import torch.optim as optim
+import pandas as pd
+import seaborn as sns
+import plotly.express as px
 
 class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
     """Base agent for training NCA models
     """
+
+    def save_state_2(self, model_path: str) -> None:
+        r"""Save state of current model
+        """
+        super().save_state(model_path)
+        #if self.pool.__len__() != 0 and self.exp.get_from_config('save_pool'):
+        #    dump_compressed_pickle_file(self.pool, os.path.join(model_path, 'pool.pbz2'))
+        dump_compressed_pickle_file(self.exp.dataset.data, 'data.pbz2')
+
+    def load_state_2(self, model_path):
+        r"""Load state - Add Pool to state
+        """
+        super().load_state(model_path)
+        if os.path.exists(os.path.join(model_path, 'pool.pbz2')):
+            self.pool = load_compressed_pickle_file(os.path.join(model_path, 'pool.pbz2'))
+
 
     def prepare_data(self, data, eval=False):
         r"""Prepare the data to be used with the model
@@ -29,7 +48,9 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
             if self.exp.get_from_config('Persistence'):
                 inputs = self.pool.getFromPool(inputs, id, self.device)
             inputs, targets = self.repeatBatch(inputs, targets, self.exp.get_from_config('batch_duplication'))
-        return id, inputs, targets, vec
+
+        data_dict = {'id':id, 'image':inputs, 'label':targets, 'image_vec':vec}
+        return data_dict
     
     def get_outputs(self, data, full_img=False, **kwargs):
         r"""Get the outputs of the model
@@ -67,7 +88,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         self.optimizer = optim.Adam(all_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
 
         #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*1000)#, betas=self.exp.get_from_config('betas'))
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*250)#, betas=self.exp.get_from_config('betas'))
         #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
 
@@ -122,8 +143,10 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                 # MOVE loss to vector
                 v_id = str(id[i])
                 v_id = int(v_id.split('_')[0])
-                v = v.to(self.device) - (1.0-self.model.embedding_backpropTrick.weight.squeeze()).detach()*10
-                #v = torch.clip(v, -1, 1)
+
+                vec_loss = loss_f(outputs[i, ...], targets[i, ...])
+                v = v.to(self.device) - ((1.0-self.model.embedding_backpropTrick.weight.squeeze()).detach())#*vec_loss
+                v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
                 if not standard:
                     self.reset_weights()  
@@ -133,11 +156,26 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
             else:      
                 loss.backward()
             
-            
+            if False:
+                if self.exp.currentStep % 20 < 10:
+                    self.optimizer.step()
+                    self.scheduler.step()
+                if int(self.exp.currentStep % 10) == 0 and int(self.exp.currentStep % 20) != 0:
+                    #self.reset_vecs()
+                    for i in id:
+                        idx = i.split('_')[0]
+                        if True:
+                            if i.__contains__('hippocampus'):
+                                img_vec = np.array([0.5, 0.05, 0.05]).astype(np.float32)
+                            elif i.__contains__('prostate'):
+                                img_vec = np.array([0.05, 0.5, 0.05]).astype(np.float32)
+                            elif i.__contains__('liver'):
+                                img_vec = np.array([0.05, 0.05, 0.5]).astype(np.float32)
+                        self.exp.dataset.set_vec(int(idx), img_vec.astype(np.float32))
             self.optimizer.step()
             self.scheduler.step()
             self.reset_weights() 
-            self.z_score_normalize()
+            #self.normalize()
 
 
         return loss_ret
@@ -149,16 +187,30 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         # Modify the cloned tensor
         new_weight[new_weight != 1] = 1.0
         self.model.embedding_backpropTrick.weight.data = new_weight         
-                
 
-    def z_score_normalize(self):
+    def normalize(self):
         #self.exp.set_model_state('train')
         data_loader = torch.utils.data.DataLoader(self.exp.dataset, shuffle=True, batch_size=10000) 
         vec = []
         for data in data_loader:
-            vec = data['image_vec'].detach().cpu().numpy()
+            vec = data['image_vec']#.detach().cpu().numpy()
             id = data['id']
 
+        normalized = self.basic_normalize(vec)
+
+
+        for d in range(vec.shape[1]):#s in zip(id, normalized):
+            idx = id[d].split('_')[0]
+            self.exp.dataset.set_vec(int(idx), normalized[d].detach().cpu().numpy())
+    
+    def basic_normalize(self, vec):
+        vec = vec - torch.min(vec)
+        vec = vec / torch.max(vec)
+        vec = vec * 2 - 1
+
+        return vec
+
+    def z_score_normalize(self, vec):
         normalized = vec
 
         for d in range(vec.shape[1]):
@@ -167,11 +219,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
             for pos, x in enumerate(vec[:, d]):
                 normalized[pos, d] = (x - mean_val) / std_dev
 
-        for s in zip(id, normalized):
-            idx = s[0].split('_')[0]
-            self.exp.dataset.set_vec(int(idx), s[1])
-        
-
+        return normalized
 
 
     def batch_step2(self, data: tuple, loss_f: torch.nn.Module) -> dict:
@@ -228,41 +276,100 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         for data in data_loader:
             vec = data['image_vec'].detach().cpu().numpy()
             id = data['id']
+            labels = data['class']
 
-        labels = []
-        for i in id:
-            print("ID: ", i)
-            idx = i.split('_')[0]
-            labels.append(int(idx) % 2)
+        #labels = []
+        #for i in id:
+        #    print("ID: ", i)
+        #    idx = i.split('_')[0]
+        #    labels.append(int(idx) % 2)
+
+        # ------------------------------- GENEREATE Boxplot
+        df = pd.DataFrame(vec)
+        df['id'] = id
+        df['class'] = labels  
+        df_long = df.melt(id_vars=['id', 'class'], var_name='feature', value_name='value')
+
+        # Create a Box Plot
+        fig = px.box(df_long, x='feature', y='value', color='class', title='Feature Distribution per Class')
+        self.exp.write_figure('Boxplot', fig, epoch)
+
+
+        # ------------------------------- GENEREATE PAIRPLOT
+
+        if self.model.extra_channels <= 8:
+            df = pd.DataFrame(vec)
+            df['id'] = id
+            df['class'] = labels
+
+            # If the DataFrame has many columns, you might need to rename them for clarity
+            df.columns = [f'dim_{i}' if i < df.shape[1] - 2 else df.columns[i] for i in range(df.shape[1])]
+
+            # Visualize with Plotly's scatter matrix
+            fig = px.scatter_matrix(df, 
+                                    dimensions=[f'dim_{i}' for i in range(vec.shape[1])],
+                                    color='class')
+            self.exp.write_figure('Pairplot', fig, epoch)
+
+
 
         print("FITUMAP")
         print(vec)
         print("SUM: ", np.sum(vec))
+        # ------------------------------- GENEREATE UMAP
+
+
 
         reducer = umap.UMAP()
         embedding = reducer.fit_transform(vec)
 
-        img_plot = plt.scatter(embedding[:, 0], embedding[:, 1], c=labels, s=5, cmap='bwr').get_figure() #, cmap='Spectral'
-        #plt.gca().set_aspect('equal', 'datalim')
-        #plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
-        #img_plot = plt.title('UMAP projection of the Digits dataset', fontsize=24).get_figure()
-        #img_plot = plt
-        self.exp.write_figure('UMAP', img_plot, epoch)
-        #plt.show()
+        df = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
+        df['label'] = labels
 
-        if self.model.extra_channels == 1:
-            img_plot = plt.scatter(vec, np.zeros(shape = vec.shape), c=labels, s=5, cmap='bwr').get_figure() #, cmap='Spectral'
-            #plt.gca().set_aspect('equal', 'datalim')
-            #plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
-            #img_plot = plt.title('UMAP projection of the Digits dataset', fontsize=24).get_figure()
-            #img_plot = plt
-            self.exp.write_figure('Simple1D plot', img_plot, epoch)
-        elif self.model.extra_channels == 2:
-            img_plot = plt.scatter(vec[:, 0], vec[:, 1], c=labels, s=5, cmap='bwr').get_figure() #, cmap='Spectral'
-            #plt.gca().set_aspect('equal', 'datalim')
-            #plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
-            #img_plot = plt.title('UMAP projection of the Digits dataset', fontsize=24).get_figure()
-            #img_plot = plt
-            self.exp.write_figure('Simple1D plot', img_plot, epoch)
+        # Plotting with Plotly Express
+        fig = px.scatter(df, x='UMAP-1', y='UMAP-2', color='label', title='UMAP projection')
+
+        # Write the figure using the method of your experiment object
+        # Ensure this method is capable of handling Plotly figures
+        self.exp.write_figure('UMAP', fig, epoch)
+
+        if False:
+            if self.model.extra_channels == 1:
+                img_plot = plt.scatter(vec, np.zeros(shape = vec.shape), c=labels, s=20, cmap='Set1').get_figure() #, cmap='Spectral'
+                #plt.gca().set_aspect('equal', 'datalim')
+                #plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
+                #img_plot = plt.title('UMAP projection of the Digits dataset', fontsize=24).get_figure()
+                #img_plot = plt
+                self.exp.write_figure('Simple1D plot', img_plot, epoch)
+            elif self.model.extra_channels == 2:
+                img_plot = plt.scatter(vec[:, 0], vec[:, 1], c=labels, s=20, cmap='Set1').get_figure() #, cmap='Spectral'
+                #plt.gca().set_aspect('equal', 'datalim')
+                #plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
+                #img_plot = plt.title('UMAP projection of the Digits dataset', fontsize=24).get_figure()
+                #img_plot = plt
+                self.exp.write_figure('Simple2D plot', img_plot, epoch)
 
         return
+    
+    def plot_results_byPatient(self, loss_log: dict):
+        r"""Plot losses in a per patient fashion with seaborn to display in tensorboard.
+            #Args
+                loss_log ({name: loss}: Dictionary of losses
+        """
+        loss_data = list(loss_log.items())
+        df = pd.DataFrame(loss_data, columns=['Epoch', 'Loss'])
+
+        # Create a scatter plot using Plotly Express
+        fig = px.scatter(df, x='Epoch', y='Loss', title='Loss Over Epochs')
+
+        # Set the range of the y-axis
+        fig.update_yaxes(range=[0, 1])
+
+        # If you need to return the figure (e.g., for further processing or saving)
+        return fig
+        print(loss_log)
+        sns.set_theme()
+        plot = sns.scatterplot(x=loss_log.keys(), y=loss_log.values())
+        plot.set(ylim=(0, 1))
+        plot = plot.get_figure()
+        return plot

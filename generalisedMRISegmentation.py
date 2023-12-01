@@ -2,6 +2,7 @@
 import torch
 from src.datasets.Nii_Gz_Dataset_3D_gen import Dataset_NiiGz_3D_gen
 from src.models.Model_GenNCA import GenNCA
+from src.models.Model_GenNCA_v2 import GenNCA_v2
 from src.losses.LossFunctions import DiceFocalLoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_NCA_gen import Agent_NCA_gen
@@ -15,9 +16,9 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
     # Basic
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate/labelsTr/",
-    'name': r"genMRIseg_43_noShift_hipPros",#_baseline", 75% with vec, 77.5% baseline
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate_Liver/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate_Liver/labelsTr/",
+    'name': r"genMRIseg_95_v2_noShift_hipProsLiver",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -25,27 +26,27 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,#
-    'evaluate_interval': 5,
+    'save_interval': 10,#
+    'evaluate_interval': 10,
     'n_epoch': 1000,
-    'batch_size': 4,
+    'batch_size': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
-    'inference_steps': 10,
+    'inference_steps': 20,
     'cell_fire_rate': 0.5,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 64,
     # Data
-    'input_size': (32, 32, 26),
+    'input_size': (42, 42, 12),
     'data_split': [0.7, 0, 0.3], 
 }
 ]
 
-dataset = Dataset_NiiGz_3D_gen(extra_channels=2)
+dataset = Dataset_NiiGz_3D_gen(extra_channels=3)
 device = torch.device(config[0]['device'])
 
-ca = GenNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=2).to(device)
+ca = GenNCA_v2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=3, kernel_size=3).to(device)
 agent = Agent_NCA_gen(ca)
 
 #ca = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels']).to(device)
