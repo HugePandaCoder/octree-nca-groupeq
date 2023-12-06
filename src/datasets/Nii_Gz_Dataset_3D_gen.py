@@ -71,7 +71,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
                 img = np.expand_dims(img, axis=0)
                 img = rescale(img) 
                 label = np.expand_dims(label, axis=0)
-                if idx % 2 == 1:
+                if idx % 2 == 1 and False:
                     #img = np.max(img) - img
                     #img = np.flip(img, axis=1)#flip(img)
                     label = 2 - label
@@ -95,15 +95,15 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
                     label = np.expand_dims(label, axis=-1)
             img_id = str(idx) + "_" + str(p_id) + "_" + str(img_id)
 
-            img_vec = np.random.randn(self.extra_channels).astype(np.float32)*0.1
+            img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
 
-            if False:
+            if True:
                 if img_id.__contains__('hippocampus'):
-                    img_vec = np.array([1, 1, 1]).astype(np.float32)
+                    img_vec = np.array([-0.05, 0.14, -0.03, 0.019]).astype(np.float32)
                 elif img_id.__contains__('prostate'):
-                    img_vec = np.array([1, 1, 1]).astype(np.float32)
+                    img_vec = np.array([-0.156, -0.25, 0.20, -0.006]).astype(np.float32)
                 elif img_id.__contains__('liver'):
-                    img_vec = np.array([1, 1, 1]).astype(np.float32)
+                    img_vec = np.array([-0.07, 0.055, -0.01, -0.087]).astype(np.float32)
             #img_vec = np.array([0.1]*self.extra_channels).astype(np.float32)#*15#np.ones(self.extra_channels).astype(np.float32)#*15
             
             if self.store:
@@ -148,7 +148,7 @@ class Dataset_NiiGz_3D_gen(Dataset_NiiGz_3D):
         else:
             cl = 'unknown'
 
-        if idx % 2:
+        if idx % 2 and False:
             cl = cl + "_flip"
 
         #print("GETITEM INDEX", self.images_list[idx])

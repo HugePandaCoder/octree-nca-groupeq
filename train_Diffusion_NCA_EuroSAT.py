@@ -20,7 +20,7 @@ config = [{
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba/", #img_align_celeba, Emojis_Smiley, Emojis_Google
     'img_path': r"/home/jkalkhof_locale/Documents/Data/EuroSAT/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/EuroSAT/",
-    'name': r'DiffusionNCA_Run588_EuroSAT', #last 58
+    'name': r'DiffusionNCA_Run589_EuroSAT', #last 58
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer

@@ -286,8 +286,14 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img = rescale(img) 
         img = img[0]
 
-        # Merge labels -> For now single label
-        label[label > 0] = 1
+
+        if self.exp.get_from_config('output_channels') > 1:
+            label = np.eye(self.exp.get_from_config('output_channels')+1)[label.astype(np.int32)].squeeze()
+            label = label[..., 1:label.shape[-1]]
+        else:
+            # Merge labels -> For now single label
+            label[label > 0] = 1
+
 
         # Number of defined channels
         if len(self.size) == 2:

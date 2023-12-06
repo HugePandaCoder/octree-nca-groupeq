@@ -14,7 +14,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'M3D_NCA_Run71_rewritten', #12 or 13, 54 opt, 
+    'name': r'M3D_NCA_Run74_rewritten', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -32,7 +32,7 @@ config = [{
     'cell_fire_rate': 0.5,
     'batch_size': 4,
     'input_channels': 1,
-    'output_channels': 1,
+    'output_channels': 2,
     'hidden_size': 64,
     'train_model':1,
     # Data
@@ -46,7 +46,7 @@ config = [{
 
 dataset = Dataset_NiiGz_3D(store=True)
 device = torch.device(config[0]['device'])
-ca1 = M3DNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=7, input_channels=config[0]['input_channels'], levels=2, scale_factor=4, steps=20).to(device)
+ca1 = M3DNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], kernel_size=7, input_channels=config[0]['input_channels'], output_channels=config[0]['output_channels'], levels=2, scale_factor=4, steps=20).to(device)
 ca = ca1
 agent = M3DNCAAgent(ca)
 exp = Experiment(config, dataset, ca, agent)

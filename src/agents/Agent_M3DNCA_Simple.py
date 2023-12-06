@@ -44,7 +44,7 @@ class M3DNCAAgent(UNetAgent):
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
-        if len(outputs.shape) == 5:
+        if len(outputs.shape) == 5 and targets.shape[-1] == 1:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
                 loss = loss + loss_loc

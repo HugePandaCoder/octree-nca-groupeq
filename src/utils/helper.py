@@ -15,6 +15,7 @@ import datetime
 import nibabel as nib
 import os
 import torch
+import warnings
 
 def dump_pickle_file(file, path):
     r"""Dump pickle file in path
@@ -111,6 +112,13 @@ def visualize_perceptive_range(img, cell_fire_rate=0.5):
     return img
 
 def merge_img_label_gt_simplified(img, label, gt):
+    print(img.shape, label.shape, gt.shape)
+
+    print(img.shape, label.shape, gt.shape)
+    if label.size()[-1] != 1:
+        label = label[..., 0]
+        gt = gt[..., 0]
+        warnings.warn("WARNING: Currently image output supports one label only")
     print(img.shape, label.shape, gt.shape)
 
     img = torch.squeeze(img)

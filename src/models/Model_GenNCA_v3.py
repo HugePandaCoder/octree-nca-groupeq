@@ -6,7 +6,7 @@ from ..models.Model_BasicNCA3D import BasicNCA3D
 class HyperNetwork(nn.Module):
     def __init__(self, input_size, channel_n, kernel_size, hidden_size):
         super(HyperNetwork, self).__init__()
-        self.conv3d = channel_n * kernel_size * kernel_size * kernel_size
+        self.conv3d = channel_n * kernel_size * kernel_size
         self.fc0 = (channel_n*2) * hidden_size
         self.fc1 = (hidden_size) * channel_n
         output_size =  self.conv3d + self.fc0 + self.fc1
@@ -42,7 +42,7 @@ class HyperNetwork(nn.Module):
         weights = self.lin05(dx)
         return weights
 
-class GenNCA_v2(nn.Module):
+class GenNCA_v3(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False, extra_channels=8, batch_size = 8):
         r"""Init function
             #Args:
@@ -55,7 +55,7 @@ class GenNCA_v2(nn.Module):
                 kernel_size: defines kernel input size
                 groups: if channels in input should be interconnected
         """ 
-        super(GenNCA_v2, self).__init__()
+        super(GenNCA_v3, self).__init__()
 
         self.device = device
         self.channel_n = channel_n
@@ -115,8 +115,8 @@ class GenNCA_v2(nn.Module):
         batch_size = generated_weights.shape[0]
         output = []
         for i in range(batch_size):
-            weights = generated_weights[i, 0:self.hypernetwork.conv3d].view(self.channel_n, 1, self.kernel_size, self.kernel_size, self.kernel_size)
-            output.append(F.conv3d(x[i:i+1], weights, padding=self.padding, groups=self.channel_n))
+            weights = generated_weights[i, 0:self.hypernetwork.conv3d].view(self.channel_n, 1, self.kernel_size, self.kernel_size)
+            output.append(F.conv2d(x[i:i+1], weights, padding=self.padding, groups=self.channel_n))
         y1 = torch.cat(output, dim=0)
         y = torch.cat((x,y1),1)
         return y
@@ -127,9 +127,9 @@ class GenNCA_v2(nn.Module):
                 x_in: image
                 fire_rate: random activation of cells
         """
-        x = x_in.transpose(1,4)
+        x = x_in.transpose(1,3)
         dx = self.perceive(x, generated_weights)
-        dx = dx.transpose(1,4)
+        dx = dx.transpose(1,3)
         batch_size = x_in.shape[0]
         # <<<---- here vector needs to be converted to image size -> look diffusion
 
@@ -142,28 +142,28 @@ class GenNCA_v2(nn.Module):
         #dx = torch.cat((dx, emb), dim=4)
         #dx = self.fc0(dx)
 
-        dx = dx.transpose(1,4)
+        dx = dx.transpose(1,3)
         output = []
         for i in range(batch_size):
             weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.hidden_size, self.channel_n*2, 1, 1, 1)
             #weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.channel_n*2, self.hidden_size)
-            output.append(F.conv3d(dx[i:i+1], weights, padding=0))
+            output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
 
         dx = self.bn(dx)
-        dx = dx.transpose(1,4)
+        dx = dx.transpose(1,3)
         dx = F.relu(dx)
         #dx = torch.cat((dx, emb), dim=4)
         #dx = self.fc1(dx)
 
-        dx = dx.transpose(1,4)
+        dx = dx.transpose(1,3)
         output = []
         for i in range(batch_size):
             weights = generated_weights[i, self.hypernetwork.conv3d+self.hypernetwork.fc0:self.hypernetwork.conv3d+self.hypernetwork.fc0+self.hypernetwork.fc1].view(self.channel_n, self.hidden_size, 1, 1, 1)
             #weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.channel_n*2, self.hidden_size)
-            output.append(F.conv3d(dx[i:i+1], weights, padding=0))
+            output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
-        dx = dx.transpose(1,4)
+        dx = dx.transpose(1,3)
 
         #for i in range(batch_size):
         #    weights = generated_weights[i, self.hypernetwork.conv3d+self.hypernetwork.fc0:self.hypernetwork.conv3d+self.hypernetwork.fc0+self.hypernetwork.fc1].view(self.hidden_size, self.channel_n)
@@ -176,9 +176,9 @@ class GenNCA_v2(nn.Module):
         stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
 
-        x = x+dx.transpose(1,4)
+        x = x+dx.transpose(1,3)
 
-        x = x.transpose(1,4)
+        x = x.transpose(1,3)
 
         return x
 
@@ -190,26 +190,19 @@ class GenNCA_v2(nn.Module):
                 fire_rate: random activation rate of each cell
         """
         x_vec_in = x_vec_in.to(self.device)[:, :, None]
-        #print("X_VEC_IN", x_vec_in.shape)
 
         batch_emb = []
         for i in range(x_vec_in.shape[0]):
             batch_emb.append(self.list_backpropTrick[i].to(self.device)(x_vec_in[i]))
         emb = torch.stack(batch_emb, dim=0)
         emb = torch.squeeze(torch.stack(batch_emb, dim=0), dim=2)
-        #emb = torch.squeeze(self.embedding_backpropTrick(x_vec_in), dim=2)#.transpose(1,4))
-        #print("EMB", emb.shape)
+        #emb = torch.squeeze(torch.stack(emb, dim=0), dim=2)
 
-        #generated_weights = []
-        #for i in range(x_vec_in.shape[0]):
-        #    generated_weights.append(self.hypernetwork(emb[i]))
         generated_weights = self.hypernetwork(emb)
-        #batch_size = generated_weights.shape[0]
-        
-        #generated_weights = generated_weights.view(self.channel_n, 1, self.kernel_size, self.kernel_size, self.kernel_size)
+
+
+        print(x.shape, x_vec_in.shape)
         output = []
-        #conv3d = F.conv3d(x, generated_weights, padding=self.padding, groups=self.channel_n)
         for step in range(steps):
-            x2 = self.update(x, x_vec_in, fire_rate, generated_weights).clone() #[...,3:][...,3:]
-            x = torch.concat((x[...,0:self.input_channels], x2[...,self.input_channels:]), 4)
+            x = self.update(x, x_vec_in, fire_rate, generated_weights)
         return x

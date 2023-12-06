@@ -7,17 +7,25 @@ import torch
 import random
 
 
-class png_Dataset(Dataset_NiiGz_3D):
+class png_Dataset_gen(Dataset_NiiGz_3D):
 
     normalize = True
 
-    def __init__(self, crop=False, buffer=False, downscale=4):
+    def __init__(self, crop=False, buffer=False, downscale=4, extra_channels=8):
         super().__init__()
         self.crop = crop
         self.buffer = buffer
         self.downscale = downscale
         self.slice = 2
+        self.extra_channels = extra_channels
 
+    def set_vec(self, idx: str, vec) -> tuple:
+        #print("INDEX", idx)
+        #print("VEC", vec)
+        img = self.data.get_data(key=self.images_list[idx])
+        id, img, label, img_vec = img
+        img_vec = vec
+        self.data.set_data(key=self.images_list[idx], data=(id, img, label, img_vec))
 
     def set_normalize(self, normalize=True):
         self.normalize = normalize
@@ -55,23 +63,25 @@ class png_Dataset(Dataset_NiiGz_3D):
                 img_name, p_id, img_id = self.images_list[idx]
                 label_name, _, _ = self.labels_list[idx]
 
-                img = self.load_item(os.path.join(self.images_path, img_name))
-                label = 0#self.load_item(os.path.join(self.labels_path, img_name))
+                label = self.load_item(os.path.join(self.images_path, img_name))
+                img = np.zeros(label.shape)
+                img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
 
-                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, img_vec))
                 img = self.data.get_data(key=self.images_list[idx])
-                img_id, img, label = img
-                img = (img_id, img, img)
+                img_id, img, label, img_vec = img
+                img = (img_id, img, img, img_vec)
         else:
             img_name, p_id, img_id = self.images_list[idx]
             label_name, _, _ = self.labels_list[idx]
 
-            img = self.load_item(os.path.join(self.images_path, img_name))
-            label = img
-            img = (img_id, img, label)
+            label = self.load_item(os.path.join(self.images_path, img_name))
+            img = np.zeros(label.shape)
+            img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
+            img = (img_id, img, label, img_vec)
 
 
-        id, img, label = img
+        id, img, label, img_vec = img
 
         if self.crop:
             pos_x = random.randint(0, img.shape[0] - self.size[0])
@@ -104,6 +114,7 @@ class png_Dataset(Dataset_NiiGz_3D):
         data_dict['id'] = id
         data_dict['image'] = img
         data_dict['label'] = label
+        data_dict['image_vec'] = img_vec
 
 
         return data_dict

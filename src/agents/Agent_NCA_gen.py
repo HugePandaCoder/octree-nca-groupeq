@@ -77,7 +77,10 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         all_params = list(self.model.parameters())
 
         # Get parameters from the backdrop trick
-        backdrop_trick_params = list(self.model.embedding_backpropTrick.parameters())
+        #backdrop_trick_params = list(self.model.embedding_backpropTrick.parameters())
+        backdrop_trick_params = []
+        for i in range(self.batch_size):
+            backdrop_trick_params.extend(self.model.list_backpropTrick[i].parameters())
 
         # Filter out the backdrop trick parameters from all parameters
         #filtered_params = [param for param in all_params if not any((param.data == p.data).all() for p in backdrop_trick_params)]
@@ -88,9 +91,10 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         self.optimizer = optim.Adam(all_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
 
         #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*250)#, betas=self.exp.get_from_config('betas'))
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*256)#, betas=self.exp.get_from_config('betas'))
         #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
+        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.9995)
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step
@@ -145,7 +149,8 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                 v_id = int(v_id.split('_')[0])
 
                 vec_loss = loss_f(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.embedding_backpropTrick.weight.squeeze()).detach())#*vec_loss
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())#*vec_loss
+                #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
                 if not standard:
@@ -174,6 +179,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                         self.exp.dataset.set_vec(int(idx), img_vec.astype(np.float32))
             self.optimizer.step()
             self.scheduler.step()
+            self.scheduler_backprop.step()
             self.reset_weights() 
             #self.normalize()
 
@@ -182,11 +188,12 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
 
     def reset_weights(self):
         # reset weights
-        new_weight = self.model.embedding_backpropTrick.weight.data.clone()
+        for i in range(self.batch_size):
+            new_weight = self.model.list_backpropTrick[i].weight.data.clone()
 
-        # Modify the cloned tensor
-        new_weight[new_weight != 1] = 1.0
-        self.model.embedding_backpropTrick.weight.data = new_weight         
+            # Modify the cloned tensor
+            new_weight[new_weight != 1] = 1.0
+            self.model.list_backpropTrick[i].weight.data = new_weight         
 
     def normalize(self):
         #self.exp.set_model_state('train')

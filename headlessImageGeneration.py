@@ -1,8 +1,8 @@
 #%%
 import torch
-from src.datasets.Nii_Gz_Dataset_3D_gen import Dataset_NiiGz_3D_gen
+from src.datasets.png_Dataset_gen import png_Dataset_gen
 from src.models.Model_GenNCA import GenNCA
-from src.models.Model_GenNCA_v2 import GenNCA_v2
+from src.models.Model_GenNCA_v3 import GenNCA_v3
 from src.losses.LossFunctions import DiceFocalLoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_NCA_gen import Agent_NCA_gen
@@ -16,9 +16,9 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
     # Basic
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate_Liver/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus_Prostate_Liver/labelsTr/",
-    'name': r"genMRIseg_114_v2_noShift_hipProsLiver",#_baseline", 75% with vec, 77.5% baseline
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
+    'name': r"headlessImageGen_4_celebA",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -34,19 +34,19 @@ config = [{
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': 20,
     'cell_fire_rate': 0.5,
-    'input_channels': 1,
-    'output_channels': 1,
+    'input_channels': 3,
+    'output_channels': 3,
     'hidden_size': 64,
-    'extra_channels': 4,
+    'extra_channels': 2,
     # Data
-    'input_size': (42, 42, 12),
-    'data_split': [0.7, 0, 0.3], 
+    'input_size': (64, 64),
+    'data_split': [0.001, 0.998, 0.001],
 }
 ]
-dataset = Dataset_NiiGz_3D_gen(extra_channels=config[0]['extra_channels'])
+dataset = png_Dataset_gen(extra_channels=config[0]['extra_channels'])
 device = torch.device(config[0]['device'])
 
-ca = GenNCA_v2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=config[0]['extra_channels'], kernel_size=3).to(device)
+ca = GenNCA_v3(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=config[0]['extra_channels'], kernel_size=3).to(device)
 agent = Agent_NCA_gen(ca)
 
 #ca = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels']).to(device)
@@ -58,9 +58,9 @@ exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 loss_function = DiceFocalLoss() 
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
-agent.getAverageDiceScore()
+#agent.getAverageDiceScore()
 
 
 
