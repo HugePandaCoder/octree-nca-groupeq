@@ -325,20 +325,19 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         print("SUM: ", np.sum(vec))
         # ------------------------------- GENEREATE UMAP
 
+        if len(id) > 10:
+            reducer = umap.UMAP()
+            embedding = reducer.fit_transform(vec)
 
+            df = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
+            df['label'] = labels
 
-        reducer = umap.UMAP()
-        embedding = reducer.fit_transform(vec)
+            # Plotting with Plotly Express
+            fig = px.scatter(df, x='UMAP-1', y='UMAP-2', color='label', title='UMAP projection')
 
-        df = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
-        df['label'] = labels
-
-        # Plotting with Plotly Express
-        fig = px.scatter(df, x='UMAP-1', y='UMAP-2', color='label', title='UMAP projection')
-
-        # Write the figure using the method of your experiment object
-        # Ensure this method is capable of handling Plotly figures
-        self.exp.write_figure('UMAP', fig, epoch)
+            # Write the figure using the method of your experiment object
+            # Ensure this method is capable of handling Plotly figures
+            self.exp.write_figure('UMAP', fig, epoch)
 
         if False:
             if self.model.extra_channels == 1:

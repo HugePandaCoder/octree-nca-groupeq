@@ -23,10 +23,10 @@ class HyperNetwork(nn.Module):
                 nn.Linear(64, output_size)
             )
         self.lin01 = nn.Linear(input_size, 64)
-        self.lin02 = nn.Linear(64+input_size, 256)
+        self.lin02 = nn.Linear(64+input_size, 512)
         #self.lin03 = nn.Linear(64+input_size, 256)
         #self.lin04 = nn.Linear(256+input_size, 4096)
-        self.lin05 = nn.Linear(256+input_size, output_size)
+        self.lin05 = nn.Linear(512+input_size, output_size)
         self.silu = nn.ReLU()
         
     def forward(self, x):

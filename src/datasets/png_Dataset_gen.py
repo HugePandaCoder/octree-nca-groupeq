@@ -67,8 +67,8 @@ class png_Dataset_gen(Dataset_NiiGz_3D):
                 
                 label = self.load_item(os.path.join(self.images_path, img_name))
                 
-                img = np.zeros(label.shape)#np.ones(label.shape)*0.01#np.random.uniform(size = label.shape)*0.1 -0.05  #
-                img[img.shape[0]//2, img.shape[1]//2, :] = 0.1
+                img = np.zeros(label.shape)#np.random.uniform(size = label.shape)*0.1 -0.05  #np.ones(label.shape)*0.01#
+                img[img.shape[0]//2, img.shape[1]//2, :] = 1
                 img_id = str(idx) + "_" + str(img_id)
                 img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
 

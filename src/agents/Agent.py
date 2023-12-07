@@ -94,6 +94,7 @@ class BaseAgent():
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
+        print(outputs.shape, targets.shape)
         if len(outputs.shape) == 5:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
@@ -210,6 +211,7 @@ class BaseAgent():
                 loss_f (nn.Model): The loss for training"""
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
             print("Epoch: " + str(epoch))
+            self.exp.set_model_state('train')
             loss_log = {}
             for m in range(self.output_channels):
                 loss_log[m] = []

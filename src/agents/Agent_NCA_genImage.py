@@ -29,6 +29,12 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         data = self.prepare_data(data)
         id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         outputs, targets = self.get_outputs(data)
+        plt.imshow(targets[0, ...].detach().cpu().numpy())
+        plt.axis('off')  # Optional: Turn off axis labels and ticks
+        plt.show()
+        plt.imshow(outputs[0, ...].detach().cpu().numpy())
+        plt.axis('off')  # Optional: Turn off axis labels and ticks
+        plt.show()
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
@@ -44,7 +50,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         #            loss = loss + loss_loc
         #            loss_ret[m] = loss_loc.item()
 
-        loss = F.mse_loss(outputs[...], targets[...])
+        loss = F.l1_loss(outputs[...], targets[...]) + F.mse_loss(outputs[...], targets[...])
         loss_ret[0] = loss.item()
 
         if loss != 0:
@@ -75,7 +81,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
                 
                 #vec_loss = F.mse_loss(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())#*vec_loss
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*10000#*vec_loss
                 #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
@@ -111,6 +117,37 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
 
         return loss_ret
+
+    def initialize(self):
+        r"""Initialize agent with optimizers and schedulers
+        """
+        super().initialize()
+        self.device = torch.device(self.exp.get_from_config('device'))
+        self.batch_size = self.exp.get_from_config('batch_size')
+        # If stacked NCAs
+
+        # Get all parameters from the model
+        all_params = list(self.model.parameters())
+
+        # Get parameters from the backdrop trick
+        #backdrop_trick_params = list(self.model.embedding_backpropTrick.parameters())
+        backdrop_trick_params = []
+        for i in range(self.batch_size):
+            backdrop_trick_params.extend(self.model.list_backpropTrick[i].parameters())
+
+        # Filter out the backdrop trick parameters from all parameters
+        #filtered_params = [param for param in all_params if not any((param.data == p.data).all() for p in backdrop_trick_params)]
+        #filtered_params = [param for param in all_params if param not in backdrop_trick_params]
+
+
+        # Create an optimizer for the filtered parameters
+        self.optimizer = optim.Adam(all_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+
+        #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*77)#, betas=self.exp.get_from_config('betas'))
+        #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
+        self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
+        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.9995)
 
     @torch.no_grad()
     def test(self, *args, **kwargs):
