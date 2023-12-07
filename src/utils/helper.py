@@ -111,7 +111,7 @@ def visualize_perceptive_range(img, cell_fire_rate=0.5):
 
     return img
 
-def merge_img_label_gt_simplified(img, label, gt):
+def merge_img_label_gt_simplified(img, label, gt, rgb=True):
     print(img.shape, label.shape, gt.shape)
 
     print(img.shape, label.shape, gt.shape)
@@ -128,6 +128,7 @@ def merge_img_label_gt_simplified(img, label, gt):
     if len(img.shape) - len(label.shape) == 1:
         img = torch.squeeze(img)[..., 0]
 
+    print(img.shape, label.shape, gt.shape)
     merged_image = torch.cat((img, label, gt)).numpy()
     # If 3D
     if len(img.shape) == 3:

@@ -5,13 +5,14 @@ import numpy as np
 import torchvision.transforms as T
 import torch
 import random
+import matplotlib.pyplot as plt
 
 
 class png_Dataset_gen(Dataset_NiiGz_3D):
 
     normalize = True
 
-    def __init__(self, crop=False, buffer=False, downscale=4, extra_channels=8):
+    def __init__(self, crop=False, buffer=True, downscale=4, extra_channels=8):
         super().__init__()
         self.crop = crop
         self.buffer = buffer
@@ -57,44 +58,52 @@ class png_Dataset_gen(Dataset_NiiGz_3D):
         """
 
         if self.buffer:
-            img = self.data.get_data(key=self.images_list[idx])
+            data = self.data.get_data(key=self.images_list[idx])
 
-            if not img:
+            if not data:
                 img_name, p_id, img_id = self.images_list[idx]
                 label_name, _, _ = self.labels_list[idx]
 
+                
                 label = self.load_item(os.path.join(self.images_path, img_name))
-                img = np.zeros(label.shape)
+                
+                img = np.zeros(label.shape)#np.ones(label.shape)*0.01#np.random.uniform(size = label.shape)*0.1 -0.05  #
+                img[img.shape[0]//2, img.shape[1]//2, :] = 0.1
+                img_id = str(idx) + "_" + str(img_id)
                 img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
 
+                #img_vec = np.array([ 0.8374993,   0.00956093, -0.23195317,  0.8322674,  -1.,         -0.10538746]).astype(np.float32)
+                
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, img_vec))
-                img = self.data.get_data(key=self.images_list[idx])
-                img_id, img, label, img_vec = img
-                img = (img_id, img, img, img_vec)
+                data = self.data.get_data(key=self.images_list[idx])
+                img_id, img, label, img_vec = data
+                
+                data = (img_id, img, label, img_vec)
         else:
             img_name, p_id, img_id = self.images_list[idx]
             label_name, _, _ = self.labels_list[idx]
 
             label = self.load_item(os.path.join(self.images_path, img_name))
             img = np.zeros(label.shape)
+            img_id = str(idx) + "_" + str(img_id)
             img_vec = np.random.randn(self.extra_channels).astype(np.float32)#*0.1
-            img = (img_id, img, label, img_vec)
+            data = (img_id, img, label, img_vec)
 
-
-        id, img, label, img_vec = img
+        id, img, label, img_vec = data
 
         if self.crop:
             pos_x = random.randint(0, img.shape[0] - self.size[0])
             pos_y = random.randint(0, img.shape[1] - self.size[1])
 
             img = img[pos_x:pos_x+self.size[0], pos_y:pos_y+self.size[1], :]
-            label = img
+            label = label[pos_x:pos_x+self.size[0], pos_y:pos_y+self.size[1], :]
 
         #from matplotlib import pyplot as plt
         #plt.imshow(img[:,:,:])#outputs_fft[0, 0, :, :].real.detach().cpu().numpy())
         #plt.show()
 
         img = img[...,0:4]
+        
 
         if self.normalize:
             if False:
@@ -106,15 +115,15 @@ class png_Dataset_gen(Dataset_NiiGz_3D):
                 img = img.permute((2, 1, 0))
             #img = img * 2 -1
             #img = img
-            img = img/128 -1#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
+            label = label/128 -1#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
 
-        #print(img.shape)
 
         data_dict = {}
         data_dict['id'] = id
         data_dict['image'] = img
         data_dict['label'] = label
         data_dict['image_vec'] = img_vec
+        data_dict['class'] = 'None'
 
 
         return data_dict

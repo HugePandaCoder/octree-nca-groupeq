@@ -25,7 +25,7 @@ class HyperNetwork(nn.Module):
         self.lin01 = nn.Linear(input_size, 64)
         self.lin02 = nn.Linear(64+input_size, 256)
         #self.lin03 = nn.Linear(64+input_size, 256)
-        #self.lin04 = nn.Linear(256+input_size, 256)
+        #self.lin04 = nn.Linear(256+input_size, 4096)
         self.lin05 = nn.Linear(256+input_size, output_size)
         self.silu = nn.ReLU()
         
@@ -83,7 +83,7 @@ class GenNCA_v3(nn.Module):
         self.padding = int((kernel_size-1) / 2)
 
         #self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=self.padding, padding_mode="reflect", groups=channel_n)
-        self.bn = torch.nn.BatchNorm3d(hidden_size, track_running_stats=False)
+        self.bn = torch.nn.BatchNorm2d(hidden_size, track_running_stats=False)
 
         self.hypernetwork = HyperNetwork(extra_channels, channel_n, kernel_size, hidden_size)
 
@@ -145,7 +145,7 @@ class GenNCA_v3(nn.Module):
         dx = dx.transpose(1,3)
         output = []
         for i in range(batch_size):
-            weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.hidden_size, self.channel_n*2, 1, 1, 1)
+            weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.hidden_size, self.channel_n*2, 1, 1)
             #weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.channel_n*2, self.hidden_size)
             output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
@@ -159,7 +159,7 @@ class GenNCA_v3(nn.Module):
         dx = dx.transpose(1,3)
         output = []
         for i in range(batch_size):
-            weights = generated_weights[i, self.hypernetwork.conv3d+self.hypernetwork.fc0:self.hypernetwork.conv3d+self.hypernetwork.fc0+self.hypernetwork.fc1].view(self.channel_n, self.hidden_size, 1, 1, 1)
+            weights = generated_weights[i, self.hypernetwork.conv3d+self.hypernetwork.fc0:self.hypernetwork.conv3d+self.hypernetwork.fc0+self.hypernetwork.fc1].view(self.channel_n, self.hidden_size, 1, 1)
             #weights = generated_weights[i, self.hypernetwork.conv3d:self.hypernetwork.conv3d+self.hypernetwork.fc0].view(self.channel_n*2, self.hidden_size)
             output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
@@ -171,7 +171,7 @@ class GenNCA_v3(nn.Module):
 
         if fire_rate is None:
             fire_rate=self.fire_rate
-        stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2), dx.size(3),1])>fire_rate
+        stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2),1])>fire_rate
         #stochastic = torch.rand([dx.size(0),dx.size(1),dx.size(2), dx.size(3),dx.size(4)])>fire_rate
         stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
@@ -201,7 +201,6 @@ class GenNCA_v3(nn.Module):
         generated_weights = self.hypernetwork(emb)
 
 
-        print(x.shape, x_vec_in.shape)
         output = []
         for step in range(steps):
             x = self.update(x, x_vec_in, fire_rate, generated_weights)

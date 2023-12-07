@@ -326,7 +326,6 @@ class Experiment():
             image = (image - img_min) / (img_max - img_min) 
         else:
             image = np.clip(image, 0, 1)
-        print(image.shape)
         image = PILImage.fromarray(np.uint8(image*255)).convert('RGB')
         #image = PILImage(image)
         aim_image = Image(image=image, optimize=True, quality=50)
