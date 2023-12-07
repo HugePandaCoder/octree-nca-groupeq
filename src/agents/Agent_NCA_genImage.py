@@ -81,7 +81,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
                 
                 #vec_loss = F.mse_loss(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*10000#*vec_loss
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())#*vec_loss
                 #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())

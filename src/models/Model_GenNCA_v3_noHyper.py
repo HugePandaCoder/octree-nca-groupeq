@@ -101,7 +101,7 @@ class GenNCA_V3_NoHyper(nn.Module):
 
         emb = emb.unsqueeze(-2).unsqueeze(-2).repeat(1, x.shape[1], x.shape[2], 1)
 
-        #x[..., -6:x.shape[3]] = emb
+        x[..., -6:x.shape[3]] = emb
 
         
         for step in range(steps):

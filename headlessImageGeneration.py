@@ -23,7 +23,7 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_88_celebA_Growing",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_92_celebA_Growing",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -34,7 +34,7 @@ config = [{
     'save_interval': 1000,#
     'evaluate_interval': 200,
     'n_epoch': 5000,
-    'batch_size': 1,
+    'batch_size': 4,
     # Model
     'channel_n': 32,        # Number of CA state channels
     'inference_steps': 30,
