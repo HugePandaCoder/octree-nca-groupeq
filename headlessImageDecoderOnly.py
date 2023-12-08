@@ -6,8 +6,9 @@ from src.models.Model_GenNCA import GenNCA
 from src.models.Model_GenNCA_v3 import GenNCA_v3
 from src.models.Model_GenNCA_v3_noHyper import GenNCA_V3_NoHyper
 from src.models.Model_GrowingNCA import GrowingNCA   
+from src.models.DecoderOnly import DecoderOnly
 from src.utils.Experiment import Experiment
-from src.agents.Agent_NCA_genImage import Agent_NCA_genImage
+from src.agents.Agent_NCA_genDecoder import Agent_NCA_gen_Decoder
 from src.agents.Agent_Growing import Agent_Growing
 
 from src.models.Model_BasicNCA3D import BasicNCA3D
@@ -23,16 +24,16 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_113_celebA_Growing",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_123_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-4,
+    'lr': 3e-4,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 200,#
-    'evaluate_interval': 100,
+    'save_interval': 20,#
+    'evaluate_interval': 10,
     'n_epoch': 50000,
     'batch_size': 24,
     # Model
@@ -41,11 +42,11 @@ config = [{
     'cell_fire_rate': 0.1,
     'input_channels': 4,
     'output_channels': 3,
-    'hidden_size': 384,
-    'extra_channels': 6,
+    'hidden_size': 512,
+    'extra_channels': 16,
     # Data
-    'input_size': (48, 48),
-    'data_split': [0.00032, 0.99958, 0.0001],
+    'input_size': (64, 64),
+    'data_split': [0.0032, 0.99679, 0.0001],
 }
 ]
 #dataset = png_Dataset(setSeed=True, buffer=True) #
@@ -55,11 +56,13 @@ device = torch.device(config[0]['device'])
 
 
 #ca = GenNCA_v3(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=config[0]['extra_channels'], kernel_size=3, batch_size=config[0]['batch_size']).to(device)
-
-ca = GenNCA_V3_NoHyper(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=config[0]['extra_channels'], kernel_size=3, batch_size=config[0]['batch_size']).to(device)
+ca = DecoderOnly(config[0]['batch_size'], config[0]['extra_channels'], device, hidden_size=config[0]['hidden_size']).to(device)
+#ca = GenNCA_V3_NoHyper(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], extra_channels=config[0]['extra_channels'], kernel_size=3, batch_size=config[0]['batch_size']).to(device)
 #ca = GrowingNCA(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size']).to(device)
 
-agent = Agent_NCA_genImage(ca)
+print("PARAMETERS", sum(p.numel() for p in ca.parameters() if p.requires_grad))
+
+agent = Agent_NCA_gen_Decoder(ca)
 #agent = Agent_Growing(ca)
 
 #ca = BasicNCA3D(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels']).to(device)
@@ -71,7 +74,7 @@ exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 loss_function = F.mse_loss#nn.MSELoss()          
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
 agent.getAverageDiceScore()
 

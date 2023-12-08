@@ -29,12 +29,12 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         data = self.prepare_data(data)
         id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
         outputs, targets = self.get_outputs(data)
-        plt.imshow(targets[0, ...].detach().cpu().numpy())
-        plt.axis('off')  # Optional: Turn off axis labels and ticks
-        plt.show()
-        plt.imshow(outputs[0, ...].detach().cpu().numpy())
-        plt.axis('off')  # Optional: Turn off axis labels and ticks
-        plt.show()
+        #plt.imshow(targets[0, ...].detach().cpu().numpy())
+        #plt.axis('off')  # Optional: Turn off axis labels and ticks
+        #plt.show()
+        #plt.imshow(outputs[0, ...].detach().cpu().numpy())
+        #plt.axis('off')  # Optional: Turn off axis labels and ticks
+        #plt.show()
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
@@ -81,7 +81,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
                 
                 #vec_loss = F.mse_loss(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())#*vec_loss
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*240000#*vec_loss
                 #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
@@ -144,10 +144,10 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         self.optimizer = optim.Adam(all_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
 
         #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=self.exp.get_from_config('lr')*77)#, betas=self.exp.get_from_config('betas'))
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=16e-4)#, betas=self.exp.get_from_config('betas'))
         #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
-        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.9995)
+        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.9999)
 
     @torch.no_grad()
     def test(self, *args, **kwargs):
