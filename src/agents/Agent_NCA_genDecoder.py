@@ -7,6 +7,6 @@ class Agent_NCA_gen_Decoder(Agent_NCA_genImage):
                 data (int, tensor, tensor): id, inputs, targets
         """
         id, inputs, targets, vec = data['id'], data['image'], data['label'], data['image_vec']
-        outputs = self.model(inputs, vec, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
+        outputs = self.model(targets, vec, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'))
 
         return outputs, targets

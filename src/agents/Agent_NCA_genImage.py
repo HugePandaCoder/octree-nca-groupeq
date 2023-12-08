@@ -50,7 +50,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         #            loss = loss + loss_loc
         #            loss_ret[m] = loss_loc.item()
 
-        loss = F.mse_loss(outputs[...], targets[...])#F.l1_loss(outputs[...], targets[...]) + F.mse_loss(outputs[...], targets[...])
+        loss = F.l1_loss(outputs[...], targets[...]) + F.mse_loss(outputs[...], targets[...])
         loss_ret[0] = loss.item()
 
         if loss != 0:
