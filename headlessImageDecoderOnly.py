@@ -24,7 +24,7 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_123_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_127_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -43,7 +43,7 @@ config = [{
     'input_channels': 4,
     'output_channels': 3,
     'hidden_size': 512,
-    'extra_channels': 16,
+    'extra_channels': 6,
     # Data
     'input_size': (64, 64),
     'data_split': [0.0032, 0.99679, 0.0001],
