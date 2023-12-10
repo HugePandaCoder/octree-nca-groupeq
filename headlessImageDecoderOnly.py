@@ -24,7 +24,7 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_187_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_194_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer

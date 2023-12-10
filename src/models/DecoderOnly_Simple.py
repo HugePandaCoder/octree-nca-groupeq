@@ -14,27 +14,27 @@ class DecoderOnly_Simple(nn.Module):
         self.drop0 = nn.Dropout(0.25)
 
         # Decoder
-        self.vec_dec = nn.Linear(extra_channels, hidden_size*4*4)
+        self.vec_dec = nn.Linear(extra_channels, hidden_size*4)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(hidden_size, hidden_size//2, kernel_size=4, stride=2, padding=1),  # [batch, 128, 8, 8]
+            nn.ConvTranspose2d(hidden_size//4, hidden_size//4, kernel_size=4, stride=2, padding=1),  # [batch, 128, 8, 8]
             nn.ReLU(),
             #nn.Conv2d(hidden_size//2, hidden_size//2, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
             #nn.Conv2d(hidden_size//2, hidden_size//2, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
-            nn.ConvTranspose2d(hidden_size//2, hidden_size//4, kernel_size=4, stride=2, padding=1),  # [batch, 64, 16, 16]
+            nn.ConvTranspose2d(hidden_size//4, hidden_size//4, kernel_size=4, stride=2, padding=1),  # [batch, 64, 16, 16]
             nn.ReLU(),
             #nn.Conv2d(hidden_size//4, hidden_size//4, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
             #nn.Conv2d(hidden_size//4, hidden_size//4, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
-            nn.ConvTranspose2d(hidden_size//4, hidden_size//8, kernel_size=4, stride=2, padding=1),  # [batch, 32, 32, 32]
+            nn.ConvTranspose2d(hidden_size//4, hidden_size//4, kernel_size=4, stride=2, padding=1),  # [batch, 32, 32, 32]
             nn.ReLU(),
             #nn.Conv2d(hidden_size//8, hidden_size//8, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
             #nn.Conv2d(hidden_size//8, hidden_size//8, kernel_size=1, stride=1, padding=0),  # [batch, 128, 8, 8]
             #nn.ReLU(),
-            nn.ConvTranspose2d(hidden_size//8, 3, kernel_size=4, stride=2, padding=1),  # [batch, 3, 64, 64]
+            nn.ConvTranspose2d(hidden_size//4, 3, kernel_size=4, stride=2, padding=1),  # [batch, 3, 64, 64]
             #nn.Sigmoid()  # Use sigmoid for normalizing outputs between 0 and 1
         )
 
@@ -55,7 +55,7 @@ class DecoderOnly_Simple(nn.Module):
             emb = emb.to(self.device)[None, :]
 
         x = self.vec_dec(emb)
-        x = x.view(x.shape[0], self.hidden_size, 4, 4)
+        x = x.view(x.shape[0], self.hidden_size//4, 4, 4)
         #x = self.encoder(x)
         x = self.decoder(x).transpose(1,3)
         #x = x*2 -1
