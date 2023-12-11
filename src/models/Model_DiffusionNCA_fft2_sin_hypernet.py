@@ -85,7 +85,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         self.channel_n = channel_n
         self.hidden_size = hidden_size
 
-        self.kernel_size = kernelSize = 3
+        self.kernel_size = kernelSize = 7
         self.padding = padding = int((kernelSize-1)/2)
         
 
