@@ -12,10 +12,16 @@ class HyperNetwork(nn.Module):
         self.conv3d_fourier = (channel_n*fourier_fac+extra_channels) * kernel_size * kernel_size 
         self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2) * hidden_size 
         self.fc1_fourier = (hidden_size) * channel_n *fourier_fac
+        
+        #self.fc2_fourier = (hidden_size) * channel_n *fourier_fac
+        #self.fc3_fourier = (hidden_size) * channel_n *fourier_fac
 
         self.conv3d_image = (channel_n+extra_channels) * kernel_size * kernel_size
         self.fc0_image = (channel_n*2+extra_channels*2) * hidden_size
         self.fc1_image = (hidden_size) * channel_n
+
+        #self.fc2_image = (hidden_size) * channel_n
+        #self.fc3_image = (hidden_size) * channel_n
 
         #output_size =  self.conv3d + self.fc0 + self.fc1
             
@@ -38,9 +44,16 @@ class HyperNetwork(nn.Module):
         self.lin05_fc0_fourier = nn.Linear(128+input_size, self.fc0_fourier)
         self.lin05_fc1_fourier = nn.Linear(128+input_size, self.fc1_fourier)
 
+        #self.lin05_fc2_fourier = nn.Linear(128+input_size, self.fc2_fourier)
+        #self.lin05_fc3_fourier = nn.Linear(128+input_size, self.fc3_fourier)
+
         self.lin05_conv3d_image = nn.Linear(128+input_size, self.conv3d_image)
         self.lin05_fc0_image = nn.Linear(128+input_size, self.fc0_image)
         self.lin05_fc1_image = nn.Linear(128+input_size, self.fc1_image)
+
+        #self.lin05_fc2_image = nn.Linear(128+input_size, self.fc2_image)
+        #self.lin05_fc3_image = nn.Linear(128+input_size, self.fc3_image)
+
         self.silu = nn.ReLU()
         
     def forward(self, x):
@@ -63,9 +76,16 @@ class HyperNetwork(nn.Module):
         generated_weights["fourier"]['fc0'] = self.lin05_fc0_fourier(dx)
         generated_weights["fourier"]['fc1'] = self.lin05_fc1_fourier(dx)
 
+        #generated_weights["fourier"]['fc2'] = self.lin05_fc2_fourier(dx)
+        #generated_weights["fourier"]['fc3'] = self.lin05_fc3_fourier(dx)
+
         generated_weights["image"]['conv3d'] = self.lin05_conv3d_image(dx)
         generated_weights["image"]['fc0'] = self.lin05_fc0_image(dx)
         generated_weights["image"]['fc1'] = self.lin05_fc1_image(dx)
+
+        #generated_weights["image"]['fc2'] = self.lin05_fc2_image(dx)
+        #generated_weights["image"]['fc3'] = self.lin05_fc3_image(dx)
+
         return generated_weights
 
 
@@ -238,6 +258,25 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
         dx = dx.transpose(1, 3)
+        skip = dx
+
+        ## ------------------ Add deeper architecture ------------------
+        if False:
+            dx = dx.transpose(1, 3)
+            output = []
+            for i in range(batch_size):
+                weights = model_dict['fc2'][i].view(self.hidden_size, self.channel_n *fourier_fac, 1, 1)
+                output.append(F.conv2d(dx[i:i+1], weights, padding=0))
+            dx = torch.cat(output, dim=0)
+            
+            dx = F.leaky_relu(dx)
+
+            output = []
+            for i in range(batch_size):
+                weights = model_dict['fc3'][i].view(self.channel_n *fourier_fac, self.hidden_size, 1, 1)
+                output.append(F.conv2d(dx[i:i+1], weights, padding=0))
+            dx = torch.cat(output, dim=0)
+            dx = dx.transpose(1, 3)
 
         #dx = F.leaky_relu(dx)
 
@@ -247,7 +286,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         stochastic = (torch.rand([dx.size(0), dx.size(1), dx.size(2), 1]).to(self.device)) > fire_rate
         stochastic = stochastic.float()
         
-        dx = dx * stochastic
+        dx = (dx) * stochastic
 
         dx = dx.transpose(1, 3)
 
@@ -334,12 +373,12 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             #fire_rate = 0
             
             factor = 5
-            pixel_X = 16#int(x_old.shape[2]/factor)
-            pixel_Y = 16#int(x_old.shape[3]/factor)
+            pixel_X = 32#int(x_old.shape[2]/factor)
+            pixel_Y = 32#int(x_old.shape[3]/factor)
             x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
             x = torch.fft.fftshift(x, dim=(2,3))
             x_old = x.clone()
-            x_start, y_start = x.shape[2]//2, x.shape[3]//2 # - pixel_X//2 - pixel_Y//2, 
+            x_start, y_start = x.shape[2]-(pixel_X//2)//2, x.shape[3]-(pixel_Y//2)//2 # - pixel_X//2 - pixel_Y//2, 
             x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
 
 

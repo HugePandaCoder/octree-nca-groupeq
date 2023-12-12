@@ -94,7 +94,7 @@ class BaseAgent():
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
-        print(outputs.shape, targets.shape)
+        #print(outputs.shape, targets.shape)
         if len(outputs.shape) == 5:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
@@ -180,7 +180,16 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, useSigmoid: bool = True, tag: str = "", pseudo_ensemble: bool = False) -> dict:
+    def getAverageDiceScore(self, useSigmoid: bool = True, tag: str = "", pseudo_ensemble: bool = False, dataset = None) -> dict:
+        r"""Get the average Dice test score.
+            #Returns:
+                return (float): Average Dice score of test set. """
+        diceLoss = DiceLoss(useSigmoid=useSigmoid)
+        loss_log = self.test(diceLoss, save_img=[], pseudo_ensemble=pseudo_ensemble, dataset = dataset)
+
+        return loss_log
+
+    def predictOnPath(self, path: str, useSigmoid: bool = True, tag: str = "", pseudo_ensemble: bool = False) -> dict:
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """

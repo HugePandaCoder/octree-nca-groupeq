@@ -5,7 +5,7 @@ import numpy as np
 import math 
 
 class Agent_MedSeg3D(BaseAgent):
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, **kwargs):
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, dataset=None, **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -15,7 +15,8 @@ class Agent_MedSeg3D(BaseAgent):
         """
         with torch.no_grad():
             # Prepare dataset for testing
-            dataset = self.exp.dataset
+            if dataset is None:
+                dataset = self.exp.dataset
             self.exp.set_model_state('test')
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
             # Prepare arrays
@@ -70,7 +71,7 @@ class Agent_MedSeg3D(BaseAgent):
                 patient_3d_label = targets.detach().cpu()
                 patient_3d_real_Img = inputs.detach().cpu()
                 patient_id = id
-                print(patient_id)
+                #print(patient_id)
 
                 for m in range(patient_3d_image.shape[-1]):
                     loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
@@ -80,7 +81,7 @@ class Agent_MedSeg3D(BaseAgent):
                         if len(patient_3d_label.shape) == 4:
                             patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
                         middle_slice = int(patient_3d_real_Img.shape[3] /2)
-                        print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
+                        #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
                         self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
                                         merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label),
                                         #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 

@@ -263,7 +263,6 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
                     # shift weights into vec
                     v = v - (1.0-self.model[m].embedding_backpropTrick.weight)
                     v_id = id[v].split["_"][0]
-                    print("VIDDDDDDD", v_id)
                     self.exp.dataset.set_vec(v)
                     # reset weights
                     self.embedding_backpropTrick.weight[self.embedding_backpropTrick.weight != 1] = 1.0

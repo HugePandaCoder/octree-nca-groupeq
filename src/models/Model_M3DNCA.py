@@ -265,10 +265,10 @@ class M3DNCA(nn.Module):
                             min_idx, max_idx = self.compute_bbox(t_sig, margin=self.margin)
                             out = self.model[m](outputs[:, min_idx[0]:max_idx[0]+1, min_idx[2]:max_idx[2]+1, min_idx[1]:max_idx[1]+1, :], steps=1, fire_rate=self.fire_rate)
                             skipped += (out.shape[1]*out.shape[2]*out.shape[3])
-                            print(min_idx, max_idx, out.shape, outputs.shape)
+                            #print(min_idx, max_idx, out.shape, outputs.shape)
                             outputs[:, min_idx[0]:max_idx[0]+1, min_idx[2]:max_idx[2]+1, min_idx[1]:max_idx[1]+1, :] = out
                             inputs_loc = outputs
-                    print("OPT SKIPPED: ", 1-(skipped/(outputs.shape[1]*outputs.shape[2]*outputs.shape[3]*self.get_inference_steps(m))), "\% pixels")
+                    #print("OPT SKIPPED: ", 1-(skipped/(outputs.shape[1]*outputs.shape[2]*outputs.shape[3]*self.get_inference_steps(m))), "\% pixels")
                 # Scale m-1 times 
                 else:
                     up = torch.nn.Upsample(scale_factor=self.scale_factor, mode='nearest')
@@ -301,7 +301,7 @@ class M3DNCA(nn.Module):
                     next_res, _ = self.downscale_image(full_res, full_res, iterations=self.levels-(m+2))
 
                     # Concat lowres features with higher res image
-                    print(next_res.shape, outputs.shape)
+                    #print(next_res.shape, outputs.shape)
                     inputs_loc = torch.concat((next_res[...,:self.input_channels], outputs[...,self.input_channels:]), 4)
 
         return outputs[..., self.input_channels:self.input_channels+self.output_channels]

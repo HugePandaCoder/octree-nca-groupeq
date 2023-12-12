@@ -260,15 +260,17 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 if len(label.shape) == 3:
                     label = np.expand_dims(label, axis=-1)
             img_id = "_" + str(p_id) + "_" + str(img_id)
-            
+
             if self.store:
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
                 img = self.data.get_data(key=self.images_list[idx])
             else:
                 img = (img_id, img, label)
            
+        
 
         id, img, label = img
+        print(img.shape)
 
         size = self.size 
         
@@ -305,6 +307,5 @@ class Dataset_NiiGz_3D(Dataset_3D):
         data_dict['image'] = img
         data_dict['label'] = label
 
-        print(img.shape)
 
         return data_dict

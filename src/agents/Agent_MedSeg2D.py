@@ -6,7 +6,7 @@ import math
 
 class Agent_MedSeg2D(BaseAgent):
     @torch.no_grad()
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, **kwargs):
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, dataset=None, **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -15,7 +15,8 @@ class Agent_MedSeg2D(BaseAgent):
                 steps (int): Number of steps to do for inference
         """
         # Prepare dataset for testing
-        dataset = self.exp.dataset
+        if dataset is None:
+            dataset = self.exp.dataset
         self.exp.set_model_state('test')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         # Prepare arrays

@@ -61,6 +61,16 @@ class Agent_Diffusion(Agent_Multi_NCA):
         return torch.clip(betas, 0.0001, 0.9999)
 
     @staticmethod
+    def sqrt_beta_schedule(timesteps):
+        beta_start = 0.0001
+        beta_end = 0.02
+        # Creating a linear range but then applying square root transformation
+        lin_space = torch.linspace(0, 1, timesteps)
+        sqrt_space = torch.sqrt(lin_space)
+        # Scaling the sqrt range to be between beta_start and beta_end
+        return sqrt_space * (beta_end - beta_start) + beta_start
+
+    @staticmethod
     def linear_beta_schedule(timesteps):
         beta_start = 0.0001
         beta_end = 0.02
@@ -101,6 +111,8 @@ class Agent_Diffusion(Agent_Multi_NCA):
             betas = self.quadratic_beta_schedule(timesteps=self.timesteps)
         elif self.beta_schedule == "sigmoid":
             betas = self.sigmoid_beta_schedule(timesteps=self.timesteps)
+        elif self.beta_schedule == "sqrt":
+            betas = self.sqrt_beta_schedule(timesteps=self.timesteps)
         else:
             NotImplementedError()
 
@@ -198,7 +210,24 @@ class Agent_Diffusion(Agent_Multi_NCA):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
         #return outputs[..., 0:self.output_channels], targets
-        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets
+
+        outputs = outputs[..., self.input_channels:self.input_channels+self.output_channels]
+
+        if False:
+            mod_outputs = outputs.clone()
+            for i in range(outputs.shape[0]):
+                mean = torch.mean(outputs[i])
+                std = torch.std(outputs[i])
+                mod_outputs[i] = (outputs[i] - mean) / std
+
+            outputs = mod_outputs
+            outputs = outputs 
+
+            #outputs = (outputs+ torch.min(outputs))
+            #outputs = outputs /torch.max(outputs)
+            #outputs = outputs *2 -1
+
+        return outputs, targets
 
     def rescale_image(self, data):
         id, img, label = data['id'], data['image'], data['label']
@@ -363,7 +392,13 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
                         loss = F.mse_loss(pred_noise, noise) + F.l1_loss(pred_noise, noise)
                     else:
-                        loss = F.mse_loss(outputs, noise) + F.l1_loss(outputs, noise)
+                        #outputs = torch.tanh(outputs)
+                        #noise = torch.tanh(noise)
+                        loss_mse = F.mse_loss(outputs, noise, reduction='none')
+                        loss_mse = loss_mse.mean(dim=1)
+                        loss_l1 = F.l1_loss(outputs, noise, reduction='none')
+                        loss_l1 = loss_l1.mean(dim=1)
+                        loss = loss_mse.mean() + loss_l1.mean()
 
                     if False:
                         denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
@@ -498,7 +533,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
     def getNoiseLike(self, img, noisy=False, t=0):
 
         def getNoise():
-            rnd = torch.randn_like(img).to(self.device).to(torch.float)#*5
+            rnd = torch.randn_like(img).to(self.device).to(torch.float)
             # Range 0,1
             #rmax, rmin = torch.max(rnd), torch.min(rnd)
             #rnd = ((rnd - rmin) / (rmax - rmin))
@@ -615,7 +650,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
         sqrt_alphas_cumprod_t = self.extract(self.sqrt_alphas_cumprod, t, x.shape)
 
-        if True:
+        if False:
             sqrt_alphas_cumprod_t = self.extract(self.sqrt_alphas_cumprod, t, output.shape)
             sqrt_one_minus_alphas_cumprod_t = self.extract(
                 self.sqrt_one_minus_alphas_cumprod, t, output.shape
@@ -628,15 +663,18 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
             output = (x[..., 0:self.exp.get_from_config(tag="input_channels")] - sqrt_alphas_cumprod_t * output) / sqrt_one_minus_alphas_cumprod_t
 
-        #noisy_image = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
+            #noisy_image = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
 
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        #print(x.shape, betas_t.shape, output.shape, sqrt_one_minus_alphas_cumprod_t.shape)
-        #print("BETAS", betas_t[0], sum(self.betas))
-        model_mean = (x - output * sqrt_one_minus_alphas_cumprod_t) / sqrt_alphas_cumprod_t #sqrt_recip_alphas_t * (
-                #x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
-        #)
+            # Equation 11 in the paper
+            # Use our model (noise predictor) to predict the mean
+            #print(x.shape, betas_t.shape, output.shape, sqrt_one_minus_alphas_cumprod_t.shape)
+            #print("BETAS", betas_t[0], sum(self.betas))
+            model_mean = (x - output * sqrt_one_minus_alphas_cumprod_t) / sqrt_alphas_cumprod_t #sqrt_recip_alphas_t * (
+                    #x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
+            #)
+        model_mean = sqrt_recip_alphas_t * (
+                x - betas_t * output / sqrt_one_minus_alphas_cumprod_t
+        )
         return model_mean
 
     def intermediate_evaluation(self, dataloader, epoch):
@@ -892,7 +930,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         if extra == True: # Save as GIF
                             if step == self.timesteps-1:
                                 self.gif = np.zeros((self.timesteps, output.shape[1], output.shape[2], self.exp.get_from_config('input_channels')), dtype=np.uint8)
-                            self.gif[self.timesteps - step -1, ...] = (((self.p_sample_mean(output, img[...,0:self.exp.get_from_config('input_channels')], t, step).detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)#(((output[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)# 
+                            self.gif[self.timesteps - step -1, ...] = (((self.p_sample_mean(output, img[0, ...,0:self.exp.get_from_config('input_channels')], t, step).detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)#(((output[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)# 
                             if step == 0:
                                 imgs = [Image.fromarray(img) for img in self.gif]
                                 # duration is the number of milliseconds between frames; this is 40 frames per second
@@ -1074,7 +1112,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
             if True:
                 for s in range(samples):
-                    bigger = 3
+                    bigger = 2
                     noise, _ = self.getNoiseLike(torch.zeros((1, int(size[0]*bigger), int(size[1]*bigger), self.exp.get_from_config('input_channels'))))
                     img = self.make_seed(noise)
                     for step in tqdm(reversed(range(self.timesteps))):

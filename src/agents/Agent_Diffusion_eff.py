@@ -135,19 +135,19 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
         # define alphas
         alphas = 1. - betas
-        print("ALPHAS", alphas)
+        #print("ALPHAS", alphas)
         alphas_cumprod = torch.cumprod(alphas, dim=0).to(self.device)  # (alphas, axis=0)
-        print("ALPHAS_CUMPROD", alphas_cumprod)
+        #print("ALPHAS_CUMPROD", alphas_cumprod)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0).to(self.device)
-        print("ALPHAS_CUMPROD_PREV", alphas_cumprod_prev)
+        #print("ALPHAS_CUMPROD_PREV", alphas_cumprod_prev)
         sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
-        print("SQRT_RECIP_ALPHAS", sqrt_recip_alphas)
+        #print("SQRT_RECIP_ALPHAS", sqrt_recip_alphas)
 
         # calculations for diffusion q(x_t | x_{t-1}) and others
         sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
-        print("SQRT_ALPHAS_CUMPROD", sqrt_alphas_cumprod)
+        #print("SQRT_ALPHAS_CUMPROD", sqrt_alphas_cumprod)
         sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
-        print("SQRT_ONE_MINUS_ALPHAS_CUMPROD", sqrt_one_minus_alphas_cumprod)
+        #print("SQRT_ONE_MINUS_ALPHAS_CUMPROD", sqrt_one_minus_alphas_cumprod)
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         posterior_variance = betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)

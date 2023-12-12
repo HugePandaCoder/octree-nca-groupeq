@@ -21,7 +21,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run795_CelebA_fourier_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run817_CelebA_fourier_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -29,8 +29,8 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,
-    'evaluate_interval': 1,
+    'save_interval': 10,
+    'evaluate_interval': 5,
     'n_epoch': 100000,
     'batch_size': 12,
     # Model
@@ -40,8 +40,8 @@ config = [{
     'cell_fire_rate': 0,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  128,
-    'schedule': 'cosine',
+    'hidden_size':  256,
+    'schedule': 'sqrt',
     # Data
     'input_size': (64, 64),
     'data_split': [0.005, 0.994, 0.001],#[0.80340968, 0.09806, 1], 
@@ -86,7 +86,7 @@ else:
     #torch.manual_seed(142)
     #agent.calculateFID_fromFiles(samples=100)
     #agent.test_fid(samples=556, optimized=True, saveImg=True)
-    agent.generateSamples(samples=1)#, optimized=True)
+    agent.generateSamples(samples=1, optimized=True)#, optimized=True)
 
 
 # %%
