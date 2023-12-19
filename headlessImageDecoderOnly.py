@@ -25,12 +25,12 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_233_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_263_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 3e-5,
-    'lr_gamma': 0.9999,
+    'lr': 3e-4,
+    'lr_gamma': 0.99999,
     'betas': (0.9, 0.99),
     # Training
     'save_interval': 20,#
@@ -48,6 +48,7 @@ config = [{
     # Data
     'input_size': (128, 128),
     'data_split': [0.064, 0.9359, 0.0001],
+    #'data_split': [0.0005, 0.9994, 0.0001],
 }
 ]
 

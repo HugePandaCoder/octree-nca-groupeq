@@ -64,6 +64,8 @@ class Agent_NCA_genImage(Agent_NCA_gen):
                 loss.backward()
                 self.optimizer_backpropTrick.step()
 
+
+            print(self.model.list_backpropTrick[0].weight.squeeze().detach())
             for i, v in enumerate(vec):
             # Add optimizer trick here
                 
@@ -73,6 +75,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
                     vec_loss = loss_f(outputs[i, ...], targets[i, ...])
                     vec_loss.backward(retain_graph=True)
                     self.optimizer_backpropTrick.step()
+                    print("NOT STANDARD")
                 
                 
                 # MOVE loss to vector
@@ -81,7 +84,8 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
                 
                 #vec_loss = F.mse_loss(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*24000*100#*vec_loss
+                
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*24000#*10000000#*vec_loss
                 #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
@@ -144,10 +148,11 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         self.optimizer = optim.Adam(all_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
 
         #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=16e-4)#, betas=self.exp.get_from_config('betas'))
+        #self.optimizer_backpropTrick = optim.Adam(backdrop_trick_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')) #optim.SGD(backdrop_trick_params, lr=16e-4)#, betas=self.exp.get_from_config('betas'))
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=16e-2)
         #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
-        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.9999)
+        self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.99995)
 
     @torch.no_grad()
     def test(self, *args, **kwargs):
