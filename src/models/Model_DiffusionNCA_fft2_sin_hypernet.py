@@ -378,7 +378,8 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
             x = torch.fft.fftshift(x, dim=(2,3))
             x_old = x.clone()
-            x_start, y_start = x.shape[2]-(pixel_X//2)//2, x.shape[3]-(pixel_Y//2)//2 # - pixel_X//2 - pixel_Y//2, 
+            #x_start, y_start = x.shape[2]-(pixel_X//2)//2, x.shape[3]-(pixel_Y//2)//2 # - pixel_X//2 - pixel_Y//2, 
+            x_start, y_start = x.shape[2]//2, x.shape[3]//2
             x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
 
 

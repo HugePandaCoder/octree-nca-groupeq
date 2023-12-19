@@ -7,6 +7,7 @@ from src.models.Model_GenNCA_v3 import GenNCA_v3
 from src.models.Model_GenNCA_v3_noHyper import GenNCA_V3_NoHyper
 from src.models.Model_GrowingNCA import GrowingNCA   
 from src.models.DecoderOnly_Simple import DecoderOnly_Simple
+from src.models.Autoencoder import Autoencoder
 from src.utils.Experiment import Experiment
 from src.agents.Agent_NCA_genDecoder import Agent_NCA_gen_Decoder
 from src.agents.Agent_Growing import Agent_Growing
@@ -24,16 +25,16 @@ config = [{
     # Basic
     'img_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/",
-    'name': r"headlessImageGen_194_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
+    'name': r"headlessImageGen_233_celebA_DecoderOnly",#_baseline", 75% with vec, 77.5% baseline
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 3e-4,
+    'lr': 3e-5,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 200,#
-    'evaluate_interval': 100,
+    'save_interval': 20,#
+    'evaluate_interval': 2,
     'n_epoch': 50000,
     'batch_size': 24,
     # Model
@@ -42,11 +43,11 @@ config = [{
     'cell_fire_rate': 0.1,
     'input_channels': 4,
     'output_channels': 3,
-    'hidden_size': 256,
-    'extra_channels': 6,
+    'hidden_size': 512,
+    'extra_channels': 32,
     # Data
-    'input_size': (64, 64),
-    'data_split': [0.00032, 0.99958, 0.0001],
+    'input_size': (128, 128),
+    'data_split': [0.064, 0.9359, 0.0001],
 }
 ]
 
@@ -77,7 +78,7 @@ loss_function = F.mse_loss#nn.MSELoss()
 
 agent.train(data_loader, loss_function)
 
-agent.getAverageDiceScore()
+#agent.getAverageDiceScore()
 
 
 

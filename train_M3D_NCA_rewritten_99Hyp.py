@@ -13,9 +13,11 @@ import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task99_HarP/imagesTr",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task99_HarP/labelsTr",
-    'name': r'M3D_NCA_Hyp99_v2', #12 or 13, 54 opt, 
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Task99_HarP/imagesTr",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Task99_HarP/labelsTr",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task97_DecathHip/imagesTr",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task97_DecathHip/labelsTr",
+    'name': r'M3D_NCA_Hyp97_v1', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -37,7 +39,7 @@ config = [{
     'hidden_size': 64,
     'train_model':1,
     # Data
-    'input_size': [(16, 16, 12), (64, 64, 48)] ,
+    'input_size': [(9, 12, 10), (36, 48, 40)] ,
     'scale_factor': 4,
     'data_split': [0.7, 0, 0.3], 
     'keep_original_scale': False,
@@ -70,12 +72,15 @@ hyp99_test.exp = exp
 print("--------------- TESTING HYP 98 ---------------")
 hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(64, 64, 48), imagePath=r"/home/jkalkhof_locale/Documents/Data/Task98_Dryad/imagesTs", labelPath=r"/home/jkalkhof_locale/Documents/Data/Task98_Dryad/labelsTs")
 hyp99_test.exp = exp
-agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
+#agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
 
 print("--------------- TESTING HYP 97 ---------------")
-hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(36, 48, 40), imagePath=r"/home/jkalkhof_locale/Documents/Data/Task97_DecathHip/imagesTs", labelPath=r"/home/jkalkhof_locale/Documents/Data/Task97_DecathHip/labelsTs")
+hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(36, 48, 40), imagePath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/imagesTr", labelPath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/labelsTr")
+#hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(64, 64, 48), imagePath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/test/imagesTr/", labelPath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/test/labelsTr/")
+#hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(64, 64, 48), imagePath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/test/imagesTr/", labelPath=r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/test/labelsTr/")
+
 hyp99_test.exp = exp
-agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
+#agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
 
 
 

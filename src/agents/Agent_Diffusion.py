@@ -394,11 +394,21 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     else:
                         #outputs = torch.tanh(outputs)
                         #noise = torch.tanh(noise)
-                        loss_mse = F.mse_loss(outputs, noise, reduction='none')
-                        loss_mse = loss_mse.mean(dim=1)
-                        loss_l1 = F.l1_loss(outputs, noise, reduction='none')
-                        loss_l1 = loss_l1.mean(dim=1)
-                        loss = loss_mse.mean() + loss_l1.mean()
+                        
+                        #loss_mse = F.mse_loss(outputs, noise, reduction='none')
+                        #loss_mse = loss_mse.mean(dim=1)
+                        #loss_l1 = F.l1_loss(outputs, noise, reduction='none')
+                        #loss_l1 = loss_l1.mean(dim=1)
+
+                        #outputs_fft = torch.fft.fft2(outputs.transpose(1, 3))
+                        #noise_fft = torch.fft.fft2(noise.transpose(1, 3))
+                        #print(outputs_fft.shape, noise_fft.shape)
+                        #loss_mse_fourier_magnitude = F.mse_loss(torch.abs(outputs_fft), torch.abs(noise_fft), reduction='none')
+                        #loss_mse_fourier_phase = F.mse_loss(torch.angle(outputs_fft), torch.angle(noise_fft), reduction='none')
+
+
+                        #loss = loss_mse.mean() + loss_l1.mean() #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.001
+                        loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise)
 
                     if False:
                         denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
@@ -533,7 +543,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
     def getNoiseLike(self, img, noisy=False, t=0):
 
         def getNoise():
-            rnd = torch.randn_like(img).to(self.device).to(torch.float)
+            rnd = torch.randn_like(img).to(self.device).to(torch.float)# / 5) * 4
             # Range 0,1
             #rmax, rmin = torch.max(rnd), torch.min(rnd)
             #rnd = ((rnd - rmin) / (rmax - rmin))
@@ -605,7 +615,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
             return output
 
-    @torch.no_grad()
+    #@torch.no_grad()
     def p_sample(self, output, x, t, t_index):
         betas_t = self.extract(self.betas, t, x.shape)
         sqrt_one_minus_alphas_cumprod_t = self.extract(

@@ -115,7 +115,7 @@ class png_Dataset_gen(Dataset_NiiGz_3D):
                 img = img.permute((2, 1, 0))
             #img = img * 2 -1
             #img = img
-            label = label/128 -1#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
+            label = label/256# -1#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
 
 
         data_dict = {}

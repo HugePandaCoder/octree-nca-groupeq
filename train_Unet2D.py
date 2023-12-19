@@ -8,34 +8,41 @@ from src.agents.Agent_MedNCA_Simple import MedNCAAgent
 from src.agents.Agent_UNet import UNetAgent
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Task04_Hippocampus/train/labelsTr/",
-    'name': r'MedNCA_Run3',
+    #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
+    #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/Dataset_BUSI_with_GT/image/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/Dataset_BUSI_with_GT/label/",
+    'name': r'MedNCA_Run13_Breast',
     'device':"cuda:0",
     # Learning rate
-    'lr': 1e-4,
+    'lr': 16e-4,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training config
     'save_interval': 2,
     'evaluate_interval': 2,
     'n_epoch': 1000,
-    'batch_size': 40,
+    'batch_size': 12,
     # Model config
     'channel_n': 16,        # Number of CA state channels
     'cell_fire_rate': 0.5,
-    'output_channels': 3,
+    'input_channels': 1,
+    'output_channels': 1,
     # Data
-    'input_size': (64, 64),
-    'data_split': [0.7, 0, 0.3], 
+    'input_size': (320, 320),
+    'data_split': [0.1, 0.89, 0.01], 
 
 }]
 
+from src.datasets.png_seg_Dataset import png_seg_Dataset
+dataset = png_seg_Dataset(buffer=True)
+
+
 # Define Experiment
-dataset = Dataset_NiiGz_3D(slice=2)
+#dataset = Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
-ca = MedNCA(channel_n=17, fire_rate=0.5, steps=64, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
-agent = UNetAgent(ca)
+ca = MedNCA(channel_n=16, fire_rate=0.1, steps=32, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
+agent = MedNCAAgent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
 dataset.set_experiment(exp)

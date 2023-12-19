@@ -51,7 +51,6 @@ class MedNCA(nn.Module):
         inputs_loc = self.resize4d(x.cpu(), size=down_scaled_size).to(self.device) 
         targets_loc = self.resize4d(y.cpu(), size=down_scaled_size).to(self.device)
 
-
         # Start with low res lvl and go to high res level
         for m in range(2):
             if m == 1:

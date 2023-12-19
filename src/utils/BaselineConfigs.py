@@ -2,6 +2,7 @@ from src.utils.ExperimentWrapper import ExperimentWrapper
 from src.utils.Experiment import merge_config
 import numpy as np
 from ..losses.LossFunctions import DiceBCELoss
+from torch.utils.data import Dataset
 
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from unet import UNet2D
@@ -9,7 +10,7 @@ from src.agents.Agent_UNet import UNetAgent
 
 
 class EXP_UNet2D(ExperimentWrapper):
-    def createExperiment(self, study_config : dict, detail_config : dict = {}):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
         config = {
             'description': 'UNet2D',
             'lr': 1e-4,
@@ -19,7 +20,8 @@ class EXP_UNet2D(ExperimentWrapper):
         }
         
         config = merge_config(merge_config(study_config, config), detail_config)
-        dataset = Dataset_NiiGz_3D(slice=2)
+        if dataset is None:
+            dataset = Dataset_NiiGz_3D(slice=2)
         model = UNet2D(in_channels=1, padding=1, out_classes=1)
         agent = UNetAgent(model)
         loss_function = DiceFocalLoss() 
@@ -31,7 +33,7 @@ from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 from src.losses.LossFunctions import DiceFocalLoss
 
 class EXP_M3DNCA(ExperimentWrapper):
-    def createExperiment(self, study_config : dict, detail_config : dict = {}):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
         config = {
             'description': 'M3DNCA',
             'lr': 16e-4,
@@ -50,9 +52,44 @@ class EXP_M3DNCA(ExperimentWrapper):
         }
 
         config = merge_config(merge_config(study_config, config), detail_config)
-        dataset = Dataset_NiiGz_3D()
+        if dataset is None:
+            dataset = Dataset_NiiGz_3D()
         model = M3DNCA(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], kernel_size=config['kernel_size'], input_channels=config['input_channels'], levels=config['levels'], scale_factor=config['scale_factor'], steps=config['inference_steps'])
         agent = M3DNCAAgent(model)
+        loss_function = DiceBCELoss() 
+
+        return super().createExperiment(config, model, agent, dataset, loss_function)
+    
+from src.models.Model_MedNCA import MedNCA
+from src.agents.Agent_MedNCA_Simple  import MedNCAAgent
+
+class EXP_MEDNCA(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
+        config = {
+            'description': 'MEDNCA',
+            'lr': 16e-4,
+            'batch_duplication': 1,
+            # Model
+            'channel_n': 32,        # Number of CA state channels
+            'inference_steps': 64,
+            'cell_fire_rate': 0.5,
+            'batch_size': 12,
+            'hidden_size': 128,
+            'train_model':1,
+            'betas': (0.9, 0.99),
+            # Data
+            'scale_factor': 4,
+            'kernel_size': 3,
+            'levels': 2,
+            'input_size': (320,320) ,
+        }
+
+        config = merge_config(merge_config(study_config, config), detail_config)
+        print("CONFIG", config)
+        if dataset is None:
+            dataset = Dataset_NiiGz_3D(slice=2)
+        model = MedNCA(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'])
+        agent = MedNCAAgent(model)
         loss_function = DiceBCELoss() 
 
         return super().createExperiment(config, model, agent, dataset, loss_function)
@@ -62,7 +99,7 @@ from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from src.models.vit_seg_modeling import VisionTransformer as ViT_seg
 from ..utils.ProjectConfiguration import ProjectConfiguration
 class EXP_TransUNet(ExperimentWrapper):
-    def createExperiment(self, study_config : dict, detail_config : dict = {}):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
 
         config = { 'description': 'TransUNet',
                   'lr': 1e-4,
@@ -110,7 +147,8 @@ class EXP_TransUNet(ExperimentWrapper):
         # Load TransUNet weights
         model.load_from(weights=np.load(ProjectConfiguration.VITB16_WEIGHTS))#config_vit.pretrained_path))
 
-        dataset = Dataset_NiiGz_3D(slice=2)
+        if dataset is None:
+            dataset = Dataset_NiiGz_3D(slice=2)
         agent = UNetAgent(model)
         loss_function = DiceBCELoss() 
 

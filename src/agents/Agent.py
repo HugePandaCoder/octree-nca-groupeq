@@ -185,7 +185,7 @@ class BaseAgent():
             #Returns:
                 return (float): Average Dice score of test set. """
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
-        loss_log = self.test(diceLoss, save_img=[], pseudo_ensemble=pseudo_ensemble, dataset = dataset)
+        loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble, dataset = dataset)
 
         return loss_log
 

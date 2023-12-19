@@ -50,7 +50,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
         #            loss = loss + loss_loc
         #            loss_ret[m] = loss_loc.item()
 
-        loss = F.l1_loss(outputs[...], targets[...]) + F.mse_loss(outputs[...], targets[...])
+        loss = F.mse_loss(outputs[...], targets[...]) #F.l1_loss(outputs[...], targets[...]) + 
         loss_ret[0] = loss.item()
 
         if loss != 0:
@@ -81,7 +81,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
                 
                 #vec_loss = F.mse_loss(outputs[i, ...], targets[i, ...])
-                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*24000#*vec_loss
+                v = v.to(self.device) - ((1.0-self.model.list_backpropTrick[i].weight.squeeze()).detach())*24000*100#*vec_loss
                 #print(v)
                 v = torch.clip(v, -1, 1)
                 self.exp.dataset.set_vec(v_id, v.detach().cpu().numpy())
@@ -178,4 +178,4 @@ class Agent_NCA_genImage(Agent_NCA_gen):
             #    plt.imshow(outputs[0, ...].detach().cpu().numpy())
             #    plt.axis('off')  # Optional: Turn off axis labels and ticks
             #    plt.show()
-            self.exp.write_img(str(data_id), (outputs[0, ...].detach().cpu().numpy()+1)/2, self.exp.currentStep)
+            self.exp.write_img(str(data_id), (outputs[0, ...].detach().cpu().numpy()), self.exp.currentStep)

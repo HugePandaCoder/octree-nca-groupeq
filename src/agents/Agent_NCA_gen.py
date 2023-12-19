@@ -275,6 +275,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
 
         self.fitUMAP(args[1])
     
+    @torch.no_grad()
     def fitUMAP(self, epoch):
         self.exp.set_model_state('train')
         data_loader = torch.utils.data.DataLoader(self.exp.dataset, shuffle=True, batch_size=10000) 
@@ -324,6 +325,7 @@ class Agent_NCA_gen(Agent_NCA, Agent_MedSeg3D):
         print("SUM: ", np.sum(vec))
         # ------------------------------- GENEREATE UMAP
 
+        return
         if len(id) > 10:
             reducer = umap.UMAP()
             embedding = reducer.fit_transform(vec)

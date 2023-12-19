@@ -26,7 +26,7 @@ class Agent_MedSeg2D(BaseAgent):
         for m in range(self.output_channels):
             loss_log[m] = {}
         if save_img == None:
-            save_img = []#1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
+            save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
         # For each data sample
         for i, data in enumerate(dataloader):
@@ -70,9 +70,10 @@ class Agent_MedSeg2D(BaseAgent):
                 patient_3d_label = torch.vstack((patient_3d_label, targets.detach().cpu()))
                 patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))
             # Add image to tensorboard
+            
             if i in save_img: 
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                merge_img_label_gt_simplified(patient_real_Img, patient_3d_image, patient_3d_label),
+                                merge_img_label_gt_simplified(patient_real_Img.transpose(1,3), patient_3d_image, patient_3d_label),
                                 #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                 self.exp.currentStep)
                 #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
