@@ -211,7 +211,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
         #return outputs[..., 0:self.output_channels], targets
 
-        outputs = outputs[..., self.input_channels:self.input_channels+self.output_channels]
+        outputs = outputs[0][..., self.input_channels:self.input_channels+self.output_channels], outputs[1][..., self.input_channels*2:self.input_channels*2+self.output_channels]
 
         if False:
             mod_outputs = outputs.clone()
@@ -400,15 +400,16 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         #loss_l1 = F.l1_loss(outputs, noise, reduction='none')
                         #loss_l1 = loss_l1.mean(dim=1)
 
-                        #outputs_fft = torch.fft.fft2(outputs.transpose(1, 3))
-                        #noise_fft = torch.fft.fft2(noise.transpose(1, 3))
+                        #print(outputs[1].shape, real_img.shape)
+                        outputs_fft = torch.fft.fft2(outputs[1].transpose(1, 3))
+                        noise_fft = torch.fft.fft2(real_img.transpose(1, 3))
                         #print(outputs_fft.shape, noise_fft.shape)
-                        #loss_mse_fourier_magnitude = F.mse_loss(torch.abs(outputs_fft), torch.abs(noise_fft), reduction='none')
-                        #loss_mse_fourier_phase = F.mse_loss(torch.angle(outputs_fft), torch.angle(noise_fft), reduction='none')
+                        loss_mse_fourier_magnitude = F.mse_loss(torch.abs(outputs_fft), torch.abs(noise_fft), reduction='none')
+                        loss_mse_fourier_phase = F.mse_loss(torch.angle(outputs_fft), torch.angle(noise_fft), reduction='none')
 
 
                         #loss = loss_mse.mean() + loss_l1.mean() #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.001
-                        loss = F.l1_loss(outputs, noise) + F.mse_loss(outputs, noise)
+                        loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) + (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.025
 
                     if False:
                         denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
@@ -935,9 +936,10 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         img_p = {'id': 0,'image': img,'label': 0}
                         #print("NOISE HERE", torch.max(img), torch.min(img))
                         output, _ = self.get_outputs(img_p, t = step)
+                        output = output[0]
 
                         # ----- SAVE AS GIF ----
-                        if extra == True: # Save as GIF
+                        if extra == False: # Save as GIF
                             if step == self.timesteps-1:
                                 self.gif = np.zeros((self.timesteps, output.shape[1], output.shape[2], self.exp.get_from_config('input_channels')), dtype=np.uint8)
                             self.gif[self.timesteps - step -1, ...] = (((self.p_sample_mean(output, img[0, ...,0:self.exp.get_from_config('input_channels')], t, step).detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)#(((output[0, :, :, 0:3].real.detach().cpu().numpy()+1)/2)*256).astype(dtype=np.uint8)# 
@@ -1131,6 +1133,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                             img_p = {'image':img, 'id': 0, 'label': 0}
                             #print("NOISE HERE", torch.max(img), torch.min(img))
                             output, _ = self.get_outputs(img_p, t = step)
+                            output = output[0]
                             img = self.p_sample(output, img[...,0:self.exp.get_from_config('input_channels')], t, step)
                             img = self.make_seed(img[..., 0:self.exp.get_from_config('input_channels')])
                     self.exp.write_img("bigger_size", (img[0, ..., 0:self.exp.get_from_config('input_channels')].detach().cpu().numpy()+1)/2, self.exp.currentStep, context={'Image':s}, normalize=True) #/2+0.5 #{'Image':s}

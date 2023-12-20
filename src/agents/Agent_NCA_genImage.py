@@ -149,7 +149,7 @@ class Agent_NCA_genImage(Agent_NCA_gen):
 
         #self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         #self.optimizer_backpropTrick = optim.Adam(backdrop_trick_params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')) #optim.SGD(backdrop_trick_params, lr=16e-4)#, betas=self.exp.get_from_config('betas'))
-        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=16e-2)
+        self.optimizer_backpropTrick = optim.SGD(backdrop_trick_params, lr=16e-1)
         #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
         self.scheduler_backprop = optim.lr_scheduler.ExponentialLR(self.optimizer_backpropTrick, 0.99995)

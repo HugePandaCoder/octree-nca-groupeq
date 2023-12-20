@@ -26,29 +26,29 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run861_CelebA_fourier_hypernet_chain', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run869_CelebA_fourier_hypernet_chain', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-4, #32 16e-4
+    'lr': 3e-4, #32 16e-4
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 3,
-    'evaluate_interval': 1,
+    'save_interval': 6,
+    'evaluate_interval': 2,
     'n_epoch': 100000,
     'batch_size': 12,
     # Model
-    'channel_n': 48,        # Number of CA state channels
+    'channel_n': 32,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 20,
     'cell_fire_rate': 0,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  384,
+    'hidden_size':  256,
     'schedule': 'cosine',
     # Data
-    'input_size': (64, 64),
+    'input_size': (42, 42),
     'data_split': [0.005, 0.994, 0.001],#[0.80340968, 0.09806, 1], 
     'timesteps': 300,
     'timesteps_train': 1,

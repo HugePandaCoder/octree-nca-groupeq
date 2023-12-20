@@ -373,14 +373,18 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             #fire_rate = 0
             
             factor = 5
-            pixel_X = 32#int(x_old.shape[2]/factor)
-            pixel_Y = 32#int(x_old.shape[3]/factor)
-            x = torch.fft.fft2(x, norm="forward")#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+            pixel_X = 16#int(x_old.shape[2]/factor)
+            pixel_Y = 16#int(x_old.shape[3]/factor)
+
+
+
+            x_old = x.clone()    
+            x = torch.fft.fft2(x, norm="forward", s=(pixel_X, pixel_Y))#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
             x = torch.fft.fftshift(x, dim=(2,3))
-            x_old = x.clone()
-            #x_start, y_start = x.shape[2]-(pixel_X//2)//2, x.shape[3]-(pixel_Y//2)//2 # - pixel_X//2 - pixel_Y//2, 
-            x_start, y_start = x.shape[2]//2, x.shape[3]//2
-            x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
+            #x_old = x.clone()
+            x_start, y_start = (x.shape[2]-pixel_X)//2, (x.shape[3]-pixel_Y)//2 # - pixel_X//2 - pixel_Y//2, 
+            #x_start, y_start = x.shape[2]//2, x.shape[3]//2
+            #x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
 
 
             if False:
@@ -412,13 +416,17 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
             x = x.transpose(1, 3)
 
-            x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
-            x_old = torch.fft.ifftshift(x_old, dim=(2,3))
-            x = torch.fft.ifft2(x_old, norm="forward").real 
+            #x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
+            #x_old = torch.fft.ifftshift(x_old, dim=(2,3))
+            x = torch.fft.ifft2(x_old, norm="forward", s=(x_old.shape[2], x_old.shape[3])).real 
+
+            x[:, 0:self.input_channels, ...] = x_old[:, 0:self.input_channels, ...]
+
+            x_four = x
             
             # ---------------- MODEL 1 -----------------
             for step in range(steps):#int(steps/2)):
                 x[:, self.input_channels:, ...] = self.update_dict(x, fire_rate, alive_rate=t, model_dict=self.generated_weights['image'], step=step/steps)[:, self.input_channels:, ...] 
-            x = x.transpose(1, 3)
+            #x = x.transpose(1, 3)
         
-        return x
+        return x.transpose(1, 3), x_four.transpose(1, 3)
