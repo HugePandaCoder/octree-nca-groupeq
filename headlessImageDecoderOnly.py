@@ -79,7 +79,7 @@ loss_function = F.mse_loss#nn.MSELoss()
 
 agent.train(data_loader, loss_function)
 
-#agent.getAverageDiceScore()
+agent.getAverageDiceScore()
 
 
 

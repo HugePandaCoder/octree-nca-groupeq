@@ -201,7 +201,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                 #print(model_id)
             else:
                 model_id = math.floor(((t-0.0000001) * self.timesteps) / (self.timesteps / len(self.model)))  
-            print("TTTTTTTTTTTTTTTT", t)            
+            #print("TTTTTTTTTTTTTTTT", t)            
             outputs = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
         else:
             outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
@@ -409,7 +409,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
 
 
                         #loss = loss_mse.mean() + loss_l1.mean() #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.001
-                        loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) + (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.025
+                        loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.025
 
                     if False:
                         denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
