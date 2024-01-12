@@ -5,6 +5,32 @@ import torch.nn.functional as F
 from matplotlib import pyplot as plt
 import math
 
+class ScaledDotProductAttentionModule(nn.Module):
+    def __init__(self, input_dim, attention_dim):
+        super(ScaledDotProductAttentionModule, self).__init__()
+        # Transformations for query, key, and value
+        self.query_transform = nn.Linear(input_dim, attention_dim)
+        self.key_transform = nn.Linear(input_dim, attention_dim)
+        self.value_transform = nn.Linear(input_dim, attention_dim)
+        self.attention_dim = attention_dim
+
+    def forward(self, x):
+        # Transform inputs to query, key, value
+        Q = self.query_transform(x)  # Query
+        K = self.key_transform(x)    # Key
+        V = self.value_transform(x)  # Value
+
+        # Compute scaled dot-product attention
+        # Scaled by dividing by the square root of the dimension of the key
+        scale = torch.sqrt(torch.tensor(self.attention_dim, dtype=torch.float32))
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / scale
+        attention_weights = F.softmax(attention_scores, dim=-1)
+
+        # Apply the attention weights to the values
+        attention_output = torch.matmul(attention_weights, V)
+
+        return attention_output
+
 class AttentionModule(nn.Module):
     def __init__(self, input_dim, attention_dim):
         super(AttentionModule, self).__init__()
@@ -72,14 +98,14 @@ class HyperNetwork(nn.Module):
         super(HyperNetwork, self).__init__()
         fourier_fac = 2
         self.conv3d_fourier = (channel_n*fourier_fac+extra_channels) * kernel_size * kernel_size 
-        self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2) * hidden_size 
+        self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2+8) * hidden_size 
         self.fc1_fourier = (hidden_size) * channel_n *fourier_fac
         
         #self.fc2_fourier = (hidden_size) * channel_n *fourier_fac
         #self.fc3_fourier = (hidden_size) * channel_n *fourier_fac
 
         self.conv3d_image = (channel_n+extra_channels) * kernel_size * kernel_size
-        self.fc0_image = (channel_n*2+extra_channels*2) * hidden_size
+        self.fc0_image = (channel_n*2+extra_channels*2+8) * hidden_size 
         self.fc1_image = (hidden_size) * channel_n
 
         #self.fc2_image = (hidden_size) * channel_n
@@ -98,6 +124,7 @@ class HyperNetwork(nn.Module):
                 nn.SiLU(),
                 nn.Linear(64, output_size)
             )
+
 
         self.lin01 = nn.Linear(input_size, 128)
         #input_size = 0
@@ -168,6 +195,10 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         self.kernel_size = kernelSize = 7
         self.padding = padding = int((kernelSize-1)/2)
         
+
+
+        self.attention = ScaledDotProductAttentionModule(channel_n*2*2+2*extra_channels, 8) #channel_n*2*2+2*extra_channels)
+        self.attention_real = ScaledDotProductAttentionModule(channel_n*2+2*extra_channels, 8) #channel_n*2+2*extra_channels)
 
         self.generated_weights = {}
         self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels) #41
@@ -299,10 +330,22 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
         dx = self.perceive_dict(dx, model_dict["conv3d"], fourier_fac)
 
+        # Attention here
+
+        if True:      
+            #dx = dx.view(dx.size(0), dx.size(2) * dx.size(3), dx.size(1))
+            dx = dx.transpose(1,3)
+            att = model_dict["attention"](dx)
+            #dx = dx.view(dx.size(0), -1, 16, 16)
+            att = att.transpose(1,3)
+            dx = dx.transpose(1,3)
+            dx = torch.concat((dx, att), 1)
+
+
         batch_size = dx.shape[0]
         output = []
         for i in range(batch_size):
-            weights = model_dict['fc0'][i].view(self.hidden_size, self.channel_n*2*fourier_fac+self.extra_channels*2, 1, 1)
+            weights = model_dict['fc0'][i].view(self.hidden_size, self.channel_n*2*fourier_fac+self.extra_channels*2+8, 1, 1)
             output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
 
@@ -470,6 +513,10 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             self.generated_weights['image']['normalisation'] = self.real_norm_real2
             self.generated_weights['fourier']['pt0'] = self.conv_pt_0
             self.generated_weights['image']['pt0'] = self.conv_pt_0_real
+
+            self.generated_weights['fourier']['attention'] = self.attention
+            self.generated_weights['image']['attention'] = self.attention_real
+
             for step in range(steps_f):
                 x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.generated_weights['fourier'], step=step/(steps_f), fourier_fac=2) 
                 x[:, self.input_channels:self.channel_n, ...] = x_new[:, self.input_channels:self.channel_n, ...]

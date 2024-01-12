@@ -13,7 +13,6 @@ import cv2
 import os
 import time
 from PIL import Image
-from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
 class Agent_Diffusion(Agent_Multi_NCA):
     def initialize(self, beta_schedule='linear'): #'linear'): cosine
@@ -148,7 +147,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         :param label:
         :return: corrupt images, associated noise
         """
-        id, img, _, properties = data['id'], data['image'], data['label'], data['file_properties']
+        id, img, _ = data['id'], data['image'], data['label']
         img = img.to(self.device)
         
         #noise = img.clone()
@@ -180,7 +179,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
             img_noisy, noise = self.repeatBatch(img_noisy, noise, self.exp.get_from_config('batch_duplication'))
         data_noisy = (id, img_noisy, img_noisy)
 
-        data = {'id': id, 'image': img_noisy, 'label': img_noisy, 'noise': noise, 'file_properties': properties}
+        data = {'id': id, 'image': img_noisy, 'label': img_noisy, 'noise': noise}
 
         return data
 
@@ -191,7 +190,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
         """
         t = torch.tensor(t/self.timesteps).to(self.device) # TODO: torch.tensor((t+1)/self.timesteps).to(self.device)
         #print("T", t)
-        id, inputs, targets, properties = data['id'], data['image'], data['label'], data['file_properties']
+        id, inputs, targets = data['id'], data['image'], data['label']
         if self.exp.model_state == "train":
             #print("TTTTTTT<-------------------", t.shape)
             t = t.repeat(self.exp.get_from_config('batch_duplication'))
@@ -203,16 +202,16 @@ class Agent_Diffusion(Agent_Multi_NCA):
             else:
                 model_id = math.floor(((t-0.0000001) * self.timesteps) / (self.timesteps / len(self.model)))  
             #print("TTTTTTTTTTTTTTTT", t)            
-            outputs = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep, properties=properties)
+            outputs, *_ = self.model[model_id](inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
         else:
-            outputs = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
+            outputs, *_ = self.model(inputs, steps=self.getInferenceSteps(), fire_rate=self.exp.get_from_config('cell_fire_rate'), t=t, epoch=self.exp.currentStep)
         
         if self.exp.get_from_config('Persistence'):
             if np.random.random() < self.exp.get_from_config('pool_chance'):
                 self.epoch_pool.addToPool(outputs.detach().cpu(), id)
         #return outputs[..., 0:self.output_channels], targets
 
-        outputs = outputs[0][..., self.input_channels:self.input_channels+self.output_channels], 0#outputs[1][..., self.input_channels*2:self.input_channels*2+self.output_channels]
+        outputs = outputs[..., self.input_channels:self.input_channels+self.output_channels]
 
         if False:
             mod_outputs = outputs.clone()
@@ -401,20 +400,16 @@ class Agent_Diffusion(Agent_Multi_NCA):
                         #loss_l1 = F.l1_loss(outputs, noise, reduction='none')
                         #loss_l1 = loss_l1.mean(dim=1)
 
-                        if False:
-                            #print(outputs[1].shape, real_img.shape)
-                            outputs_fft = torch.fft.fft2(outputs[1].transpose(1, 3))
-                            noise_fft = torch.fft.fft2(real_img.transpose(1, 3))
-                            #print(outputs_fft.shape, noise_fft.shape)
-                            loss_mse_fourier_magnitude = F.mse_loss(torch.abs(outputs_fft), torch.abs(noise_fft), reduction='none')
-                            loss_mse_fourier_phase = F.mse_loss(torch.angle(outputs_fft), torch.angle(noise_fft), reduction='none')
-                        
-                        #denoised_img = self.p_sample_mean(outputs[0], img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
-                        #denoised_realimg = self.p_sample_mean(noise, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
+                        #print(outputs[1].shape, real_img.shape)
+                        #outputs_fft = torch.fft.fft2(outputs[1].transpose(1, 3))
+                        #noise_fft = torch.fft.fft2(real_img.transpose(1, 3))
+                        #print(outputs_fft.shape, noise_fft.shape)
+                        #loss_mse_fourier_magnitude = F.mse_loss(torch.abs(outputs_fft), torch.abs(noise_fft), reduction='none')
+                        #loss_mse_fourier_phase = F.mse_loss(torch.angle(outputs_fft), torch.angle(noise_fft), reduction='none')
+
 
                         #loss = loss_mse.mean() + loss_l1.mean() #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.001
-                        #loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) + 10* 
-                        loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) #+ 10* (1 - ssim((denoised_img+1)/2, (denoised_realimg+1)/2, data_range=1, size_average=True))#+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.025
+                        loss = F.l1_loss(outputs[0], noise) + F.mse_loss(outputs[0], noise) #+ (loss_mse_fourier_magnitude.mean()*0.1 + loss_mse_fourier_phase.mean()) * 0.025
 
                     if False:
                         denoised_img = self.p_sample_mean(outputs, img[..., 0:self.exp.get_from_config(tag="input_channels")], t, 0)
@@ -938,12 +933,9 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     img = self.make_seed(noise)
                     for step in tqdm(reversed(range(self.timesteps))):
                         t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                        img_p = {'id': 0,'image': img,'label': 0, 'file_properties': np.array([1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-                                                                                      -1, -1, -1, 1, -1, -1, -1, -1, 1, 1, 
-                                                                                      -1,-1, 1, 1, -1, -1, -1, 1, -1, -1, 
-                                                                                      -1, 1, 1, 1, -1, 1, 1, 1, 1, 1])}
+                        img_p = {'id': 0,'image': img,'label': 0}
                         #print("NOISE HERE", torch.max(img), torch.min(img))
-                        output, _ = self.get_outputs(img_p, t = step)
+                        output, *_ = self.get_outputs(img_p, t = step)
                         output = output[0]
 
                         # ----- SAVE AS GIF ----
@@ -1138,7 +1130,7 @@ class Agent_Diffusion(Agent_Multi_NCA):
                     for step in tqdm(reversed(range(self.timesteps))):
                         for i in range(1):
                             t = torch.full((1,), step, device=self.device, dtype=torch.long)
-                            img_p = {'image':img, 'id': 0, 'label': 0, 'file_properties':np.array([0])}
+                            img_p = {'image':img, 'id': 0, 'label': 0}
                             #print("NOISE HERE", torch.max(img), torch.min(img))
                             output, _ = self.get_outputs(img_p, t = step)
                             output = output[0]
