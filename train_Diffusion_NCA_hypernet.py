@@ -27,7 +27,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run875_CelebA_wavelet_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run923_CelebA_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -35,12 +35,12 @@ config = [{
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 10,
-    'evaluate_interval': 2,
+    'save_interval': 5,
+    'evaluate_interval': 1,
     'n_epoch': 100000,
     'batch_size': 12,
     # Model
-    'channel_n': 32,        # Number of CA state channels
+    'channel_n': 48,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 10,
     'cell_fire_rate': 0,
@@ -50,7 +50,7 @@ config = [{
     'schedule': 'cosine',
     # Data
     'input_size': (48, 48),
-    'data_split': [0.005, 0.994, 0.001],#[0.80340968, 0.09806, 1], 
+    'data_split': [0.01, 0.94, 0.001],#[0.80340968, 0.09806, 1], 
     'timesteps': 300,
     'timesteps_train': 1,
     '2D': True,
@@ -72,7 +72,7 @@ device = torch.device(config[0]['device'])
 #ca7 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 #ca8 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 #ca0 = DiffusionNCA_fft2(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
-ca0 = DiffusionNCA_wavelet_hypernet(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
+ca0 = DiffusionNCA_fft2_hypernet(config[0]['channel_n'], config[0]['cell_fire_rate'], device, hidden_size=config[0]['hidden_size'], input_channels=config[0]['input_channels'], img_size=config[0]['input_size'][0],).to(device)
 ca = [ca0]#, ca1]#[ca0, ca1]#, ca2, ca3, ca4, ca5, ca6, ca7, ca8, ca9]#, ca2, ca3, ca4, ca5, ca6, ca7, ca8, ca9]
 
 print("PARAMETERS", sum(p.numel() for p in ca0.parameters() if p.requires_grad))

@@ -29,7 +29,7 @@ class HyperNetwork(nn.Module):
         #self.fc = nn.Linear(input_size, output_size)
         if False:
             self.fc = nn.Sequential(
-                nn.Linear(input_size, 64),
+                nn.Linear(input_size-1, 64),
                 nn.SiLU(),
                 nn.Linear(64, 64),
                 nn.SiLU(),
@@ -37,6 +37,18 @@ class HyperNetwork(nn.Module):
                 nn.SiLU(),
                 nn.Linear(64, output_size)
             )
+
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(16*16*3, 64),
+            nn.SiLU(),
+            nn.Linear(64, 64),
+            nn.SiLU(),
+            nn.Linear(64, 64),
+            nn.SiLU(),
+            nn.Linear(64, input_size-1)
+        )
+
         self.lin01 = nn.Linear(input_size, 32)
         self.lin02 = nn.Linear(32+input_size, 128)
         #self.lin03 = nn.Linear(64+input_size, 256)
@@ -57,13 +69,18 @@ class HyperNetwork(nn.Module):
 
         self.silu = nn.ReLU()
         
-    def forward(self, x):
+    def forward(self, x, x_img):
         generated_weights = {'fourier':{}, 'image':{}}
 
         # Construct weights
 
         # Generate flattened weights
         #x = x.unsqueeze(1)
+
+        x_img = self.fc(x_img)
+        x = torch.cat((x, x_img), dim=1)
+
+
         dx = self.silu(self.lin01(x))
 
         dx = torch.cat((dx, x), dim=1)
@@ -111,7 +128,7 @@ class DiffusionNCA_wavelet_hypernet(nn.Module):
         
 
         self.generated_weights = {}
-        self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels)
+        self.hypernetwork = HyperNetwork(5, channel_n, kernelSize, hidden_size, extra_channels)
 
         # ---------------- MODEL 0 -----------------
         self.drop0 = nn.Dropout(drop_out_rate)
@@ -332,10 +349,7 @@ class DiffusionNCA_wavelet_hypernet(nn.Module):
 
         # Convert to Fourier
         #print(x.shape)
-        t_t = t[..., None]
-        if len(t_t.shape) == 1:
-            t_t = t_t[..., None]
-        self.generated_weights = self.hypernetwork(t_t)
+
 
         # ---------------- MODEL 0 -----------------
         if False:
@@ -390,6 +404,14 @@ class DiffusionNCA_wavelet_hypernet(nn.Module):
             x_start, y_start = (x.shape[2]-pixel_X)//2, (x.shape[3]-pixel_Y)//2 # - pixel_X//2 - pixel_Y//2, 
             #x_start, y_start = x.shape[2]//2, x.shape[3]//2
             x = x_wave[..., :pixel_X, :pixel_Y]
+
+            # GENERATE WEIGHTS basedon conditioning in wavelet:
+            t_t = t[..., None]
+            if len(t_t.shape) == 1:
+                t_t = t_t[..., None]
+            self.generated_weights = self.hypernetwork(t_t, x[:, :self.input_channels, ...])
+
+
             #print(x.shape)
             #plt.imshow((x_wave.transpose(1,3)[0, :, :, 0:3].detach().cpu().numpy()+1)/2)
             #plt.show()

@@ -5,6 +5,68 @@ import torch.nn.functional as F
 from matplotlib import pyplot as plt
 import math
 
+class AttentionModule(nn.Module):
+    def __init__(self, input_dim, attention_dim):
+        super(AttentionModule, self).__init__()
+        self.attention_fc = nn.Linear(input_dim, attention_dim)
+
+    def forward(self, x):
+        attention_weights = F.softmax(self.attention_fc(x), dim=1)
+        return attention_weights
+
+class HyperNetwork2(nn.Module):
+    def __init__(self, input_size, channel_n, kernel_size, hidden_size, extra_channels):#(self, input_dim, hidden_dim, attention_dim, output_dims):
+        super(HyperNetwork2, self).__init__()
+
+        attention_dim = 32
+        hidden_size_hyper = 128
+
+        fourier_fac = 2
+        self.conv3d_fourier = (channel_n*fourier_fac+extra_channels) * kernel_size * kernel_size 
+        self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2) * hidden_size 
+        self.fc1_fourier = (hidden_size) * channel_n *fourier_fac
+
+        self.conv3d_image = (channel_n+extra_channels) * kernel_size * kernel_size
+        self.fc0_image = (channel_n*2+extra_channels*2) * hidden_size
+        self.fc1_image = (hidden_size) * channel_n
+
+
+        self.attention = AttentionModule(input_size, attention_dim)
+        self.fc1 = nn.Linear(input_size + attention_dim, hidden_size_hyper)
+        self.fc2 = nn.Linear(hidden_size_hyper, hidden_size_hyper)  # Adjusted to sum of output dims
+        self.dropout = nn.Dropout(0.25)
+        self.batch_norm = nn.BatchNorm1d(hidden_size_hyper)
+
+        # Additional layers for weight generation
+        self.lin05_conv3d_fourier = nn.Linear(hidden_size_hyper, self.conv3d_fourier)
+        self.lin05_fc0_fourier = nn.Linear(hidden_size_hyper, self.fc0_fourier)
+        self.lin05_fc1_fourier = nn.Linear(hidden_size_hyper, self.fc1_fourier)
+
+        self.lin05_conv3d_image = nn.Linear(hidden_size_hyper, self.conv3d_image)
+        self.lin05_fc0_image = nn.Linear(hidden_size_hyper, self.fc0_image)
+        self.lin05_fc1_image = nn.Linear(hidden_size_hyper, self.fc1_image)
+
+    def forward(self, x):
+        attention_weights = self.attention(x)
+        x = torch.cat([x, attention_weights], dim=1)
+        x = F.relu(self.fc1(x))
+        x = self.batch_norm(x)
+        x = self.dropout(x)
+        x = self.fc2(x)  # Output of fc2 not directly used
+
+        # Generate weights for each specified layer
+        generated_weights = {'fourier': {}, 'image': {}}
+        generated_weights["fourier"]['conv3d'] = self.lin05_conv3d_fourier(x)
+        generated_weights["fourier"]['fc0'] = self.lin05_fc0_fourier(x)
+        generated_weights["fourier"]['fc1'] = self.lin05_fc1_fourier(x)
+
+        generated_weights["image"]['conv3d'] = self.lin05_conv3d_image(x)
+        generated_weights["image"]['fc0'] = self.lin05_fc0_image(x)
+        generated_weights["image"]['fc1'] = self.lin05_fc1_image(x)
+
+        return generated_weights
+
+
 class HyperNetwork(nn.Module):
     def __init__(self, input_size, channel_n, kernel_size, hidden_size, extra_channels):
         super(HyperNetwork, self).__init__()
@@ -36,8 +98,10 @@ class HyperNetwork(nn.Module):
                 nn.SiLU(),
                 nn.Linear(64, output_size)
             )
-        self.lin01 = nn.Linear(input_size, 32)
-        self.lin02 = nn.Linear(32+input_size, 128)
+
+        self.lin01 = nn.Linear(input_size, 128)
+        #input_size = 0
+        self.lin02 = nn.Linear(128+input_size, 128)
         #self.lin03 = nn.Linear(64+input_size, 256)
         #self.lin04 = nn.Linear(256+input_size, 4096)
         self.lin05_conv3d_fourier = nn.Linear(128+input_size, self.conv3d_fourier)
@@ -62,16 +126,12 @@ class HyperNetwork(nn.Module):
         # Construct weights
 
         # Generate flattened weights
-        #x = x.unsqueeze(1)
         dx = self.silu(self.lin01(x))
 
         dx = torch.cat((dx, x), dim=1)
         dx = self.silu(self.lin02(dx))
         dx = torch.cat((dx, x), dim=1)
-        #dx = self.silu(self.lin03(dx))
-        #dx = torch.cat((dx, x), dim=1)
-        #dx = self.silu(self.lin04(dx))
-        #dx = torch.cat((dx, x), dim=1)
+
         generated_weights["fourier"]['conv3d'] = self.lin05_conv3d_fourier(dx)
         generated_weights["fourier"]['fc0'] = self.lin05_fc0_fourier(dx)
         generated_weights["fourier"]['fc1'] = self.lin05_fc1_fourier(dx)
@@ -110,7 +170,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         
 
         self.generated_weights = {}
-        self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels)
+        self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels) #41
 
         # ---------------- MODEL 0 -----------------
         self.drop0 = nn.Dropout(drop_out_rate)
@@ -294,7 +354,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
         return x
     
-    def forward(self, x, steps=10, fire_rate=None, t=0, epoch=0, **kwargs):
+    def forward(self, x, steps=10, fire_rate=None, t=0, epoch=0, properties=None, **kwargs):
         r"""
         forward pass from NCA
         :param x: perception
@@ -334,6 +394,9 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         t_t = t[..., None]
         if len(t_t.shape) == 1:
             t_t = t_t[..., None]
+            properties = properties[None, ...]
+
+        #t_t = torch.cat((t_t, torch.tensor(properties).to(self.device)), 1)
         self.generated_weights = self.hypernetwork(t_t)
 
         # ---------------- MODEL 0 -----------------
@@ -378,13 +441,15 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
 
 
-            x_old = x.clone()    
-            x = torch.fft.fft2(x, norm="forward", s=(pixel_X, pixel_Y))#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+              
+            x = torch.fft.fft2(x, norm="forward")#, s=(pixel_X, pixel_Y))#) #, norm="forward" , s=(x_old.shape[2], x_old.shape[3])
+            x_old = x.clone()  
             x = torch.fft.fftshift(x, dim=(2,3))
+            
             #x_old = x.clone()
-            x_start, y_start = (x.shape[2]-pixel_X)//2, (x.shape[3]-pixel_Y)//2 # - pixel_X//2 - pixel_Y//2, 
+            x_start, y_start = (x.shape[2])//2, (x.shape[3])//2#(x.shape[2]-pixel_X)//2, (x.shape[3]-pixel_Y)//2 # - pixel_X//2 - pixel_Y//2, 
             #x_start, y_start = x.shape[2]//2, x.shape[3]//2
-            #x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
+            x = x[..., x_start:x_start+pixel_X, y_start:y_start+pixel_Y]
 
 
             if False:
@@ -416,11 +481,15 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             x = torch.complex(torch.split(x, int(x.shape[3]/2), dim=3)[0], torch.split(x, int(x.shape[3]/2), dim=3)[1])
             x = x.transpose(1, 3)
 
-            #x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
-            #x_old = torch.fft.ifftshift(x_old, dim=(2,3))
-            x = torch.fft.ifft2(x_old, norm="forward", s=(x_old.shape[2], x_old.shape[3])).real 
+            x = torch.fft.ifftshift(x, dim=(2,3))
+            x_old[:, self.input_channels:, x_start:x_start+pixel_X, y_start:y_start+pixel_Y] = x[:, self.input_channels:, ...]
+            x = torch.fft.ifft2(x_old, norm="forward").real #, s=(x_old.shape[2], x_old.shape[3])).real 
 
-            x[:, 0:self.input_channels, ...] = x_old[:, 0:self.input_channels, ...]
+            
+            
+            
+
+            #x[:, 0:self.input_channels, ...] = x_old[:, 0:self.input_channels, ...]
 
             x_four = x
             
