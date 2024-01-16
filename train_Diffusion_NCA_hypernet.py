@@ -27,7 +27,7 @@ config = [{
     'label_path': r"/home/jkalkhof_locale/Documents/Data/img_align_celeba_64/", #img_align_celeba, Emojis_Smiley, Emojis_Google, img_align_celeba_64
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/BCSS/BCSS_train/images/",
-    'name': r'DiffusionNCA_Run925_CelebA_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
+    'name': r'DiffusionNCA_Run937_CelebA_hypernet', #last 58 #DiffusionNCA_Run585_CelebA_fixed_rescale_norm_fft_updat_l2_k7_multiNCA_4_smoothl1_twoStep
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -40,17 +40,17 @@ config = [{
     'n_epoch': 100000,
     'batch_size': 12,
     # Model
-    'channel_n': 48,        # Number of CA state channels
+    'channel_n': 64,        # Number of CA state channels
     'batch_duplication': 1,
     'inference_steps': 10,
-    'cell_fire_rate': 0,
+    'cell_fire_rate': 0.1,
     'input_channels': 3,
     'output_channels': 3,
-    'hidden_size':  256,
+    'hidden_size':  384,
     'schedule': 'cosine',
     # Data
-    'input_size': (48, 48),
-    'data_split': [0.01, 0.94, 0.001],#[0.80340968, 0.09806, 1], 
+    'input_size': (64, 64),
+    'data_split': [0.005, 0.94, 0.001],#[0.80340968, 0.09806, 1], 
     'timesteps': 300,
     'timesteps_train': 1,
     '2D': True,
@@ -87,7 +87,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceBCELoss() 
 
-if False:
+if True:
     #with torch.autograd.detect_anomaly(): 
     agent.train(data_loader, loss_function)
 else:

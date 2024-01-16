@@ -4,6 +4,7 @@ from src.models.Model_BackboneNCA import BackboneNCA
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 import math
+import torch.nn.utils.weight_norm as weight_norm
 
 class ScaledDotProductAttentionModule(nn.Module):
     def __init__(self, input_dim, attention_dim):
@@ -44,7 +45,7 @@ class HyperNetwork2(nn.Module):
     def __init__(self, input_size, channel_n, kernel_size, hidden_size, extra_channels):#(self, input_dim, hidden_dim, attention_dim, output_dims):
         super(HyperNetwork2, self).__init__()
 
-        attention_dim = 32
+        attention_dim = 8
         hidden_size_hyper = 128
 
         fourier_fac = 2
@@ -58,19 +59,19 @@ class HyperNetwork2(nn.Module):
 
 
         self.attention = AttentionModule(input_size, attention_dim)
-        self.fc1 = nn.Linear(input_size + attention_dim, hidden_size_hyper)
-        self.fc2 = nn.Linear(hidden_size_hyper, hidden_size_hyper)  # Adjusted to sum of output dims
+        self.fc1 = weight_norm(nn.Linear(input_size + attention_dim, hidden_size_hyper))
+        self.fc2 = weight_norm(nn.Linear(hidden_size_hyper, hidden_size_hyper))  # Adjusted to sum of output dims
         self.dropout = nn.Dropout(0.25)
         self.batch_norm = nn.BatchNorm1d(hidden_size_hyper)
 
         # Additional layers for weight generation
-        self.lin05_conv3d_fourier = nn.Linear(hidden_size_hyper, self.conv3d_fourier)
-        self.lin05_fc0_fourier = nn.Linear(hidden_size_hyper, self.fc0_fourier)
-        self.lin05_fc1_fourier = nn.Linear(hidden_size_hyper, self.fc1_fourier)
+        self.lin05_conv3d_fourier = weight_norm(nn.Linear(hidden_size_hyper, self.conv3d_fourier))
+        self.lin05_fc0_fourier = weight_norm(nn.Linear(hidden_size_hyper, self.fc0_fourier))
+        self.lin05_fc1_fourier = weight_norm(nn.Linear(hidden_size_hyper, self.fc1_fourier))
 
-        self.lin05_conv3d_image = nn.Linear(hidden_size_hyper, self.conv3d_image)
-        self.lin05_fc0_image = nn.Linear(hidden_size_hyper, self.fc0_image)
-        self.lin05_fc1_image = nn.Linear(hidden_size_hyper, self.fc1_image)
+        self.lin05_conv3d_image = weight_norm(nn.Linear(hidden_size_hyper, self.conv3d_image))
+        self.lin05_fc0_image = weight_norm(nn.Linear(hidden_size_hyper, self.fc0_image))
+        self.lin05_fc1_image = weight_norm(nn.Linear(hidden_size_hyper, self.fc1_image))
 
     def forward(self, x):
         attention_weights = self.attention(x)
@@ -94,18 +95,18 @@ class HyperNetwork2(nn.Module):
 
 
 class HyperNetwork(nn.Module):
-    def __init__(self, input_size, channel_n, kernel_size, hidden_size, extra_channels):
+    def __init__(self, input_size, channel_n, kernel_size, hidden_size, extra_channels, attention_dim=32):#(self, input_dim, hidden_dim, attention_dim, output_dims):
         super(HyperNetwork, self).__init__()
         fourier_fac = 2
         self.conv3d_fourier = (channel_n*fourier_fac+extra_channels) * kernel_size * kernel_size 
-        self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2+8) * hidden_size 
+        self.fc0_fourier = (channel_n*2*fourier_fac+extra_channels*2+attention_dim) * hidden_size 
         self.fc1_fourier = (hidden_size) * channel_n *fourier_fac
         
         #self.fc2_fourier = (hidden_size) * channel_n *fourier_fac
         #self.fc3_fourier = (hidden_size) * channel_n *fourier_fac
 
         self.conv3d_image = (channel_n+extra_channels) * kernel_size * kernel_size
-        self.fc0_image = (channel_n*2+extra_channels*2+8) * hidden_size 
+        self.fc0_image = (channel_n*2+extra_channels*2+attention_dim) * hidden_size 
         self.fc1_image = (hidden_size) * channel_n
 
         #self.fc2_image = (hidden_size) * channel_n
@@ -126,21 +127,21 @@ class HyperNetwork(nn.Module):
             )
 
 
-        self.lin01 = nn.Linear(input_size, 128)
+        self.lin01 = weight_norm(nn.Linear(input_size, 128))
         #input_size = 0
-        self.lin02 = nn.Linear(128+input_size, 128)
+        self.lin02 = weight_norm(nn.Linear(128+input_size, 128))
         #self.lin03 = nn.Linear(64+input_size, 256)
         #self.lin04 = nn.Linear(256+input_size, 4096)
-        self.lin05_conv3d_fourier = nn.Linear(128+input_size, self.conv3d_fourier)
-        self.lin05_fc0_fourier = nn.Linear(128+input_size, self.fc0_fourier)
-        self.lin05_fc1_fourier = nn.Linear(128+input_size, self.fc1_fourier)
+        self.lin05_conv3d_fourier = weight_norm(nn.Linear(128+input_size, self.conv3d_fourier))
+        self.lin05_fc0_fourier = weight_norm(nn.Linear(128+input_size, self.fc0_fourier))
+        self.lin05_fc1_fourier = weight_norm(nn.Linear(128+input_size, self.fc1_fourier))
 
         #self.lin05_fc2_fourier = nn.Linear(128+input_size, self.fc2_fourier)
         #self.lin05_fc3_fourier = nn.Linear(128+input_size, self.fc3_fourier)
 
-        self.lin05_conv3d_image = nn.Linear(128+input_size, self.conv3d_image)
-        self.lin05_fc0_image = nn.Linear(128+input_size, self.fc0_image)
-        self.lin05_fc1_image = nn.Linear(128+input_size, self.fc1_image)
+        self.lin05_conv3d_image = weight_norm(nn.Linear(128+input_size, self.conv3d_image))
+        self.lin05_fc0_image = weight_norm(nn.Linear(128+input_size, self.fc0_image))
+        self.lin05_fc1_image = weight_norm(nn.Linear(128+input_size, self.fc1_image))
 
         #self.lin05_fc2_image = nn.Linear(128+input_size, self.fc2_image)
         #self.lin05_fc3_image = nn.Linear(128+input_size, self.fc3_image)
@@ -175,6 +176,19 @@ class HyperNetwork(nn.Module):
 
         return generated_weights
 
+class PixelNorm(nn.Module):
+    def __init__(self, epsilon=1e-8):
+        super(PixelNorm, self).__init__()
+        self.epsilon = epsilon
+
+    def forward(self, x):
+        # Calculate the square root of the sum of the squares of each pixel
+        # Add epsilon for numerical stability
+        norm = torch.sqrt(torch.mean(x ** 2, dim=1, keepdim=True) + self.epsilon)
+        # Normalize the input x
+        x = x / norm
+        return x
+
 
 class DiffusionNCA_fft2_hypernet(nn.Module):
     r"""Implementation of Diffusion NCA
@@ -186,6 +200,13 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
         extra_channels = 4
         self.extra_channels = extra_channels
+        self.attention = False
+
+
+        if self.attention:
+            self.attention_dim = 32
+        else:
+            self.attention_dim = 0
 
         self.device=device
         self.input_channels = input_channels
@@ -196,16 +217,16 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         self.padding = padding = int((kernelSize-1)/2)
         
 
-
-        self.attention = ScaledDotProductAttentionModule(channel_n*2*2+2*extra_channels, 8) #channel_n*2*2+2*extra_channels)
-        self.attention_real = ScaledDotProductAttentionModule(channel_n*2+2*extra_channels, 8) #channel_n*2+2*extra_channels)
+        if self.attention:
+            self.attention = ScaledDotProductAttentionModule(channel_n*2*2+2*extra_channels, self.attention_dim) #channel_n*2*2+2*extra_channels)
+            self.attention_real = ScaledDotProductAttentionModule(channel_n*2+2*extra_channels, self.attention_dim) #channel_n*2+2*extra_channels)
 
         self.generated_weights = {}
-        self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels) #41
+        self.hypernetwork = HyperNetwork(1, channel_n, kernelSize, hidden_size, extra_channels, attention_dim=self.attention_dim) #41
 
         # ---------------- MODEL 0 -----------------
         self.drop0 = nn.Dropout(drop_out_rate)
-        self.norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+        self.norm_real2 = PixelNorm()#nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
         
         self.p0_real = nn.Conv2d(channel_n*2+extra_channels, channel_n*2, kernel_size=kernelSize, stride=1, padding=padding)#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
         self.p1_real = 0#nn.Conv2d(channel_n*8+extra_channels, channel_n*8, kernel_size=kernelSize, stride=1, padding=padding)#, groups=channel_n*2+extra_channels*4)#, padding_mode="reflect", groups=channel_n*2+extra_channels)#, groups=channel_n*2)
@@ -241,7 +262,8 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
         # ---------------- MODEL 1 -----------------
         self.real_drop0 = nn.Dropout(drop_out_rate)
-        self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+        #self.real_norm_real2 = nn.GroupNorm(num_groups =  1, num_channels=hidden_size)
+        self.real_norm_real2 = PixelNorm()
         self.real_p0_real = nn.Conv2d(channel_n+extra_channels, channel_n, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect")#, groups=channel_n+extra_channels)#reflect, groups=channel_n*2)
         self.real_p1_real = 0#nn.Conv2d(channel_n+extra_channels, channel_n, kernel_size=kernelSize, stride=1, padding=padding, padding_mode="reflect")#, groups=channel_n+extra_channels)#, groups=channel_n*2)
         self.real_fc0_real = nn.Conv2d(channel_n*2+extra_channels, hidden_size, kernel_size=1, stride=1, padding=0) #nn.Linear(channel_n*3+extra_channels*3, hidden_size)
@@ -332,7 +354,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
 
         # Attention here
 
-        if True:      
+        if self.attention:      
             #dx = dx.view(dx.size(0), dx.size(2) * dx.size(3), dx.size(1))
             dx = dx.transpose(1,3)
             att = model_dict["attention"](dx)
@@ -345,7 +367,7 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
         batch_size = dx.shape[0]
         output = []
         for i in range(batch_size):
-            weights = model_dict['fc0'][i].view(self.hidden_size, self.channel_n*2*fourier_fac+self.extra_channels*2+8, 1, 1)
+            weights = model_dict['fc0'][i].view(self.hidden_size, self.channel_n*2*fourier_fac+self.extra_channels*2+self.attention_dim, 1, 1)
             output.append(F.conv2d(dx[i:i+1], weights, padding=0))
         dx = torch.cat(output, dim=0)
 
@@ -514,8 +536,9 @@ class DiffusionNCA_fft2_hypernet(nn.Module):
             self.generated_weights['fourier']['pt0'] = self.conv_pt_0
             self.generated_weights['image']['pt0'] = self.conv_pt_0_real
 
-            self.generated_weights['fourier']['attention'] = self.attention
-            self.generated_weights['image']['attention'] = self.attention_real
+            if self.attention:
+                self.generated_weights['fourier']['attention'] = self.attention
+                self.generated_weights['image']['attention'] = self.attention_real
 
             for step in range(steps_f):
                 x_new = self.update_dict(x, 0, alive_rate=t, model_dict=self.generated_weights['fourier'], step=step/(steps_f), fourier_fac=2) 
