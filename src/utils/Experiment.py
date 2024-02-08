@@ -45,6 +45,12 @@ class Experiment():
             self.reload()
         else:
             self.setup()
+            # Load pretrained model
+            if 'pretrained' in self.config and self.currentStep == 0:
+                self.load_model()
+
+
+
         #self.initializeFID()
         self.currentStep = self.currentStep+1
         #self.set_current_config()
@@ -139,13 +145,24 @@ class Experiment():
         self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
 
         self.config = self.projectConfig
-        model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
+
+        self.load_model()
+    
+    def load_model(self) -> None:
+        if 'pretrained' in self.config and self.currentStep == 0:
+            print('>>>>>> Load Pretrained Model <<<<<<')
+            pretrained_path = os.path.join(pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
+            pretrained_step = self.current_step(os.path.join(pretrained_path, 'models')) #os.path.join(self.config['model_path'], 'models')
+            model_path = os.path.join(pretrained_path, 'models', 'epoch_' + str(pretrained_step))
+        else:
+            model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
         print(model_path)
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
             self.agent.load_state(model_path)# is not True:
             #    raise Exception("Model could not be loaded. Check if folder contains weights and architecture is identical.")
-    
+
+
     def set_size(self) -> None:
         if isinstance(self.config['input_size'][0], tuple):
             self.dataset.set_size(self.config['input_size'][-1])
@@ -240,7 +257,13 @@ class Experiment():
         r"""Reload model
             TODO: Move to a more logical position. Probably to the model and then call directly from the agent
         """
-        model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep), 'model.pth')
+        if 'pretrained' in self.config and self.current_step == 0:
+            print('Load Pretrained Model')
+            pretrained_path = os.path.join(pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
+            pretrained_step = self.current_step(model_path = os.path.join(self.config['pretrained_path'], 'models')) #os.path.join(self.config['model_path'], 'models')
+            model_path = os.path.join(pretrained_path, 'models', 'epoch_' + str(pretrained_step), 'model.pth')
+        else:
+            model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep), 'model.pth')
         if os.path.exists(model_path):
             self.agent.load_model(model_path)
 
@@ -251,11 +274,12 @@ class Experiment():
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
 
-    def current_step(self) -> int:
+    def current_step(self, model_path: str = None) -> int:
         r"""Find out the initial epoch by checking the saved models"""
-        model_path = os.path.join(self.config['model_path'], 'models')
+        if model_path is None:
+            model_path = os.path.join(self.config['model_path'], 'models')
         if os.path.exists(model_path):
-            dirs = [d for d in os.listdir(model_path) if os.path.isdir(os.path.join(os.path.join(self.config['model_path'], 'models'), d))]
+            dirs = [d for d in os.listdir(model_path) if os.path.isdir(os.path.join(model_path, d))]
             if dirs:
                 maxDir = max([int(d.split('_')[1]) for d in dirs])
                 return maxDir

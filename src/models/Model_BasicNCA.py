@@ -24,6 +24,8 @@ class BasicNCA(nn.Module):
 
         self.fc0 = nn.Linear(channel_n*3, hidden_size)
         self.fc1 = nn.Linear(hidden_size, channel_n, bias=False)
+
+        self.bn = torch.nn.BatchNorm2d(hidden_size, track_running_stats=False)
         with torch.no_grad():
             self.fc1.weight.zero_()
 
@@ -63,6 +65,9 @@ class BasicNCA(nn.Module):
         dx = self.perceive(x)
         dx = dx.transpose(1,3)
         dx = self.fc0(dx)
+        dx = dx.transpose(1,3)
+        dx = self.bn(dx)
+        dx = dx.transpose(1,3)
         dx = F.relu(dx)
         dx = self.fc1(dx)
 

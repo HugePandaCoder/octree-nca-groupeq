@@ -128,6 +128,7 @@ def merge_img_label_gt_simplified(img, label, gt, rgb=True):
         gt = gt[..., 0]
         warnings.warn("WARNING: Currently image output supports one label only")
 
+    print(img.shape, label.shape, gt.shape)
     img = torch.squeeze(img)
     label = torch.squeeze(label)
     gt = torch.squeeze(gt)

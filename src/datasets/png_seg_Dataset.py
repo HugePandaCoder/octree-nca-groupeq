@@ -103,6 +103,7 @@ class png_seg_Dataset(Dataset_NiiGz_3D):
             img = img/256#img/256/2.5 -1  #img/128 -1 #img/256/2.5 -1 #/2.5 -1
 
             # Find unique labels
+            label[label != 0] = 1
             label = rgb_to_onehot(label)
             #print(label.shape)
 
@@ -116,6 +117,8 @@ class png_seg_Dataset(Dataset_NiiGz_3D):
         #from matplotlib import pyplot as plt
         #plt.imshow(img)#outputs_fft[0, 0, :, :].real.detach().cpu().numpy())
         #plt.show()
+
+        #print(id, img.shape, label.shape)
 
 
         return data_dict

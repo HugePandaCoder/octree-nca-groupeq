@@ -7,7 +7,7 @@ import random
 class MedNCA(nn.Module):
     r"""Implementation of the backbone NCA of Med-NCA
     """
-    def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1):
+    def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, batch_duplication: int = 1):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -24,6 +24,7 @@ class MedNCA(nn.Module):
         self.device = device
         self.fire_rate = fire_rate
         self.steps = steps
+        self.batch_duplication = batch_duplication
 
         self.backbone_lowres = BackboneNCA(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels)
         self.backbone_highres = BackboneNCA(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels)
@@ -38,7 +39,12 @@ class MedNCA(nn.Module):
         x = x.transpose(1,3)
         y = y.transpose(1,3)
         y = y.to(self.device)
+
         if self.training:
+            if self.batch_duplication != 1:
+                x = torch.cat([x] * self.batch_duplication, dim=0)
+                y = torch.cat([y] * self.batch_duplication, dim=0)
+
             x, y = self.forward_train(x, y)
             return x, y
             

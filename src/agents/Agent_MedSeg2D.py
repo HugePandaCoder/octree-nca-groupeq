@@ -73,7 +73,7 @@ class Agent_MedSeg2D(BaseAgent):
             
             if i in save_img: 
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                merge_img_label_gt_simplified(patient_real_Img.transpose(1,3), patient_3d_image, patient_3d_label),
+                                merge_img_label_gt_simplified(patient_real_Img[0:1, ...].transpose(1,3), torch.sigmoid(patient_3d_image[0:1, ...]), patient_3d_label[0:1, ...]),
                                 #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                 self.exp.currentStep)
                 #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),

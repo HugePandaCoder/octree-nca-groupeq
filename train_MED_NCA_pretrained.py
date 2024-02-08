@@ -16,7 +16,8 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Med_NCA_Run2_Prostate_unsupervisedTest', #12 or 13, 54 opt, 
+    'name': r'Med_NCA_Run3_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
+    'pretrained': r'Med_NCA_Run2_Prostate_unsupervisedTest', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
