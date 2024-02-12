@@ -93,8 +93,10 @@ class Agent_MedSeg2D(BaseAgent):
         # Print dice score per label
         for key in loss_log.keys():
             if len(loss_log[key]) > 0:
-                print("Average Dice Loss 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
+                average = sum(loss_log[key].values())/len(loss_log[key])
+                print("Average Dice Loss 3d: " + str(key) + ", " + str(average))
                 print("Standard Deviation 3d: " + str(key) + ", " + str(self.standard_deviation(loss_log[key])))
+                self.exp.write_scalar('Loss/test/' + str(key), average, self.exp.currentStep)
 
         self.exp.set_model_state('train')
         return loss_log

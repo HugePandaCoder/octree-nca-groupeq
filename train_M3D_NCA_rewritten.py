@@ -14,7 +14,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'M3D_NCA_Run75_rewritten', #12 or 13, 54 opt, 
+    'name': r'M3D_NCA_Run77_rewritten', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -28,11 +28,11 @@ config = [{
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
-    'inference_steps': [20, 10],
+    'inference_steps': [20, 40],
     'cell_fire_rate': 0.5,
     'batch_size': 4,
     'input_channels': 1,
-    'output_channels': 2,
+    'output_channels': 1,
     'hidden_size': 64,
     'train_model':1,
     # Data

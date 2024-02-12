@@ -229,6 +229,21 @@ class Dataset_NiiGz_3D(Dataset_3D):
             label_name, _, _ = self.labels_list[idx]
 
             img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, img_name))
+
+            # Augmentations
+            if self.augment is not None:
+                print("AUGMENTATION " + self.augment)
+
+                img_tio = torchio.ScalarImage(tensor=img)
+                if self.augment == "spike":
+                    spike_augmentation = torchio.transforms.RandomSpike(num_spikes=1, intensity=(0.2, 0.7))
+                    img_tio = spike_augmentation(img_tio)
+                else:
+                    raise ValueError("Augmentation not implemented")
+
+                img = img_tio.tensor.numpy()
+
+
             # 2D
             if self.slice is not None:
                 if len(img.shape) == 4:
@@ -270,7 +285,6 @@ class Dataset_NiiGz_3D(Dataset_3D):
         
 
         id, img, label = img
-        print(img.shape)
 
         size = self.size 
         
