@@ -6,6 +6,7 @@ import torchio as tio
 from matplotlib import pyplot as plt
 from src.models.Model_Preprocess import PreprocessNCA
 import torch.optim as optim
+from itertools import chain
 
 class Agent_Med_NCA_finetuning(MedNCAAgent):
     """Med-NCA training agent that uses 2d patches across 2-levels during training to optimize VRAM.
@@ -14,8 +15,9 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
     def initialize(self):
         # create test  model
         super().initialize()
-        self.preprocess_model = PreprocessNCA(channel_n=16, fire_rate=0, device=self.device, hidden_size=128).to(self.device)
-        self.optimizer_test = optim.Adam(self.preprocess_model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        self.preprocess_model = PreprocessNCA(channel_n=16, fire_rate=0.3, device=self.device, hidden_size=256).to(self.device)
+        self.preprocess_model2 = PreprocessNCA(channel_n=16, fire_rate=0.3, device=self.device, hidden_size=256).to(self.device)
+        self.optimizer_test = optim.Adam(chain(self.preprocess_model.parameters(), self.preprocess_model2.parameters()), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler_test = optim.lr_scheduler.ExponentialLR(self.optimizer_test, self.exp.get_from_config('lr_gamma'))
         
 
@@ -28,10 +30,10 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         
 
         if self.model.training:
-            inputs, targets, inputs_loc = self.model(inputs, targets, return_channels=True, preprocess_model = self.preprocess_model)
+            inputs, targets, inputs_loc = self.model(inputs, targets, return_channels=True, preprocess_model = (self.preprocess_model, self.preprocess_model2))
             return inputs, targets, inputs_loc
         else:
-            inputs, targets = self.model(inputs, targets, return_channels=False, preprocess_model = self.preprocess_model)
+            inputs, targets = self.model(inputs, targets, return_channels=False, preprocess_model = (self.preprocess_model, self.preprocess_model2))
             return inputs, targets
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
@@ -53,19 +55,34 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         #plt.imshow(((inputs_loc[1][0, :, :, 0:1] - inputs_loc[0][0, :, :, 0:1]).detach().cpu().numpy()+1)/2)
         #plt.imshow((inputs_loc_3_ori[0, :, :, 0:1].detach().cpu().numpy()+1)/2)
         #plt.show()
-        self.exp.write_img('before',
-                                inputs_loc[1][0, :, :, 0:1].detach().cpu().numpy(),
-                                #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
-                                self.exp.currentStep)
-        self.exp.write_img('difference',
-                                (inputs_loc[1][0, :, :, 0:1] - inputs_loc[0][0, :, :, 0:1]).detach().cpu().numpy(),
-                                #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
-                                self.exp.currentStep)
-        self.exp.write_img('after',
-                                inputs_loc[0][0, :, :, 0:1].detach().cpu().numpy(),
-                                #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
-                                self.exp.currentStep)
-
+        if False:
+            self.exp.write_img('before',
+                                    inputs_loc[1][0, :, :, 0:1].detach().cpu().numpy(),
+                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                    self.exp.currentStep)
+            self.exp.write_img('difference',
+                                    torch.abs(inputs_loc[1][0, :, :, 0:1] - inputs_loc[0][0, :, :, 0:1]).detach().cpu().numpy(),
+                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                    self.exp.currentStep)
+            self.exp.write_img('after',
+                                    inputs_loc[0][0, :, :, 0:1].detach().cpu().numpy(),
+                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                    self.exp.currentStep)
+        else:
+            difference = inputs_loc[1][0, :, :, 0:1] - inputs_loc[0][0, :, :, 0:1]
+            difference = (difference - difference.min()) / (difference.max() - difference.min())
+            cat_img =  torch.cat((inputs_loc[1][0, :, :, 0:1], difference, inputs_loc[0][0, :, :, 0:1]), dim=1).detach().cpu().numpy()
+            self.exp.write_img('preprocessing_main_level',
+                                    cat_img,
+                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                    self.exp.currentStep)
+            difference = inputs_loc[3][0, :, :, 0:1] - inputs_loc[2][0, :, :, 0:1]
+            difference = (difference - difference.min()) / (difference.max() - difference.min())
+            cat_img =  torch.cat((inputs_loc[3][0, :, :, 0:1], difference, inputs_loc[2][0, :, :, 0:1]), dim=1).detach().cpu().numpy()
+            self.exp.write_img('preprocessing_patch_level',
+                                    cat_img,
+                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                    self.exp.currentStep)
         random.seed(rnd)
         outputs2, targets, inputs_loc_2 = self.get_outputs(data, return_channels=True)
 
@@ -99,19 +116,31 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         def toFourier(tensor):
             tensor = tensor.transpose(1, 3)
             tensor = torch.fft.fft2(tensor)
-            x_start, x_end = tensor.shape[1]//2 -16, tensor.shape[1]//2 + 16
-            y_start, y_end = tensor.shape[2]//2 -16, tensor.shape[2]//2 + 16
+            x_start, x_end = tensor.shape[1]//2 -8, tensor.shape[1]//2 + 8
+            y_start, y_end = tensor.shape[2]//2 -8, tensor.shape[2]//2 + 8
             tensor = torch.fft.fftshift(tensor)[:, x_start:x_end, y_start:y_end, :]
             return tensor
 
-        loss = 10*l1(torch.sigmoid(outputs), torch.sigmoid(outputs2)) + \
-            (l1(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
+        loss = (mse(torch.log(torch.clamp(outputs, 1e-10)), torch.log(torch.clamp(outputs2, 1e-10))) + \
+            mse(torch.log(torch.clamp(outputs*-1, 1e-10)), torch.log(torch.clamp(outputs2*-1, 1e-10))))/2 
+        loss2 = (l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:], 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:], 1e-10))) + \
+            l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:]*-1, 1e-10))))/2
+        loss3 = (l1(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
             l1(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])) + \
             l1(toFourier(inputs_loc_2[0][..., 0:self.input_channels]), toFourier(inputs_loc_2[1][..., 0:self.input_channels])) + \
-            l1(toFourier(inputs_loc_2[2][..., 0:self.input_channels]), toFourier(inputs_loc_2[3][..., 0:self.input_channels]))) / 40
+            l1(toFourier(inputs_loc_2[2][..., 0:self.input_channels]), toFourier(inputs_loc_2[3][..., 0:self.input_channels])))
+        loss4 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+            mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]) + \
+            mse(inputs_loc_2[0][..., 0:self.input_channels], inputs_loc_2[1][..., 0:self.input_channels]) + \
+            mse(inputs_loc_2[2][..., 0:self.input_channels], inputs_loc_2[3][..., 0:self.input_channels]))
         print(loss.item())
         loss_ret = {}
+        loss = loss + loss2 + loss3 + loss4 / 10
         loss_ret[0] = loss.item()
+        #loss_ret[1] = loss2.item()
+        #loss_ret[2] = loss3.item()
+
+        
 
         weight_sum = 0
         for param in self.preprocess_model.parameters():

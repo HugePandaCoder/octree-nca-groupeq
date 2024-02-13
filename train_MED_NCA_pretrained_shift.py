@@ -15,7 +15,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Med_NCA_Run9_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
+    'name': r'Med_NCA_Run18_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
     'pretrained': r'Med_NCA_Run8_Prostate_unsupervisedTest_pretrained', 
     'device':"cuda:0",
     'unlock_CPU': True,
@@ -32,7 +32,7 @@ config = [{
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': [20, 10],
     'cell_fire_rate': 0.5,
-    'batch_size': 10,
+    'batch_size': 6,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 64,
