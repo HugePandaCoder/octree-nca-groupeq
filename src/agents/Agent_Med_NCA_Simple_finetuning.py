@@ -83,8 +83,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                                     cat_img,
                                     #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                     self.exp.currentStep)
-        random.seed(rnd)
-        outputs2, targets, inputs_loc_2 = self.get_outputs(data, return_channels=True)
+        #random.seed(rnd)
+        #outputs2, targets, inputs_loc_2 = self.get_outputs(data, return_channels=True)
 
         #plt.imshow(targets[0, :, :, 0].detach().cpu().numpy())
         #plt.show()
@@ -115,27 +115,34 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         #print("INPUTS LOC ", inputs_loc[0].shape)
         def toFourier(tensor):
             tensor = tensor.transpose(1, 3)
-            tensor = torch.fft.fft2(tensor)
-            x_start, x_end = tensor.shape[1]//2 -8, tensor.shape[1]//2 + 8
-            y_start, y_end = tensor.shape[2]//2 -8, tensor.shape[2]//2 + 8
-            tensor = torch.fft.fftshift(tensor)[:, x_start:x_end, y_start:y_end, :]
-            return tensor
+            tensor_loc = torch.fft.fft2(tensor, s = (12, 12), norm="forward")
+            tensor = torch.fft.ifft2(tensor_loc, norm="forward", s=(tensor.shape[2], tensor.shape[3]))
+            #x_start, x_end = tensor.shape[2]//2 -8, tensor.shape[2]//2 + 8
+            #y_start, y_end = tensor.shape[3]//2 -8, tensor.shape[3]//2 + 8
+            #tensor = torch.fft.fftshift(tensor)#[..., x_start:x_end, y_start:y_end]
+            return tensor.real
 
-        loss = (mse(torch.log(torch.clamp(outputs, 1e-10)), torch.log(torch.clamp(outputs2, 1e-10))) + \
-            mse(torch.log(torch.clamp(outputs*-1, 1e-10)), torch.log(torch.clamp(outputs2*-1, 1e-10))))/2 
-        loss2 = (l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:], 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:], 1e-10))) + \
-            l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:]*-1, 1e-10))))/2
-        loss3 = (l1(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
-            l1(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])) + \
-            l1(toFourier(inputs_loc_2[0][..., 0:self.input_channels]), toFourier(inputs_loc_2[1][..., 0:self.input_channels])) + \
-            l1(toFourier(inputs_loc_2[2][..., 0:self.input_channels]), toFourier(inputs_loc_2[3][..., 0:self.input_channels])))
+        # >>>>> Loss MSE-variance between outputs 
+        loss = (l1(torch.log(torch.clamp(inputs_loc[6], 1e-10)), torch.log(torch.clamp(inputs_loc[7], 1e-10))) + \
+            l1(torch.log(torch.clamp(inputs_loc[6]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[7]*-1, 1e-10))))/2 
+        
+        # >>>>>Loss MSE-variance between mid layers
+        loss2 = (l1(torch.log(torch.clamp(inputs_loc[4][..., self.input_channels:], 1e-10)), torch.log(torch.clamp(inputs_loc[5][..., self.input_channels:], 1e-10)))) + \
+            (l1(torch.log(torch.clamp(inputs_loc[4][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[5][..., self.input_channels:]*-1, 1e-10))))
+            #l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:]*-1, 1e-10))))
+        
+        #loss2 = l1(inputs_loc[4][..., self.input_channels:], inputs_loc[5][..., self.input_channels:])
+        
+        # >>>>> Loss L1 between fourier
+        loss3 = (mse(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
+            l1(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
+        
+        # >>>>> Loss mse between fourier
         loss4 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
-            mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]) + \
-            mse(inputs_loc_2[0][..., 0:self.input_channels], inputs_loc_2[1][..., 0:self.input_channels]) + \
-            mse(inputs_loc_2[2][..., 0:self.input_channels], inputs_loc_2[3][..., 0:self.input_channels]))
-        print(loss.item())
+            mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
         loss_ret = {}
-        loss = loss + loss2 + loss3 + loss4 / 10
+        loss = (loss + loss2)/40 + loss4 + loss3
+        print(loss.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
         #loss_ret[2] = loss3.item()

@@ -64,22 +64,33 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3 = inputs_loc.clone()
                 inputs_loc_3[..., self.input_channels:][inputs_loc_3[..., self.input_channels:] != 0] = 0
                 inputs_loc_3_ori = inputs_loc.clone()
-                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_3.clone())[..., 0:self.input_channels]
+                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., 0:self.input_channels]
                 inputs_loc = inputs_loc_3
 
                 outputs = self.backbone_highres(inputs_loc, 
                                                steps=self.steps, 
                                                fire_rate=self.fire_rate)
+                # Variance training only
+                outputs2_patch = self.backbone_lowres(inputs_loc, 
+                                                steps=self.steps, 
+                                                fire_rate=self.fire_rate)
             else:
                 # Preprocess Inputs
                 inputs_loc_2 = inputs_loc.clone()
                 inputs_loc_2_ori = inputs_loc.clone()
-                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[0](inputs_loc)[..., 0:self.input_channels]
+                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., 0:self.input_channels]
                 inputs_loc = inputs_loc_2
 
                 outputs = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
                                                 fire_rate=self.fire_rate)
+                
+                # Variance training only
+                outputs2_full = self.backbone_lowres(inputs_loc, 
+                                                steps=self.steps, 
+                                                fire_rate=self.fire_rate)
+
+                before_patch = outputs.clone()
 
                 # Upscale lowres features to high res
                 up = torch.nn.Upsample(scale_factor=4, mode='nearest')
@@ -127,8 +138,8 @@ class MedNCA_finetune(nn.Module):
         print("SLICE CHANGES: ", torch.sum(inputs_loc_2[0, :, :, 0:1]  - inputs_loc_2_ori[0, :, :, 0:1]))
 
         if return_channels:
-            return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori)
-        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori)
+            return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
+        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
     
     def forward_eval(self, x: torch.Tensor):
         down_scaled_size = (x.shape[1] // 4, x.shape[2] // 4)
