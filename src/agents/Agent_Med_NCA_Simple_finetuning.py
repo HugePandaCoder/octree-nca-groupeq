@@ -14,7 +14,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
     def initialize(self):
         # create test  model
         super().initialize()
-        self.preprocess_model = PreprocessNCA(channel_n=16, fire_rate=0.5, device=self.device, hidden_size=128).to(self.device)
+        self.preprocess_model = PreprocessNCA(channel_n=16, fire_rate=0, device=self.device, hidden_size=128).to(self.device)
         self.optimizer_test = optim.Adam(self.preprocess_model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler_test = optim.lr_scheduler.ExponentialLR(self.optimizer_test, self.exp.get_from_config('lr_gamma'))
         
@@ -45,7 +45,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         data = self.prepare_data(data)
         rnd = random.randint(0, 1000000000)
         random.seed(rnd)
-        outputs, targets, inputs_loc = self.get_outputs(data, return_channels=True)
+        outputs, targets, inputs_loc = self.get_outputs(data, return_channels=False)
 
         #plt.imshow(targets[0, :, :, 0].detach().cpu().numpy())
         #plt.show()
@@ -94,7 +94,21 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         #target = torch.sigmoid(outputs2)
         #target[target > 0.5] = 1
         #target[target < 0.5] = 0
-        loss = l1(torch.log(torch.abs(outputs)), torch.log(torch.abs(outputs2))) + 10*(l1(inputs_loc[0], inputs_loc[1]) + l1(inputs_loc[2], inputs_loc[3]) + l1(inputs_loc_2[0], inputs_loc_2[1]) + l1(inputs_loc_2[2], inputs_loc_2[3]))
+
+        #print("INPUTS LOC ", inputs_loc[0].shape)
+        def toFourier(tensor):
+            tensor = tensor.transpose(1, 3)
+            tensor = torch.fft.fft2(tensor)
+            x_start, x_end = tensor.shape[1]//2 -16, tensor.shape[1]//2 + 16
+            y_start, y_end = tensor.shape[2]//2 -16, tensor.shape[2]//2 + 16
+            tensor = torch.fft.fftshift(tensor)[:, x_start:x_end, y_start:y_end, :]
+            return tensor
+
+        loss = 10*l1(torch.sigmoid(outputs), torch.sigmoid(outputs2)) + \
+            (l1(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
+            l1(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])) + \
+            l1(toFourier(inputs_loc_2[0][..., 0:self.input_channels]), toFourier(inputs_loc_2[1][..., 0:self.input_channels])) + \
+            l1(toFourier(inputs_loc_2[2][..., 0:self.input_channels]), toFourier(inputs_loc_2[3][..., 0:self.input_channels]))) / 40
         print(loss.item())
         loss_ret = {}
         loss_ret[0] = loss.item()

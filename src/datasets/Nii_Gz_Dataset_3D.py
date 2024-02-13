@@ -321,5 +321,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         data_dict['image'] = img
         data_dict['label'] = label
 
+        print(label.shape)
+
 
         return data_dict

@@ -9,13 +9,13 @@ from os import listdir
 
 class Dataset_NiiGz_3D_customPath(Dataset_NiiGz_3D):
     """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
-    def __init__(self, resize: bool =True, imagePath = "", labelPath = "", size=[64,64,64]) -> None: 
+    def __init__(self, resize: bool =True, imagePath = "", labelPath = "", size=[64,64,64], slice = None) -> None: 
         super().__init__(resize)
 
         self.images_path = imagePath
         self.labels_path = labelPath
         self.size = size
-        self.slice=None
+        self.slice=slice
 
         self.images_list = []
         for i, img in enumerate(listdir(self.images_path)):

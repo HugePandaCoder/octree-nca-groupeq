@@ -11,6 +11,8 @@ from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 import time
 import os
+from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPath
+
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
@@ -57,6 +59,11 @@ exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceFocalLoss() 
+
+#print("--------------- TESTING HYP 99 ---------------")
+#hyp99_test = Dataset_NiiGz_3D_customPath(size=(256, 256, 48), imagePath=r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/", labelPath=r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/")
+#hyp99_test.exp = exp
+#agent.getAverageDiceScore(pseudo_ensemble=False, dataset = hyp99_test)
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)
