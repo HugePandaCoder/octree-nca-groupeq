@@ -15,8 +15,8 @@ class PreprocessNCA(BasicNCA):
                 input_channels: number of input channels
         """
         super(PreprocessNCA, self).__init__(channel_n, fire_rate, device, hidden_size)
-        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
-        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=3, stride=1, padding=1, padding_mode="reflect")
+        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
+        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
 
     def perceive(self, x):
         r"""Perceptive function, combines 2 conv outputs with the identity of the cell
@@ -28,7 +28,7 @@ class PreprocessNCA(BasicNCA):
         y = torch.cat((x,y1,y2),1)
         return y
 
-    def forward(self, x, steps=20, fire_rate=0.5):
+    def forward(self, x, steps=10, fire_rate=0.5):
         r"""Forward function applies update function s times leaving input channels unchanged
             #Args:
                 x: image

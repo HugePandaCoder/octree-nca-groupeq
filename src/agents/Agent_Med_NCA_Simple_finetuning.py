@@ -123,25 +123,25 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             return tensor.real
 
         # >>>>> Loss MSE-variance between outputs 
-        loss = (l1(torch.log(torch.clamp(inputs_loc[6], 1e-10)), torch.log(torch.clamp(inputs_loc[7], 1e-10))) + \
-            l1(torch.log(torch.clamp(inputs_loc[6]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[7]*-1, 1e-10))))/2 
+        max_val = torch.max(torch.abs(inputs_loc[6][..., self.input_channels:]))
+        loss = mse(inputs_loc[6][..., self.input_channels:] / max_val, inputs_loc[7][..., self.input_channels:] / max_val)
         
         # >>>>>Loss MSE-variance between mid layers
-        loss2 = (l1(torch.log(torch.clamp(inputs_loc[4][..., self.input_channels:], 1e-10)), torch.log(torch.clamp(inputs_loc[5][..., self.input_channels:], 1e-10)))) + \
-            (l1(torch.log(torch.clamp(inputs_loc[4][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[5][..., self.input_channels:]*-1, 1e-10))))
+        max_val = torch.max(torch.abs(inputs_loc[4][..., self.input_channels:]))
+        loss2 = mse(inputs_loc[4][..., self.input_channels:] / max_val, inputs_loc[5][..., self.input_channels:] / max_val)
             #l1(torch.log(torch.clamp(inputs_loc[2][..., self.input_channels:]*-1, 1e-10)), torch.log(torch.clamp(inputs_loc[3][..., self.input_channels:]*-1, 1e-10))))
         
         #loss2 = l1(inputs_loc[4][..., self.input_channels:], inputs_loc[5][..., self.input_channels:])
         
         # >>>>> Loss L1 between fourier
         loss3 = (mse(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
-            l1(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
+            mse(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
         
         # >>>>> Loss mse between fourier
         loss4 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
             mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
         loss_ret = {}
-        loss = (loss + loss2)/40 + loss4 + loss3
+        loss = (loss + loss2)*5 + loss4 #loss3 #loss4 + 
         print(loss.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
