@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from src.models.Model_Preprocess import PreprocessNCA
 import torch.optim as optim
 from itertools import chain
+import torch.nn.functional as F
 
 class Agent_Med_NCA_finetuning(MedNCAAgent):
     """Med-NCA training agent that uses 2d patches across 2-levels during training to optimize VRAM.
@@ -138,10 +139,14 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             mse(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
         
         # >>>>> Loss mse between fourier
-        loss4 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
-            mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
+        loss4 = (mse(apply_gaussian_blur(inputs_loc[0][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[1][..., 0:self.input_channels])) + \
+            mse(apply_gaussian_blur(inputs_loc[2][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[3][..., 0:self.input_channels])))
+        loss5 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+                    mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
+                
+        
         loss_ret = {}
-        loss = (loss + loss2)*5 + loss4 #loss3 #loss4 + 
+        loss = ((loss + loss2) + loss4)*200 + loss5#loss3 #loss4 + 
         print(loss.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
@@ -161,3 +166,28 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             self.optimizer_test.step()
             self.scheduler_test.step()
         return loss_ret
+    
+
+def gaussian_kernel(size, sigma):
+    """Creates a 2D Gaussian kernel with PyTorch."""
+    coords = torch.arange(size).float()
+    coords -= size // 2
+
+    g = coords ** 2
+    g = (-g / (2 * sigma ** 2)).exp()
+
+    g /= g.sum()
+    gaussian_kernel = torch.outer(g, g)
+    gaussian_kernel = gaussian_kernel.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, size, size]
+
+    return gaussian_kernel
+
+def apply_gaussian_blur(image, kernel_size=13, sigma=2):
+    """Applies Gaussian blur to an image using convolution."""
+    channels = image.shape[1]
+    gaussian_kernel_weights = gaussian_kernel(kernel_size, sigma).to(image.device)
+    gaussian_kernel_weights = gaussian_kernel_weights.expand(channels, 1, kernel_size, kernel_size)
+    
+    # Ensuring the image has the channel in the second dimension, expected shape: [N, C, H, W]
+    blurred_image = F.conv2d(image, gaussian_kernel_weights, padding=kernel_size//2, groups=channels)
+    return blurred_image

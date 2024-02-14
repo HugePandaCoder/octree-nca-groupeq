@@ -28,7 +28,7 @@ class PreprocessNCA(BasicNCA):
         y = torch.cat((x,y1,y2),1)
         return y
 
-    def forward(self, x, steps=10, fire_rate=0.5):
+    def forward(self, x, steps=15, fire_rate=0.3):
         r"""Forward function applies update function s times leaving input channels unchanged
             #Args:
                 x: image

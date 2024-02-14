@@ -236,7 +236,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
                 img_tio = torchio.ScalarImage(tensor=img)
                 if self.augment == "spike":
-                    spike_augmentation = torchio.transforms.RandomSpike(num_spikes=1, intensity=(0.2, 0.7))
+                    spike_augmentation = torchio.transforms.RandomSpike(num_spikes=1, intensity=(0.3, 0.3))
                     img_tio = spike_augmentation(img_tio)
                 else:
                     raise ValueError("Augmentation not implemented")
