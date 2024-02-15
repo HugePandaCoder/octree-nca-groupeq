@@ -179,3 +179,40 @@ class DiceFocalLoss(FocalLoss):
         focal = loss_bce * (1 - logit) ** self.gamma  # focal loss
         dice_focal = focal.mean() + dice_loss
         return dice_focal
+    
+
+class DiceFocalLoss_2(FocalLoss):
+    r"""Dice Focal Loss
+    """
+    def __init__(self, gamma: float = 2, eps: float = 1e-7):
+        r"""Initialisation method of DiceBCELoss
+            #Args:
+                gamma
+                eps
+        """
+        super(DiceFocalLoss_2, self).__init__()
+        self.gamma = gamma
+        self.eps = eps
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        r"""Forward function
+            #Args:
+                input: input array
+                target: target array
+        """
+        input = torch.sigmoid(input)
+        target = torch.sigmoid(target).detach()
+        target = torch.round(target)
+        input = torch.flatten(input)
+        target = torch.flatten(target)
+
+        intersection = (input * target).sum()
+        dice_loss = 1 - (2.*intersection + 1.)/(input.sum() + target.sum() + 1.)
+
+        logit = F.softmax(input, dim=-1)
+        logit = logit.clamp(self.eps, 1. - self.eps)
+
+        loss_bce = torch.nn.functional.binary_cross_entropy(input, target, reduction='mean')
+        focal = loss_bce * (1 - logit) ** self.gamma  # focal loss
+        dice_focal = focal.mean() + dice_loss
+        return dice_focal

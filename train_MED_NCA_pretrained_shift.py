@@ -5,7 +5,7 @@ from src.models.Model_M3DNCA import M3DNCA
 from src.models.Model_MedNCA_finetune import MedNCA_finetune
 from src.agents.Agent_Med_NCA_Simple_finetuning import Agent_Med_NCA_finetuning
 from src.models.Model_M3DNCA_alive import M3DNCA_alive
-from src.losses.LossFunctions import DiceFocalLoss
+from src.losses.LossFunctions import DiceFocalLoss_2
 from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 import time
@@ -15,12 +15,12 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Med_NCA_Run39_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
+    'name': r'Med_NCA_Run54_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
     'pretrained': r'Med_NCA_Run8_Prostate_unsupervisedTest_pretrained', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-4,
+    'lr': 16e-5,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
@@ -55,8 +55,8 @@ dataset.set_experiment(exp)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceFocalLoss() 
-agent.getAverageDiceScore(pseudo_ensemble=False)
+loss_function = DiceFocalLoss_2() 
+#agent.getAverageDiceScore(pseudo_ensemble=False)
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)

@@ -15,8 +15,8 @@ class PreprocessNCA(BasicNCA):
                 input_channels: number of input channels
         """
         super(PreprocessNCA, self).__init__(channel_n, fire_rate, device, hidden_size)
-        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
-        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect")
+        self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n)
+        self.p1 = nn.Conv2d(channel_n, channel_n, kernel_size=7, stride=1, padding=3, padding_mode="reflect", groups=channel_n)
 
     def perceive(self, x):
         r"""Perceptive function, combines 2 conv outputs with the identity of the cell

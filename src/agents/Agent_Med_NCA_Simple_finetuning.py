@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from src.models.Model_Preprocess import PreprocessNCA
 import torch.optim as optim
 from itertools import chain
+from src.losses.LossFunctions import DiceFocalLoss_2
 import torch.nn.functional as F
 
 class Agent_Med_NCA_finetuning(MedNCAAgent):
@@ -46,8 +47,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                 loss item
         """
         data = self.prepare_data(data)
-        rnd = random.randint(0, 1000000000)
-        random.seed(rnd)
+        #rnd = random.randint(0, 1000000000)
+        #random.seed(rnd)
         outputs, targets, inputs_loc = self.get_outputs(data, return_channels=False)
 
         #plt.imshow(targets[0, :, :, 0].detach().cpu().numpy())
@@ -134,6 +135,11 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         
         #loss2 = l1(inputs_loc[4][..., self.input_channels:], inputs_loc[5][..., self.input_channels:])
         
+        dice_f = DiceFocalLoss_2()
+
+        dice_loss = dice_f(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]) + \
+            dice_f(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])
+
         # >>>>> Loss L1 between fourier
         loss3 = (mse(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
             mse(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
@@ -141,13 +147,16 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         # >>>>> Loss mse between fourier
         loss4 = (mse(apply_gaussian_blur(inputs_loc[0][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[1][..., 0:self.input_channels])) + \
             mse(apply_gaussian_blur(inputs_loc[2][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[3][..., 0:self.input_channels])))
-        loss5 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+        loss5 = (l1(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+                    l1(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
+        
+        loss6 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                     mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
                 
         
         loss_ret = {}
-        loss = ((loss + loss2) + loss4)*200 + loss5#loss3 #loss4 + 
-        print(loss.item())
+        loss = ((dice_loss)/2 + (loss5))#*800 + loss5#loss3 #loss4 +  loss4*5 + 
+        #print(loss.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
         #loss_ret[2] = loss3.item()

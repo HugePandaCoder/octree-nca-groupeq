@@ -50,7 +50,7 @@ class MedNCA_finetune(nn.Module):
             return x, y, inputs_loc
             
         else:
-            x = self.forward_eval(x)
+            x = self.forward_eval(x, preprocess_model=preprocess_model)
             return x, y
 
     def forward_train(self, x: torch.Tensor, y: torch.Tensor, return_channels : bool = False, preprocess_model = None):
@@ -64,8 +64,11 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3 = inputs_loc.clone()
                 inputs_loc_3[..., self.input_channels:][inputs_loc_3[..., self.input_channels:] != 0] = 0
                 inputs_loc_3_ori = inputs_loc.clone()
-                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:2*self.input_channels]
-                inputs_loc = inputs_loc_3
+                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
+                inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
+
+                #plt.imshow((inputs_loc[0, :, :, 0:3].detach().cpu().numpy()))
+                #plt.show()
 
                 outputs = self.backbone_highres(inputs_loc, 
                                                steps=self.steps, 
@@ -78,8 +81,10 @@ class MedNCA_finetune(nn.Module):
                 # Preprocess Inputs
                 inputs_loc_2 = inputs_loc.clone()
                 inputs_loc_2_ori = inputs_loc.clone()
-                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:2*self.input_channels]
-                inputs_loc = inputs_loc_2
+                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
+                inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
+
+
 
                 outputs = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
@@ -141,17 +146,28 @@ class MedNCA_finetune(nn.Module):
             return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
         return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
     
-    def forward_eval(self, x: torch.Tensor):
+    def forward_eval(self, x: torch.Tensor, preprocess_model = None):
         down_scaled_size = (x.shape[1] // 4, x.shape[2] // 4)
         inputs_loc = self.resize4d(x.cpu(), size=down_scaled_size).to(self.device) 
 
         # Start with low res lvl and go to high res level
         for m in range(2):
             if m == 1:
+                inputs_loc_3 = inputs_loc.clone()
+                inputs_loc_3[..., self.input_channels:][inputs_loc_3[..., self.input_channels:] != 0] = 0
+                inputs_loc_3_ori = inputs_loc.clone()
+                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
+                inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
+
                 outputs = self.backbone_highres(inputs_loc, 
                                                steps=self.steps, 
                                                fire_rate=self.fire_rate)
             else:
+                inputs_loc_2 = inputs_loc.clone()
+                inputs_loc_2_ori = inputs_loc.clone()
+                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
+                inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
+
                 outputs = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
                                                 fire_rate=self.fire_rate)

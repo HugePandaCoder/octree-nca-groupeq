@@ -232,7 +232,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
             # Augmentations
             if self.augment is not None:
-                print("AUGMENTATION " + self.augment)
+               # print("AUGMENTATION " + self.augment)
 
                 img_tio = torchio.ScalarImage(tensor=img)
                 if self.augment == "spike":
@@ -321,7 +321,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         data_dict['image'] = img
         data_dict['label'] = label
 
-        print(label.shape)
+        #print(label.shape)
 
 
         return data_dict
