@@ -155,7 +155,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                 
         
         loss_ret = {}
-        loss = ((dice_loss)/2 + (loss5))#*800 + loss5#loss3 #loss4 +  loss4*5 + 
+        loss = ((dice_loss)/2 + (loss5+loss6))#*800 + loss5#loss3 #loss4 +  loss4*5 + 
         #print(loss.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
