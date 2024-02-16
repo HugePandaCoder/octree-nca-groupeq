@@ -405,14 +405,19 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #ewc_loss = self.ewc.ewc_loss(self.lambda_ewc)
             
             # NQM loss
-            stack = torch.stack([inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-            outputs = torch.mean(stack, dim=0)
-            nqm_loss = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+            nqm_loss = 0
+            nqm_loss2 = 0
+            for b in range(inputs_loc[4].shape[0]):
+                stack = torch.stack([inputs_loc[4][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                outputs = torch.mean(stack, dim=0)
+                nqm_loss += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
 
-            stack = torch.stack([inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-            outputs = torch.mean(stack, dim=0)
-            nqm_loss2 = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+                stack = torch.stack([inputs_loc[6][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                outputs = torch.mean(stack, dim=0)
+                nqm_loss2 += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
 
+            nqm_loss = nqm_loss / inputs_loc[4].shape[0]
+            nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
 
             reg_loss = self.reg_loss_calculator.compute_loss(self.model, 100)
 
