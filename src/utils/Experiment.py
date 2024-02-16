@@ -151,9 +151,13 @@ class Experiment():
     def load_model(self) -> None:
         if 'pretrained' in self.config and self.currentStep == 0:
             print('>>>>>> Load Pretrained Model <<<<<<')
+            opt_loc = self.agent.optimizer
+            sch_loc = self.agent.scheduler
             pretrained_path = os.path.join(pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
             pretrained_step = self.current_step(os.path.join(pretrained_path, 'models')) #os.path.join(self.config['model_path'], 'models')
             model_path = os.path.join(pretrained_path, 'models', 'epoch_' + str(pretrained_step))
+            self.agent.optimizer = opt_loc
+            self.agent.scheduler = sch_loc
         else:
             model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
         print(model_path)

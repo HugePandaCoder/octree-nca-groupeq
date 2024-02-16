@@ -64,8 +64,8 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3 = inputs_loc.clone()
                 inputs_loc_3[..., self.input_channels:][inputs_loc_3[..., self.input_channels:] != 0] = 0
                 inputs_loc_3_ori = inputs_loc.clone()
-                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
-                inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
+                #inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
+                #inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
 
                 #plt.imshow((inputs_loc[0, :, :, 0:3].detach().cpu().numpy()))
                 #plt.show()
@@ -81,8 +81,8 @@ class MedNCA_finetune(nn.Module):
                 # Preprocess Inputs
                 inputs_loc_2 = inputs_loc.clone()
                 inputs_loc_2_ori = inputs_loc.clone()
-                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
-                inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
+                #inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
+                #inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
 
 
 
@@ -156,8 +156,8 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3 = inputs_loc.clone()
                 inputs_loc_3[..., self.input_channels:][inputs_loc_3[..., self.input_channels:] != 0] = 0
                 inputs_loc_3_ori = inputs_loc.clone()
-                inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
-                inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
+                #inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:self.input_channels*2]
+                #inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
 
                 outputs = self.backbone_highres(inputs_loc, 
                                                steps=self.steps, 
@@ -165,8 +165,8 @@ class MedNCA_finetune(nn.Module):
             else:
                 inputs_loc_2 = inputs_loc.clone()
                 inputs_loc_2_ori = inputs_loc.clone()
-                inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
-                inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
+                #inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:self.input_channels*2]
+                #inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
 
                 outputs = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
