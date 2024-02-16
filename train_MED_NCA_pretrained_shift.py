@@ -58,6 +58,11 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceFocalLoss_2() 
 #agent.getAverageDiceScore(pseudo_ensemble=False)
 
+# Get initial score
+if exp.currentStep == 0:
+    agent.getAverageDiceScore(pseudo_ensemble=False)
+
+
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)
 
