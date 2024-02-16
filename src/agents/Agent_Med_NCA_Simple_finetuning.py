@@ -305,7 +305,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         #            loss_ret[m] = loss_loc.item()
 
 
-        if False:
+        if True:
             mse = torch.nn.MSELoss()
             l1 = torch.nn.L1Loss()
             #loss = mse(torch.sum(torch.sigmoid(outputs)), torch.sum(torch.sigmoid(outputs2)))
@@ -363,8 +363,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #perceptual_loss = p_loss(self.preprocess_grayscale_for_vgg(inputs_loc[0][..., 0:self.input_channels]), self.preprocess_grayscale_for_vgg(inputs_loc[1][..., 0:self.input_channels])) + \
             #    p_loss(self.preprocess_grayscale_for_vgg(inputs_loc[2][..., 0:self.input_channels]), self.preprocess_grayscale_for_vgg(inputs_loc[3][..., 0:self.input_channels]))
 
-            ssim_loss = self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
-                self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
+            ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
+                (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
 
 
             print(inputs_loc[0][..., 0:self.input_channels].shape)
@@ -376,7 +376,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                             
 
             loss_ret = {}
-            loss = ((loss_kd)/2 + ((1-ssim_loss)+1)*10) #(ssim_loss/2 + loss5 + loss6)/4)# (loss5+loss6)/3)#*800 + loss5#loss3 #loss4 +  loss4*5 +   + loss_total_var/5
+            loss = ((loss_kd)/2 + ((ssim_loss))*10) #(ssim_loss/2 + loss5 + loss6)/4)# (loss5+loss6)/3)#*800 + loss5#loss3 #loss4 +  loss4*5 +   + loss_total_var/5
             print(loss_kd.item(), ssim_loss.item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
             #loss_ret[1] = loss2.item()
@@ -425,8 +425,13 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
             criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
 
+            ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
+                (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
+
+            print(ssim_loss.item())
+
             loss_ret = {}
-            loss = nqm_loss*3 + nqm_loss2*3 + reg_loss + criterion(seg_something_loss)#seg_something_loss*0.1
+            loss = (nqm_loss*6+ nqm_loss2*6 + reg_loss + criterion(seg_something_loss) + (ssim_loss))/50#seg_something_loss*0.1
             print(nqm_loss.item(), reg_loss.item(), criterion(seg_something_loss).item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
 
