@@ -23,7 +23,7 @@ config = [{
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-4,
+    'lr': 16e-5,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training

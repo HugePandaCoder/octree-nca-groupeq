@@ -15,7 +15,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Med_NCA_Run55_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
+    'name': r'Med_NCA_Run73_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
     'pretrained': r'Med_NCA_Run8_Prostate_unsupervisedTest_pretrained', 
     'device':"cuda:0",
     'unlock_CPU': True,
@@ -25,7 +25,7 @@ config = [{
     'betas': (0.9, 0.99),
     # Training
     'save_interval': 1,
-    'evaluate_interval': 2,
+    'evaluate_interval': 10,
     'n_epoch': 3000,
     'batch_duplication': 1,
     # Model

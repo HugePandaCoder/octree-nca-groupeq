@@ -25,6 +25,8 @@ import numpy as np
 import cv2
 import nibabel as nib
 import os
+import pydicom
+from matplotlib import pyplot as plt
 
 
 def get_mask_from_RLE(rle, height, width, new_height=256, new_width=256):
@@ -45,33 +47,54 @@ def save_nifti(masks, filename):
     nifti_img = nib.Nifti1Image(combined_mask.astype(np.uint8), affine=np.eye(4))
     nib.save(nifti_img, filename)
 
-def batch_process_nifti(csv_path, output_dir, tag, start_row=0, end_row=10000, height=1024, width=1024):
+def read_dicom_and_resize(path, new_height=256, new_width=256):
+    dicom = pydicom.dcmread(path)
+    image = dicom.pixel_array
+    #print(image.shape)
+    #plt.imshow(image, cmap='gray')
+    #plt.show()
+    image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+    return image
+
+def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labels, start_row=0, end_row=10000):
     df = pd.read_csv(csv_path)
+    record_df = pd.read_csv(record_list_path)
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(output_dir_images):
+        os.makedirs(output_dir_images)
+    if not os.path.exists(output_dir_labels):
+        os.makedirs(output_dir_labels)
     
     for index, row in df.iloc[start_row:end_row].iterrows():
-        print(f"Processing {row[tag]}...")
+        dicom_id = row['dicom_id']  # Assuming 'ImageID' matches 'dicom_id'
+        print(dicom_id)
+        matching_record = record_df[record_df['dicom_id'] == dicom_id].iloc[0]
         
-        left_lung_mask = get_mask_from_RLE(row['Left Lung'], height, width)
-        right_lung_mask = get_mask_from_RLE(row['Right Lung'], height, width)
-        heart_mask = get_mask_from_RLE(row['Heart'], height, width)
+        dicom_path = os.path.join('/mnt/share/2.0.0/', matching_record['path'])  # Update with actual path prefix
+        dicom_image = read_dicom_and_resize(dicom_path)
         
-        # Use the 'ImageID' column as the filename. Make sure to add the '.nii' extension
-        filename = f"{row[tag]}.nii"
+        left_lung_mask = get_mask_from_RLE(row['Left Lung'], 1024, 1024)
+        right_lung_mask = get_mask_from_RLE(row['Right Lung'], 1024, 1024)
+        heart_mask = get_mask_from_RLE(row['Heart'], 1024, 1024)
         
-        # Combine the masks and save as a single NIfTI file, named after the 'ImageID'
-        save_nifti([left_lung_mask, right_lung_mask, heart_mask], os.path.join(output_dir, filename))
+        # Save DICOM as NIfTI
+        dicom_nifti_filename = f"{dicom_id}.nii"
+        dicom_nifti_img = nib.Nifti1Image(dicom_image, affine=np.eye(4)) #.astype(np.uint8)
+        nib.save(dicom_nifti_img, os.path.join(output_dir_images, dicom_nifti_filename))
+        
+        # Combine the masks and save as NIfTI
+        masks_filename = f"{dicom_id}.nii"
+        save_nifti([left_lung_mask, right_lung_mask, heart_mask], os.path.join(output_dir_labels, masks_filename))
 
-csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/Preprocessed/VinDr-CXR.csv'  # Update this path accordingly
-output_dir = '/home/jkalkhof_locale/Downloads/test_seg/labels'  # Define where you want to save the masks
 
-image_record = '/mnt/share/2.0.0/cxr-record.csv'
+csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/Preprocessed/MIMIC-CXR-JPG.csv'  # Update this path accordingly
+output_dir = '/home/jkalkhof_locale/Downloads/test_seg/'  # Define where you want to save the masks
+
+image_record = '/mnt/share/2.0.0/cxr-record-list.csv'
 
 
 # Call the batch processing function
-batch_process_nifti(csv_path, output_dir, 'image_id')
+batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"))
 
 
 exit()

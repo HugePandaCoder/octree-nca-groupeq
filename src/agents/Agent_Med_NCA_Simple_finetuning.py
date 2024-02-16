@@ -10,6 +10,31 @@ from itertools import chain
 from src.losses.LossFunctions import DiceFocalLoss_2
 import torch.nn.functional as F
 
+import torch
+import torch.nn.functional as F
+from torchvision.models import vgg19
+
+class PerceptualLoss(torch.nn.Module):
+    def __init__(self, device):
+        super(PerceptualLoss, self).__init__()
+        self.vgg = vgg19(pretrained=True).features[:36].eval().to(device) # Using VGG up to layer 36 for feature extraction
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+
+    def forward(self, input_img, target_img):
+        # Normalize images as required by pretrained VGG
+        mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1).to(input_img.device)
+        std = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1).to(input_img.device)
+        input_img_normalized = (input_img - mean) / std
+        target_img_normalized = (target_img - mean) / std
+
+        input_features = self.vgg(input_img_normalized)
+        target_features = self.vgg(target_img_normalized)
+
+        # Calculate perceptual loss
+        loss = F.l1_loss(input_features, target_features)
+        return loss
+
 class Agent_Med_NCA_finetuning(MedNCAAgent):
     """Med-NCA training agent that uses 2d patches across 2-levels during training to optimize VRAM.
     """
@@ -37,6 +62,93 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         else:
             inputs, targets = self.model(inputs, targets, return_channels=False, preprocess_model = (self.preprocess_model, self.preprocess_model2))
             return inputs, targets
+
+    def per_image_normalized_tv_loss(img):
+        """
+        Compute the Total Variation Loss independently per image in the batch and then normalize.
+        img: Tensor of shape (B, C, H, W)
+        """
+        # Initialize TV loss
+        tv_loss = 0.0
+        
+        # Loop over the batch
+        for i in range(img.shape[0]):
+            # Calculate the difference of neighboring pixel-values for each image
+            diff_i = torch.abs(img[i, :, 1:, :] - img[i, :, :-1, :])
+            diff_j = torch.abs(img[i, :, :, 1:] - img[i, :, :, :-1])
+            
+            # Summing the differences in both directions and normalizing by the number of elements
+            tv_loss_per_image = (torch.sum(diff_i) + torch.sum(diff_j)) / img[i].numel()
+            
+            # Accumulate the TV loss from all images
+            tv_loss += tv_loss_per_image
+        
+        # Average the TV loss across the batch
+        tv_loss /= img.shape[0]
+        return tv_loss
+
+    def normalized_total_variation_loss(self, img):
+        """
+        Compute the Normalized Total Variation Loss.
+        img: Tensor of shape (B, C, H, W)
+        """
+        # Calculate the difference of neighboring pixel-values
+        diff_i = torch.abs(img[:, :, 1:, :] - img[:, :, :-1, :])
+        diff_j = torch.abs(img[:, :, :, 1:] - img[:, :, :, :-1])
+        
+        # Summing the differences in both directions and normalizing
+        tv_loss = (torch.sum(diff_i) + torch.sum(diff_j)) / img.numel()
+        return tv_loss
+
+    def preprocess_grayscale_for_vgg(self, images):
+        """
+        Convert a batch of grayscale images to the format expected by VGG.
+        images: Tensor of shape (B, H, W, C) where C=1
+        Returns: Tensor of shape (B, C, H, W) with C=3
+        """
+        images = images.permute(0, 3, 1, 2)  # Change to (B, C, H, W)
+        images_rgb = images.repeat(1, 3, 1, 1)  # Repeat the grayscale channel to mimic RGB
+        return images_rgb
+
+    def gaussian_window(self, size, sigma):
+        """
+        Generates a 2D Gaussian window.
+        """
+        coords = torch.arange(size, dtype=torch.float32)
+        coords -= size // 2
+        g = coords**2
+        g = (-g / (2 * sigma**2)).exp()
+        g /= g.sum()
+        return g.outer(g)
+
+    def ssim(self, img1, img2, window_size=11, window_sigma=1.5, size_average=True):
+        """
+        Compute the Structural Similarity Index (SSIM) between two images.
+        """
+        channel = img1.size(1)
+        window = self.gaussian_window(window_size, window_sigma).to(img1.device)
+        window = window.expand(channel, 1, window_size, window_size)
+        
+        mu1 = F.conv2d(img1, window, padding=window_size//2, groups=channel)
+        mu2 = F.conv2d(img2, window, padding=window_size//2, groups=channel)
+        
+        mu1_sq = mu1.pow(2)
+        mu2_sq = mu2.pow(2)
+        mu1_mu2 = mu1 * mu2
+        
+        sigma1_sq = F.conv2d(img1*img1, window, padding=window_size//2, groups=channel) - mu1_sq
+        sigma2_sq = F.conv2d(img2*img2, window, padding=window_size//2, groups=channel) - mu2_sq
+        sigma12 = F.conv2d(img1*img2, window, padding=window_size//2, groups=channel) - mu1_mu2
+        
+        C1 = 0.01**2
+        C2 = 0.03**2
+        
+        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+        
+        if size_average:
+            return ssim_map.mean()
+        else:
+            return ssim_map.mean(1).mean(1).mean(1)
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step
@@ -137,26 +249,46 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         
         dice_f = DiceFocalLoss_2()
 
-        dice_loss = dice_f(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]) + \
-            dice_f(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])
+        #dice_loss = l1(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels])) + \
+        #    l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
+
+        dice_loss = dice_f((inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]), (inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels])) + \
+            dice_f((inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), (inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
+
 
         # >>>>> Loss L1 between fourier
-        loss3 = (mse(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
-            mse(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
+        #loss3 = (mse(toFourier(inputs_loc[0][..., 0:self.input_channels]), toFourier(inputs_loc[1][..., 0:self.input_channels])) + \
+        #    mse(toFourier(inputs_loc[2][..., 0:self.input_channels]), toFourier(inputs_loc[3][..., 0:self.input_channels])))
         
         # >>>>> Loss mse between fourier
-        loss4 = (mse(apply_gaussian_blur(inputs_loc[0][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[1][..., 0:self.input_channels])) + \
-            mse(apply_gaussian_blur(inputs_loc[2][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[3][..., 0:self.input_channels])))
+        #loss4 = (mse(apply_gaussian_blur(inputs_loc[0][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[1][..., 0:self.input_channels])) + \
+        #    mse(apply_gaussian_blur(inputs_loc[2][..., 0:self.input_channels]), apply_gaussian_blur(inputs_loc[3][..., 0:self.input_channels])))
         loss5 = (l1(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                     l1(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
         
         loss6 = (mse(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                     mse(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))
-                
-        
+
+        #p_loss = PerceptualLoss(self.device)        
+
+        #perceptual_loss = p_loss(self.preprocess_grayscale_for_vgg(inputs_loc[0][..., 0:self.input_channels]), self.preprocess_grayscale_for_vgg(inputs_loc[1][..., 0:self.input_channels])) + \
+        #    p_loss(self.preprocess_grayscale_for_vgg(inputs_loc[2][..., 0:self.input_channels]), self.preprocess_grayscale_for_vgg(inputs_loc[3][..., 0:self.input_channels]))
+
+        ssim_loss = self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+            self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
+
+
+        print(inputs_loc[0][..., 0:self.input_channels].shape)
+
+        #loss_total_var = torch.abs(self.per_image_normalized_tv_loss(inputs_loc[0][..., 0:self.input_channels]) - self.normalized_total_variation_loss(inputs_loc[1][..., 0:self.input_channels])) + \
+        #      torch.abs(self.normalized_total_variation_loss(inputs_loc[2][..., 0:self.input_channels]) - self.normalized_total_variation_loss(inputs_loc[3][..., 0:self.input_channels]))
+        loss_total_var = self.normalized_total_variation_loss(inputs_loc[0][..., 0:self.input_channels]) + \
+              self.normalized_total_variation_loss(inputs_loc[2][..., 0:self.input_channels])
+                          
+
         loss_ret = {}
-        loss = ((dice_loss)/2 + (loss5+loss6))#*800 + loss5#loss3 #loss4 +  loss4*5 + 
-        #print(loss.item())
+        loss = ((dice_loss)/2 + (1-ssim_loss)*3) #(ssim_loss/2 + loss5 + loss6)/4)# (loss5+loss6)/3)#*800 + loss5#loss3 #loss4 +  loss4*5 +   + loss_total_var/5
+        print(dice_loss.item(), ssim_loss.item())#, loss5.item())
         loss_ret[0] = loss.item()
         #loss_ret[1] = loss2.item()
         #loss_ret[2] = loss3.item()
