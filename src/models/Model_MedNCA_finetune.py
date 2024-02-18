@@ -68,7 +68,7 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3_ori = inputs_loc.clone()
 
                 if self.do_preprocess:
-                    inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:2*self.input_channels]
+                    inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., :self.input_channels]
                     inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., :self.input_channels]
 
                 #plt.imshow((inputs_loc[0, :, :, 0:3].detach().cpu().numpy()))
@@ -87,7 +87,7 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_2_ori = inputs_loc.clone()
 
                 if self.do_preprocess:
-                    inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:2*self.input_channels]
+                    inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., :self.input_channels]
                     inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., :self.input_channels]
 
 
@@ -164,7 +164,7 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_3_ori = inputs_loc.clone()
 
                 if self.do_preprocess:
-                    inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., self.input_channels:2*self.input_channels]
+                    inputs_loc_3[..., 0:self.input_channels] = preprocess_model[0](inputs_loc_3.clone())[..., :self.input_channels]
                     inputs_loc[..., 0:self.input_channels] = inputs_loc_3[..., 0:self.input_channels]
 
                 outputs = self.backbone_highres(inputs_loc, 
@@ -175,7 +175,7 @@ class MedNCA_finetune(nn.Module):
                 inputs_loc_2_ori = inputs_loc.clone()
                 
                 if self.do_preprocess:
-                    inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., self.input_channels:2*self.input_channels]
+                    inputs_loc_2[..., 0:self.input_channels] = preprocess_model[1](inputs_loc_2.clone())[..., :self.input_channels]
                     inputs_loc[..., 0:self.input_channels] = inputs_loc_2[..., 0:self.input_channels]
 
                 outputs = self.backbone_lowres(inputs_loc, 

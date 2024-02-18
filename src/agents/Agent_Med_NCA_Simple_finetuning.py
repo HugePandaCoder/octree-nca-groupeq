@@ -14,6 +14,29 @@ import torch
 import torch.nn.functional as F
 from torchvision.models import vgg19
 
+class HuberLoss(torch.nn.Module):
+    def __init__(self, delta=0.1):
+        """
+        Initializes the Huber loss function.
+        
+        Parameters:
+        - delta: The threshold at which the loss transitions from quadratic to linear.
+        """
+        super(HuberLoss, self).__init__()
+        self.delta = delta
+
+    def forward(self, input, target):
+        """
+        Calculates the Huber loss between `input` and `target`.
+        
+        Parameters:
+        - input: Predicted images.
+        - target: Ground truth images.
+        """
+        abs_diff = torch.abs(input - target)
+        quadratic = torch.where(abs_diff <= self.delta, 0.5 * abs_diff ** 2, self.delta * (abs_diff - 0.5 * self.delta))
+        return quadratic.mean()
+
 class CustomLoss(torch.nn.Module):
     def __init__(self, epsilon=1e-9, scale=1.0):
         """
@@ -305,7 +328,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         #            loss_ret[m] = loss_loc.item()
 
 
-        if True:
+        if False:
             mse = torch.nn.MSELoss()
             l1 = torch.nn.L1Loss()
             #loss = mse(torch.sum(torch.sigmoid(outputs)), torch.sum(torch.sigmoid(outputs2)))
@@ -375,9 +398,28 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                 self.normalized_total_variation_loss(inputs_loc[2][..., 0:self.input_channels])
                             
 
+            # NQM loss
+            nqm_loss = 0
+            nqm_loss2 = 0
+            for b in range(inputs_loc[4].shape[0]):
+                stack = torch.stack([inputs_loc[4][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                outputs = torch.mean(stack, dim=0)
+                nqm_loss += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+
+                stack = torch.stack([inputs_loc[6][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                outputs = torch.mean(stack, dim=0)
+                nqm_loss2 += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+
+            nqm_loss = nqm_loss / inputs_loc[4].shape[0]
+            nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
+
+            seg_something_loss = torch.mean(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]))
+
+            criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
+
             loss_ret = {}
-            loss = ((loss_kd)/2 + ((ssim_loss))*10) #(ssim_loss/2 + loss5 + loss6)/4)# (loss5+loss6)/3)#*800 + loss5#loss3 #loss4 +  loss4*5 +   + loss_total_var/5
-            print(loss_kd.item(), ssim_loss.item(), loss.item())#, loss5.item())
+            loss = ((nqm_loss + nqm_loss2)/2 + (loss5 +  loss6)*5 + criterion(seg_something_loss)) #(ssim_loss/2 + loss5 + loss6)/4)# (loss5+loss6)/3)#*800 + loss5#loss3 #loss4 +  loss4*5 +   + loss_total_var/5
+            print(nqm_loss.item(), nqm_loss2.item(), loss5.item(), loss6.item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
             #loss_ret[1] = loss2.item()
             #loss_ret[2] = loss3.item()
@@ -408,11 +450,11 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             nqm_loss = 0
             nqm_loss2 = 0
             for b in range(inputs_loc[4].shape[0]):
-                stack = torch.stack([inputs_loc[4][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
                 outputs = torch.mean(stack, dim=0)
                 nqm_loss += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
 
-                stack = torch.stack([inputs_loc[6][b, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+                stack = torch.stack([inputs_loc[6][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
                 outputs = torch.mean(stack, dim=0)
                 nqm_loss2 += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
 
@@ -423,23 +465,33 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
             seg_something_loss = torch.mean(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]))
 
+            #criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
             criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
 
-            ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
-                (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
+            #ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
+            #    (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
 
-            print(ssim_loss.item())
+            #print(ssim_loss.item())
 
-            loss_ret = {}
-            loss = (nqm_loss*6+ nqm_loss2*6 + reg_loss + criterion(seg_something_loss) + (ssim_loss))/50#seg_something_loss*0.1
-            print(nqm_loss.item(), reg_loss.item(), criterion(seg_something_loss).item(), loss.item())#, loss5.item())
+            huber_loss = HuberLoss(delta=0.5) 
+
+            hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+                huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
+
+            loss_ret = {}# 
+            loss = (nqm_loss*6+ nqm_loss2/6 + reg_loss + criterion(seg_something_loss) + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
+            print(nqm_loss.item(), nqm_loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
 
             if loss != 0:
                 loss.backward()
 
-                self.optimizer.step()
-                self.scheduler.step()
+                #self.optimizer.step()
+                #self.scheduler.step()
+
+                self.optimizer_test.step()
+                self.scheduler_test.step()
+
         return loss_ret
     
     def labelVariance(self, images: torch.Tensor, median: torch.Tensor) -> None:
