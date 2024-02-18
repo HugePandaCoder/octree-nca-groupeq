@@ -473,7 +473,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
             #print(ssim_loss.item())
 
-            huber_loss = HuberLoss(delta=0.5) 
+            huber_loss = HuberLoss(delta=5) 
 
             hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                 huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
