@@ -206,12 +206,13 @@ class BaseAgent():
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
 
-    def load_state(self, model_path: str) -> None:
+    def load_state(self, model_path: str, pretrained=False) -> None:
         r"""Load state of current model
         """
         self.model.load_state_dict(torch.load(os.path.join(model_path, 'model.pth')))
-        self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
-        self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
+        if not pretrained:
+            self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
+            self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
 
     def train(self, dataloader: DataLoader, loss_f: torch.Tensor) -> None:
         r"""Execute training of model

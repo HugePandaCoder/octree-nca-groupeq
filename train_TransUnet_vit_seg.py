@@ -15,7 +15,7 @@ from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'TransUnet2D_Run7',
+    'name': r'TransUnet2D_Run9',
     'device':"cuda:0",
     # Learning rate
     'lr': 1e-4,
@@ -25,7 +25,7 @@ config = [{
     'save_interval': 200,
     'evaluate_interval': 25,
     'n_epoch': 1000,
-    'batch_size': 16,
+    'batch_size': 1,
     # Data
     'input_size': (320, 320),
     'data_split': [0.7, 0, 0.3], 
@@ -89,7 +89,7 @@ loss_function = DiceBCELoss()
 # Number of parameters
 print("Nr. Params.: ", sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-#agent.train(data_loader, loss_function)
+agent.train(data_loader, loss_function)
 
 
 start_time = time.perf_counter()

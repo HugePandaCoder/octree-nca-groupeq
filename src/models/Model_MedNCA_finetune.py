@@ -27,7 +27,7 @@ class MedNCA_finetune(nn.Module):
         self.steps = steps
         self.batch_duplication = batch_duplication
 
-        self.do_preprocess = True
+        self.do_preprocess = False
 
         self.backbone_lowres = BackboneNCA(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels)
         self.backbone_highres = BackboneNCA(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels)

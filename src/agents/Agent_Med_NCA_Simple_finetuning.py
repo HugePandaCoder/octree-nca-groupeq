@@ -145,6 +145,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         self.preprocess_model2 = PreprocessNCA(channel_n=16, fire_rate=0.3, device=self.device, hidden_size=256).to(self.device)
         self.optimizer_test = optim.Adam(chain(self.preprocess_model.parameters(), self.preprocess_model2.parameters()), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
         self.scheduler_test = optim.lr_scheduler.ExponentialLR(self.optimizer_test, self.exp.get_from_config('lr_gamma'))
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
         self.ewc = None
         self.reg_loss_calculator = None
 
@@ -452,16 +454,19 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             for b in range(inputs_loc[4].shape[0]):
                 stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
                 outputs = torch.mean(stack, dim=0)
-                nqm_loss += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+
+                nq_loc = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+                nqm_loss += nq_loc #* nq_loc
 
                 stack = torch.stack([inputs_loc[6][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
                 outputs = torch.mean(stack, dim=0)
-                nqm_loss2 += self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+                nq_loc = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
+                nqm_loss2 += nq_loc #* nq_loc
 
             nqm_loss = nqm_loss / inputs_loc[4].shape[0]
             nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
 
-            reg_loss = self.reg_loss_calculator.compute_loss(self.model, 100)
+            reg_loss = self.reg_loss_calculator.compute_loss(self.model, lambda_reg=100)
 
             seg_something_loss = torch.mean(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]))
 
@@ -473,24 +478,27 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
             #print(ssim_loss.item())
 
-            huber_loss = HuberLoss(delta=5) 
+            huber_loss = HuberLoss(delta=200) 
 
             hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                 huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
 
             loss_ret = {}# 
-            loss = (nqm_loss*6+ nqm_loss2/6 + reg_loss + criterion(seg_something_loss) + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
+            loss = nqm_loss*6 +  reg_loss  + criterion(seg_something_loss) # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
             print(nqm_loss.item(), nqm_loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
 
             if loss != 0:
                 loss.backward()
 
-                #self.optimizer.step()
-                #self.scheduler.step()
+                learning_rates = [param_group['lr'] for param_group in self.optimizer.param_groups]
+                print("Learning rates:", learning_rates)
 
-                self.optimizer_test.step()
-                self.scheduler_test.step()
+                self.optimizer.step()
+                self.scheduler.step()
+
+                #self.optimizer_test.step()
+                #self.scheduler_test.step()
 
         return loss_ret
     
@@ -511,6 +519,10 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             stdd = stdd + img
         stdd = stdd / images.shape[0]
         stdd = np.sqrt(stdd)
+
+        #plt.imshow(stdd[0, :, :, 0])
+        #plt.show()
+        #exit()
 
         print("NQM Score: ", np.sum(stdd) / (np.sum(median)+1e-9))
 

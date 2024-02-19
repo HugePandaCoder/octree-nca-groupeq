@@ -46,7 +46,7 @@ class Agent_MedSeg2D(BaseAgent):
 
             # --------------- 2D ---------------------
             # If next patient
-            if id != patient_id and patient_id != None:
+            if (id != patient_id or dataset.slice == -1) and patient_id != None:
                 out = str(patient_id) + ", "
                 for m in range(patient_3d_label.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
@@ -97,6 +97,7 @@ class Agent_MedSeg2D(BaseAgent):
                 print("Average Dice Loss 3d: " + str(key) + ", " + str(average))
                 print("Standard Deviation 3d: " + str(key) + ", " + str(self.standard_deviation(loss_log[key])))
                 self.exp.write_scalar('Loss/test/' + str(key), average, self.exp.currentStep)
+                self.exp.write_scalar('Loss/test_std/' + str(key), self.standard_deviation(loss_log[key]), self.exp.currentStep)
 
         self.exp.set_model_state('train')
         return loss_log

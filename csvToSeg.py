@@ -27,6 +27,7 @@ import nibabel as nib
 import os
 import pydicom
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 
 def get_mask_from_RLE(rle, height, width, new_height=256, new_width=256):
@@ -56,22 +57,55 @@ def read_dicom_and_resize(path, new_height=256, new_width=256):
     image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
     return image
 
-def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labels, start_row=0, end_row=10000):
+def read_png_and_resize(path, new_height=256, new_width=256):
+    # Load the image from the specified path
+    image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    
+    # Resize the image to the specified dimensions
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+    
+    if len(resized_image.shape) == 3:
+        resized_image = resized_image[:, :, 0]
+    return resized_image
+
+def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labels, tag, column, data_dir, datatype, record_for_path=False, start_row=0, end_row=500):
     df = pd.read_csv(csv_path)
-    record_df = pd.read_csv(record_list_path)
+
+    #print(df.columns)
+
+    df_filtered = df[df['Dice RCA (Mean)'] >= 0.7]
+
+    df = df_filtered
+
+    if record_for_path:
+        record_df = pd.read_csv(record_list_path)
     
     if not os.path.exists(output_dir_images):
         os.makedirs(output_dir_images)
     if not os.path.exists(output_dir_labels):
         os.makedirs(output_dir_labels)
     
-    for index, row in df.iloc[start_row:end_row].iterrows():
-        dicom_id = row['dicom_id']  # Assuming 'ImageID' matches 'dicom_id'
-        print(dicom_id)
-        matching_record = record_df[record_df['dicom_id'] == dicom_id].iloc[0]
+    for index, row in tqdm(df.iloc[start_row:end_row].iterrows()):
+        dicom_id = row[column]  # Assuming 'ImageID' matches 'dicom_id'
+        #print(row)
+        if record_for_path:
+            matching_record = record_df[record_df[column] == dicom_id].iloc[0]
+        else:
+            matching_record = {}
+            matching_record['path'] = os.path.join(data_dir, dicom_id)
         
-        dicom_path = os.path.join('/mnt/share/2.0.0/', matching_record['path'])  # Update with actual path prefix
-        dicom_image = read_dicom_and_resize(dicom_path)
+
+        if datatype == 'nifti':
+            dicom_path = os.path.join('/mnt/share/2.0.0/', matching_record['path'])  # Update with actual path prefix
+            dicom_image = read_dicom_and_resize(dicom_path)
+        elif datatype == 'png':
+            dicom_image = read_png_and_resize(matching_record['path'])
+            #print(dicom_image.shape)
+        else:
+            raise ValueError("Invalid datatype. Please specify 'nifti' or 'png'.")
+    
+
+
         
         left_lung_mask = get_mask_from_RLE(row['Left Lung'], 1024, 1024)
         right_lung_mask = get_mask_from_RLE(row['Right Lung'], 1024, 1024)
@@ -87,14 +121,31 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
         save_nifti([left_lung_mask, right_lung_mask, heart_mask], os.path.join(output_dir_labels, masks_filename))
 
 
-csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/Preprocessed/MIMIC-CXR-JPG.csv'  # Update this path accordingly
-output_dir = '/home/jkalkhof_locale/Downloads/test_seg/'  # Define where you want to save the masks
+#tag = "MIMIC-CXR-JPG"
+tag = "ChestX-Ray8"
+image_record = None
+data_dir = None
 
-image_record = '/mnt/share/2.0.0/cxr-record-list.csv'
+if tag == "MIMIC-CXR-JPG":
+    csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/Preprocessed/MIMIC-CXR-JPG.csv'  # Update this path accordingly
+    image_record = '/mnt/share/2.0.0/cxr-record-list.csv'
+    record_for_path = True
+    column = 'dicom_id'
+    datatype = 'nifti'
+      # Define where you want to save the masks
+elif tag == "ChestX-Ray8":
+    csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/OriginalResolution/ChestX-Ray8.csv'
+    record_for_path = False
+    column = 'Image Index'
+    data_dir = '/home/jkalkhof_locale/Downloads/cxr8/images_01/images/'
+    datatype = 'png'
+
+output_dir = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/', tag)
+
 
 
 # Call the batch processing function
-batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"))
+batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=500)
 
 
 exit()
