@@ -292,7 +292,16 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         data = self.prepare_data(data)
         #rnd = random.randint(0, 1000000000)
         #random.seed(rnd)
+
+
         outputs, targets, variance, pred, inputs_loc = self.get_outputs(data, return_channels=False)
+
+        #plt.imshow(inputs_loc[2].detach().cpu().numpy()[0, :, :, 0])
+        #plt.show()
+        #plt.imshow(targets.detach().cpu().numpy()[0, :, :, 0])
+        #plt.show()
+        #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
+        #plt.show()
 
         #plt.imshow(targets[0, :, :, 0].detach().cpu().numpy())
         #plt.show()
@@ -521,7 +530,12 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #loss = loss2 +  criterion(seg_something_loss) # reg_loss  +  + ssim_loss#  nqm_loss2 + # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
             #print(loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
             
-            loss = loss_f(outputs, pred)
+            #plt.imshow(torch.sigmoid(outputs).detach().cpu().numpy()[0, :, :, 0])
+            #plt.show()
+            #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
+            #plt.show()
+
+            loss = loss_f(outputs, pred, variance)
             print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 
@@ -531,11 +545,11 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                 learning_rates = [param_group['lr'] for param_group in self.optimizer.param_groups] 
                 print("Learning rates:", learning_rates)
 
-                #self.optimizer.step()
-                #self.scheduler.step()
+                self.optimizer.step()
+                self.scheduler.step()
 
-                self.optimizer_test2.step()
-                self.scheduler_test2.step()
+                #self.optimizer_test2.step()
+                #self.scheduler_test2.step()
 
         return loss_ret
     

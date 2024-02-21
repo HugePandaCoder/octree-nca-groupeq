@@ -6,7 +6,7 @@ from src.models.Model_M3DNCA import M3DNCA
 from src.models.Model_MedNCA import MedNCA
 from src.models.Model_MedNCA_finetune import MedNCA_finetune
 from src.agents.Agent_Med_NCA_Simple_finetuning import Agent_Med_NCA_finetuning
-from src.losses.LossFunctions import DiceFocalLoss
+from src.losses.LossFunctions import DiceFocalLoss, WeightedDiceBCELoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 import time
@@ -14,14 +14,14 @@ import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained/images",
-    'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained/labels",
-    'name': r'Med_NCA_Run59_Xray_Lung_pretrained', #12 or 13, 54 opt, 
+    'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/images",
+    'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/labels",
+    'name': r'Med_NCA_Run65_Xray_Lung_pretrained', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run13_Xray_Lung', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 3e-5,
+    'lr': 3e-6,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
@@ -56,7 +56,9 @@ dataset.set_experiment(exp)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
-loss_function = DiceFocalLoss() 
+loss_function = WeightedDiceBCELoss() 
+
+#agent.getAverageDiceScore(pseudo_ensemble=False)
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)

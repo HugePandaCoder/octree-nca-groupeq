@@ -140,6 +140,15 @@ class MedNCA_finetune(nn.Module):
                 variance_loc = variance
                 pred_loc = pred
 
+                #print("LOC", inputs_loc.shape, targets_loc.shape, pred_loc.shape)
+                #plt.imshow(inputs_loc.detach().cpu().numpy()[0, :, :, 0])
+                #plt.show()
+                #plt.imshow(targets_loc.detach().cpu().numpy()[0, :, :, 0])
+                #plt.show()
+                #plt.imshow(pred_loc.detach().cpu().numpy()[0, :, :, 0])
+                #plt.show()
+                #plt.imshow(variance_loc.detach().cpu().numpy()[0, :, :, 0])
+                #plt.show()
 
                 # Prepare array to store patch of 
                 inputs_loc_temp = inputs_loc
@@ -191,10 +200,6 @@ class MedNCA_finetune(nn.Module):
                                                       :]
                     
                     # variance pred
-                    print(variance_loc.shape, variance_loc_temp[b, 
-                                                      pos_x:pos_x+down_scaled_size[0], 
-                                                      pos_y:pos_y+down_scaled_size[1], 
-                                                      :].shape, pred_loc.shape)
                     variance_loc[b] = variance_loc_temp[b, 
                                                       pos_x:pos_x+down_scaled_size[0], 
                                                       pos_y:pos_y+down_scaled_size[1], 
@@ -205,7 +210,9 @@ class MedNCA_finetune(nn.Module):
                                                       :]
 
         # show img
-        print("SLICE CHANGES: ", torch.sum(inputs_loc_2[0, :, :, 0:1]  - inputs_loc_2_ori[0, :, :, 0:1]))
+        #print("SLICE CHANGES: ", torch.sum(inputs_loc_2[0, :, :, 0:1]  - inputs_loc_2_ori[0, :, :, 0:1]))
+
+        print("FORWARD TRAIN", outputs[..., self.input_channels:self.input_channels+self.output_channels].shape, targets_loc.shape, variance_loc.shape, pred_loc.shape)
 
         if return_channels:
             return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)

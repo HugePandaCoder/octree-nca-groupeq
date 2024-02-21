@@ -180,6 +180,34 @@ class DiceFocalLoss(FocalLoss):
         dice_focal = focal.mean() + dice_loss
         return dice_focal
     
+class WeightedDiceBCELoss(torch.nn.Module):
+    def __init__(self, gamma: float = 2.0, eps: float = 1e-6):
+        super().__init__()
+        self.gamma = gamma
+        self.eps = eps
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor, variance: torch.Tensor) -> torch.Tensor:
+        input = torch.sigmoid(input)
+        input_flat = torch.flatten(input)
+        target_flat = torch.flatten(target)
+        variance_flat = 1 - 2*torch.flatten(variance)  # Assuming variance is already prepared for weighting
+
+        # Weighted intersection for Dice
+        weighted_intersection = (input_flat * target_flat * variance_flat).sum()
+        weighted_input_sum = (input_flat * variance_flat).sum()
+        weighted_target_sum = (target_flat * variance_flat).sum()
+        
+        dice_loss = 1 - (2. * weighted_intersection + 1.) / (weighted_input_sum + weighted_target_sum + 1.)
+
+        # BCE Loss with variance weighting
+        bce_loss = torch.nn.functional.binary_cross_entropy(input_flat, target_flat, weight=variance_flat, reduction='mean')
+
+        # Combining Dice and BCE losses
+        total_loss = bce_loss + dice_loss
+
+        return total_loss
+    
+
 
 class DiceFocalLoss_2(FocalLoss):
     r"""Dice Focal Loss

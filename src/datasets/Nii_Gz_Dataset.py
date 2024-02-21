@@ -70,8 +70,8 @@ class Nii_Gz_Dataset(Dataset_Base):
             if os.path.exists(variance_path):
                 variance = nib.load(os.path.join(variance_path, img_name)).get_fdata()
                 pred = nib.load(os.path.join(pred_path, img_name)).get_fdata()
-                data_dict['variance'] = variance
-                data_dict['pred'] = pred
+                data_dict['variance'] = np.swapaxes(variance, 0, 1)
+                data_dict['pred'] = np.swapaxes(pred, 0, 1)
 
             #print(img.shape, label.shape, img_name)
             img, label = self.preprocessing(img, label)
