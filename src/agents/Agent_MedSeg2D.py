@@ -72,7 +72,7 @@ class Agent_MedSeg2D(BaseAgent):
                             stdd = np.swapaxes(np.squeeze(stdd), 0, 1)
                             nifti_img = nib.Nifti1Image(stdd[:, :, np.newaxis], affine=np.eye(4))
                             filename = name[0]
-                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/variance/', filename)
+                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/variance/', filename)
                             nib.save(nifti_img, filename)
 
                             # SAVE MEAN
@@ -81,7 +81,7 @@ class Agent_MedSeg2D(BaseAgent):
                             out_mean[out_mean <= 0.5] = 0
                             nifti_img = nib.Nifti1Image(out_mean[:, :, np.newaxis], affine=np.eye(4))
                             filename = name[0]
-                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/pred/', filename)
+                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/pred/', filename)
                             nib.save(nifti_img, filename)
 
 
