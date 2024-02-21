@@ -37,7 +37,7 @@ class MedNCA_finetune(nn.Module):
         seed[:, :x.shape[self.input_channels], :, :] = x
         return seed
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor = None, return_channels : bool = False, preprocess_model = None):
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None, variance = None, pred = None, return_channels : bool = False, preprocess_model = None):
         x = self.make_seed(x).to(self.device)
         x = x.transpose(1,3)
         y = y.transpose(1,3)
@@ -48,17 +48,19 @@ class MedNCA_finetune(nn.Module):
                 x = torch.cat([x] * self.batch_duplication, dim=0)
                 y = torch.cat([y] * self.batch_duplication, dim=0)
 
-            x, y, inputs_loc = self.forward_train(x, y, return_channels=return_channels, preprocess_model=preprocess_model)
-            return x, y, inputs_loc
+            x, y, variance, pred, inputs_loc = self.forward_train(x, y, variance, pred, return_channels=return_channels, preprocess_model=preprocess_model)
+            return x, y, variance, pred, inputs_loc
             
         else:
             x = self.forward_eval(x, preprocess_model=preprocess_model)
             return x, y
 
-    def forward_train(self, x: torch.Tensor, y: torch.Tensor, return_channels : bool = False, preprocess_model = None):
+    def forward_train(self, x: torch.Tensor, y: torch.Tensor, variance: torch.Tensor, pred: torch.Tensor, return_channels : bool = False, preprocess_model = None):
         down_scaled_size = (x.shape[1] // 4, x.shape[2] // 4)
         inputs_loc = self.resize4d(x.cpu(), size=down_scaled_size).to(self.device) 
         targets_loc = self.resize4d(y.cpu(), size=down_scaled_size).to(self.device)
+        #variance_loc = self.resize4d(variance.cpu(), size=down_scaled_size).to(self.device) 
+        #pred_loc = self.resize4d(pred.cpu(), size=down_scaled_size).to(self.device)
 
         # Start with low res lvl and go to high res level
         for m in range(2):
@@ -135,6 +137,9 @@ class MedNCA_finetune(nn.Module):
                 # Concat lowres features with high res image             
                 inputs_loc = torch.concat((inputs_loc[...,:self.input_channels], outputs[...,self.input_channels:]), 3)
                 targets_loc = y
+                variance_loc = variance
+                pred_loc = pred
+
 
                 # Prepare array to store patch of 
                 inputs_loc_temp = inputs_loc
@@ -151,6 +156,23 @@ class MedNCA_finetune(nn.Module):
                      down_scaled_size[1], 
                      targets_loc_temp.shape[3])
                      ).to(self.device)
+                
+                # Prepare variance and pred
+                variance_loc_temp = variance_loc
+                pred_loc_temp = pred_loc
+                variance_loc = torch.zeros(
+                    (variance_loc_temp.shape[0], 
+                     down_scaled_size[0], 
+                     down_scaled_size[1], 
+                     variance_loc_temp.shape[3])
+                     ).to(self.device)
+                pred_loc = torch.zeros(
+                    (pred_loc_temp.shape[0], 
+                     down_scaled_size[0], 
+                     down_scaled_size[1], 
+                     pred_loc_temp.shape[3])
+                     ).to(self.device)
+
 
                 # Choose random patch of upscaled image
                 for b in range(inputs_loc.shape[0]): 
@@ -167,13 +189,27 @@ class MedNCA_finetune(nn.Module):
                                                       pos_x:pos_x+down_scaled_size[0], 
                                                       pos_y:pos_y+down_scaled_size[1], 
                                                       :]
+                    
+                    # variance pred
+                    print(variance_loc.shape, variance_loc_temp[b, 
+                                                      pos_x:pos_x+down_scaled_size[0], 
+                                                      pos_y:pos_y+down_scaled_size[1], 
+                                                      :].shape, pred_loc.shape)
+                    variance_loc[b] = variance_loc_temp[b, 
+                                                      pos_x:pos_x+down_scaled_size[0], 
+                                                      pos_y:pos_y+down_scaled_size[1], 
+                                                      :]
+                    pred_loc[b] = pred_loc_temp[b, 
+                                                      pos_x:pos_x+down_scaled_size[0], 
+                                                      pos_y:pos_y+down_scaled_size[1], 
+                                                      :]
 
         # show img
         print("SLICE CHANGES: ", torch.sum(inputs_loc_2[0, :, :, 0:1]  - inputs_loc_2_ori[0, :, :, 0:1]))
 
         if return_channels:
             return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)
-        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)
+        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, variance_loc, pred_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)
     
     def forward_eval(self, x: torch.Tensor, preprocess_model = None):
         down_scaled_size = (x.shape[1] // 4, x.shape[2] // 4)

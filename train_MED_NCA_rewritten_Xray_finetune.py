@@ -14,14 +14,14 @@ import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/ChestX-Ray8/images/",
-    'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/ChestX-Ray8/labels/",
-    'name': r'Med_NCA_Run56_Xray_Lung_pretrained', #12 or 13, 54 opt, 
+    'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained/images",
+    'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained/labels",
+    'name': r'Med_NCA_Run59_Xray_Lung_pretrained', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run13_Xray_Lung', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 3e-6,
+    'lr': 3e-5,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training

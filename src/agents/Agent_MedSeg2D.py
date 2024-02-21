@@ -3,6 +3,9 @@ from src.agents.Agent import BaseAgent
 from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
 import numpy as np
 import math 
+from matplotlib import pyplot as plt
+import nibabel as nib
+import os
 
 class Agent_MedSeg2D(BaseAgent):
     @torch.no_grad()
@@ -31,7 +34,7 @@ class Agent_MedSeg2D(BaseAgent):
         # For each data sample
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
-            data_id, inputs, _ = data['id'], data['image'], data['label']
+            data_id, inputs, _, name = data['id'], data['image'], data['label'], data['name']
             outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
             if isinstance(data_id, str):
@@ -43,6 +46,49 @@ class Agent_MedSeg2D(BaseAgent):
                 else:
                     id = data_id[0]
                     slice = None
+
+                # Run inference 10 times to create a pseudo ensemble
+                if pseudo_ensemble: # 5 + 5 times
+                    outputs2, _ = self.get_outputs(data, full_img=True, tag="1")
+                    outputs3, _ = self.get_outputs(data, full_img=True, tag="2")
+                    outputs4, _ = self.get_outputs(data, full_img=True, tag="3")
+                    outputs5, _ = self.get_outputs(data, full_img=True, tag="4")
+                    if True: 
+                        outputs6, _ = self.get_outputs(data, full_img=True, tag="5")
+                        outputs7, _ = self.get_outputs(data, full_img=True, tag="6")
+                        outputs8, _ = self.get_outputs(data, full_img=True, tag="7")
+                        outputs9, _ = self.get_outputs(data, full_img=True, tag="8")
+                        outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
+                        stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
+                        
+                        # Calculate median
+                        outputs, _ = torch.median(stack, dim=0)
+                        stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+
+                        # save images in path
+                        if True:
+                            print(stdd.shape, outputs.shape)
+                            # SAVE VARIANCE
+                            stdd = np.swapaxes(np.squeeze(stdd), 0, 1)
+                            nifti_img = nib.Nifti1Image(stdd[:, :, np.newaxis], affine=np.eye(4))
+                            filename = name[0]
+                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/variance/', filename)
+                            nib.save(nifti_img, filename)
+
+                            # SAVE MEAN
+                            out_mean = np.swapaxes(np.squeeze(torch.sigmoid(outputs).detach().cpu().numpy()), 0, 1)
+                            out_mean[out_mean > 0.5] = 1
+                            out_mean[out_mean <= 0.5] = 0
+                            nifti_img = nib.Nifti1Image(out_mean[:, :, np.newaxis], affine=np.eye(4))
+                            filename = name[0]
+                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/pred/', filename)
+                            nib.save(nifti_img, filename)
+
+
+
+                    else:
+                        outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
+
 
             # --------------- 2D ---------------------
             # If next patient
@@ -101,3 +147,24 @@ class Agent_MedSeg2D(BaseAgent):
 
         self.exp.set_model_state('train')
         return loss_log
+    
+    def labelVariance(self, images: torch.Tensor, median: torch.Tensor, img_mri: torch.Tensor, img_id: str, targets: torch.Tensor) -> None:
+        r"""Calculate variance over all predictions
+            #Args
+                images (torch): The inferences
+                median: The median of all inferences
+                img_mri: The mri image
+                img_id: The id of the image
+                targets: The target segmentation
+        """
+        mean = np.sum(images, axis=0) / images.shape[0]
+        stdd = 0
+        for id in range(images.shape[0]):
+            img = images[id] - mean
+            img = np.power(img, 2)
+            stdd = stdd + img
+        stdd = stdd / images.shape[0]
+        stdd = np.sqrt(stdd)
+
+        print("NQM Score: ", np.sum(stdd) / np.sum(median))
+        return stdd

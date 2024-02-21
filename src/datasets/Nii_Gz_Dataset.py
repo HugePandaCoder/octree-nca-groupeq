@@ -50,6 +50,7 @@ class Nii_Gz_Dataset(Dataset_Base):
                 label (numpy): Label data
         """
 
+        data_dict = {}
         img_id = self.__getname__(idx)
         out = self.data.get_data(key=img_id)
         if out == False:
@@ -57,15 +58,31 @@ class Nii_Gz_Dataset(Dataset_Base):
             img = nib.load(os.path.join(self.images_path, img_name)).get_fdata()
             label = nib.load(os.path.join(self.labels_path, img_name)).get_fdata()
 
+
+            # Get variance path and pred path
+            parent, tail = os.path.split(self.images_path)
+            #print("HEADTAIL", parent, "aaa", tail)
+            variance_path = os.path.join(parent, 'variance')
+            pred_path = os.path.join(parent, 'pred')
+
+            #print(variance_path, pred_path)
+
+            if os.path.exists(variance_path):
+                variance = nib.load(os.path.join(variance_path, img_name)).get_fdata()
+                pred = nib.load(os.path.join(pred_path, img_name)).get_fdata()
+                data_dict['variance'] = variance
+                data_dict['pred'] = pred
+
             #print(img.shape, label.shape, img_name)
             img, label = self.preprocessing(img, label)
             self.data.set_data(key=img_id, data=(img_id, img, label))
             out = self.data.get_data(key=img_id)
 
-        data_dict = {}
         data_dict['id'] = img_id
         data_dict['image'] = img[..., np.newaxis]
         data_dict['label'] = label
+        data_dict['name'] = img_name
+
 
         return data_dict
 

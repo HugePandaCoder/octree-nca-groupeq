@@ -138,8 +138,8 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
 
 
 
-tag = "MIMIC-CXR-JPG"
-#tag = "ChestX-Ray8"
+#tag = "MIMIC-CXR-JPG"
+tag = "ChestX-Ray8"
 image_record = None
 data_dir = None
 
@@ -157,12 +157,12 @@ elif tag == "ChestX-Ray8":
     data_dir = '/home/jkalkhof_locale/Downloads/cxr8/images_01/images/'
     datatype = 'png'
 
-output_dir = os.path.join('/home/jkalkhof_locale/Downloads/png_seg/', tag)
+output_dir = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/', tag)
 
 
 
 # Call the batch processing function
-batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=50, format='png')
+batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=500, format='nifti')
 
 
 exit()

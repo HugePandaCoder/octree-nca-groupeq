@@ -28,7 +28,9 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
             inputs = inputs.permute(0, 3, 1, 2)
             targets = targets.permute(0, 3, 1, 2)
         
-        data = {'id': id, 'image': inputs, 'label': targets}
+        #data = {'id': id, 'image': inputs, 'label': targets}
+        data['image'] = inputs
+        data['label'] = targets
 
         return data
 

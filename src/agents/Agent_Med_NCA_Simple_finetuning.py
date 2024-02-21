@@ -174,12 +174,13 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        inputs, targets = data['image'], data['label']
+        inputs, targets, variance, pred = data['image'], data['label'], data['variance'], data['pred']
         
+        print(inputs.shape, targets.shape, variance.shape, pred.shape)
 
         if self.model.training:
-            inputs, targets, inputs_loc = self.model(inputs, targets, return_channels=True, preprocess_model = (self.preprocess_model, self.preprocess_model2))
-            return inputs, targets, inputs_loc
+            inputs, targets, variance, pred, inputs_loc = self.model(inputs, targets, variance, pred, return_channels=False, preprocess_model = (self.preprocess_model, self.preprocess_model2))
+            return inputs, targets, variance, pred, inputs_loc
         else:
             inputs, targets = self.model(inputs, targets, return_channels=False, preprocess_model = (self.preprocess_model, self.preprocess_model2))
             return inputs, targets
@@ -291,7 +292,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         data = self.prepare_data(data)
         #rnd = random.randint(0, 1000000000)
         #random.seed(rnd)
-        outputs, targets, inputs_loc = self.get_outputs(data, return_channels=False)
+        outputs, targets, variance, pred, inputs_loc = self.get_outputs(data, return_channels=False)
 
         #plt.imshow(targets[0, :, :, 0].detach().cpu().numpy())
         #plt.show()
@@ -517,8 +518,11 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
 
             loss_ret = {}# 
-            loss = loss2 +  criterion(seg_something_loss) # reg_loss  +  + ssim_loss#  nqm_loss2 + # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
-            print(loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
+            #loss = loss2 +  criterion(seg_something_loss) # reg_loss  +  + ssim_loss#  nqm_loss2 + # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
+            #print(loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
+            
+            loss = loss_f(outputs, pred)
+            print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 
             if loss != 0:

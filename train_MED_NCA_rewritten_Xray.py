@@ -9,6 +9,7 @@ from src.models.Model_M3DNCA_alive import M3DNCA_alive
 from src.losses.LossFunctions import DiceFocalLoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
+from src.datasets.Nii_Gz_Dataset_customPath import Dataset_NiiGz_customPath
 import time
 import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
@@ -58,7 +59,14 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 loss_function = DiceFocalLoss() 
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-agent.train(data_loader, loss_function)
+#agent.train(data_loader, loss_function)
+
+# Generate variance and segmentation masks for unseen dataset
+print("--------------- TESTING HYP 99 ---------------")
+hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/images/", labelPath=r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/labels/")
+hyp99_test.exp = exp
+agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
+
 
 start_time = time.perf_counter()
 agent.getAverageDiceScore(pseudo_ensemble=False)
