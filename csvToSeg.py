@@ -68,10 +68,10 @@ def read_png_and_resize(path, new_height=256, new_width=256):
         resized_image = resized_image[:, :, 0]
     return resized_image
 
-def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labels, tag, column, data_dir, datatype, record_for_path=False, start_row=0, end_row=500):
+def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labels, tag, column, data_dir, datatype, record_for_path=False, start_row=0, end_row=500, format='nifti'):
     df = pd.read_csv(csv_path)
 
-    #print(df.columns)
+    print(df.columns)
 
     df_filtered = df[df['Dice RCA (Mean)'] >= 0.7]
 
@@ -103,26 +103,43 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
             #print(dicom_image.shape)
         else:
             raise ValueError("Invalid datatype. Please specify 'nifti' or 'png'.")
-    
-
-
         
         left_lung_mask = get_mask_from_RLE(row['Left Lung'], 1024, 1024)
         right_lung_mask = get_mask_from_RLE(row['Right Lung'], 1024, 1024)
         heart_mask = get_mask_from_RLE(row['Heart'], 1024, 1024)
         
-        # Save DICOM as NIfTI
-        dicom_nifti_filename = f"{dicom_id}.nii"
-        dicom_nifti_img = nib.Nifti1Image(dicom_image, affine=np.eye(4)) #.astype(np.uint8)
-        nib.save(dicom_nifti_img, os.path.join(output_dir_images, dicom_nifti_filename))
-        
-        # Combine the masks and save as NIfTI
-        masks_filename = f"{dicom_id}.nii"
-        save_nifti([left_lung_mask, right_lung_mask, heart_mask], os.path.join(output_dir_labels, masks_filename))
+        if format == 'nifti':
+            # Save DICOM as NIfTI
+            dicom_nifti_filename = f"{dicom_id}.nii"
+            dicom_nifti_img = nib.Nifti1Image(dicom_image, affine=np.eye(4)) #.astype(np.uint8)
+            nib.save(dicom_nifti_img, os.path.join(output_dir_images, dicom_nifti_filename))
+            
+            # Combine the masks and save as NIfTI
+            masks_filename = f"{dicom_id}.nii"
+            save_nifti([left_lung_mask, right_lung_mask, heart_mask], os.path.join(output_dir_labels, masks_filename))
+        else:
+            # MENT FOR MOBILE TRAINING
+
+            # Save DICOM image as PNG
+            dicom_png_filename = f"{dicom_id}.png"
+            #print(dicom_image.shape, os.path.join(output_dir_images, dicom_png_filename))
+
+            dicom_image = dicom_image - np.min(dicom_image)
+            dicom_image = dicom_image / np.max(dicom_image)
+
+            cv2.imwrite(os.path.join(output_dir_images, dicom_png_filename), dicom_image *255)
+            
+            merged_lung_mask = np.clip(left_lung_mask + right_lung_mask, 0, 1)
+
+            # Save masks as PNG
+            cv2.imwrite(os.path.join(output_dir_labels, f"{dicom_id}_label.png"), merged_lung_mask*255)
+            #cv2.imwrite(right_lung_mask, os.path.join(output_dir_labels, f"{dicom_id}_right_lung.png"))
+            #cv2.imwrite(heart_mask, os.path.join(output_dir_labels, f"{dicom_id}_heart.png"))
 
 
-#tag = "MIMIC-CXR-JPG"
-tag = "ChestX-Ray8"
+
+tag = "MIMIC-CXR-JPG"
+#tag = "ChestX-Ray8"
 image_record = None
 data_dir = None
 
@@ -140,12 +157,12 @@ elif tag == "ChestX-Ray8":
     data_dir = '/home/jkalkhof_locale/Downloads/cxr8/images_01/images/'
     datatype = 'png'
 
-output_dir = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/', tag)
+output_dir = os.path.join('/home/jkalkhof_locale/Downloads/png_seg/', tag)
 
 
 
 # Call the batch processing function
-batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=500)
+batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=50, format='png')
 
 
 exit()

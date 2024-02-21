@@ -14,6 +14,18 @@ import torch
 import torch.nn.functional as F
 from torchvision.models import vgg19
 
+class SobelFilter(torch.nn.Module):
+    def __init__(self):
+        super(SobelFilter, self).__init__()
+        self.sobel_x = torch.nn.Parameter(torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]).float().unsqueeze(0).unsqueeze(0), requires_grad=False).to("cuda:0")
+        self.sobel_y = torch.nn.Parameter(torch.tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]]).float().unsqueeze(0).unsqueeze(0), requires_grad=False).to("cuda:0")
+
+    def forward(self, x):
+        edge_x = F.conv2d(x.transpose(1,3), self.sobel_x, padding=1)
+        edge_y = F.conv2d(x.transpose(1,3), self.sobel_y, padding=1)
+        edge = torch.sqrt(edge_x ** 2 + edge_y ** 2)
+        return edge.transpose(1,3)
+
 class HuberLoss(torch.nn.Module):
     def __init__(self, delta=0.1):
         """
@@ -149,6 +161,13 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
         self.ewc = None
         self.reg_loss_calculator = None
+
+        params = chain(self.model.backbone_lowres.p0.parameters(), \
+                       self.model.backbone_lowres.p1.parameters(), \
+                       self.model.backbone_highres.p0.parameters(), \
+                       self.model.backbone_highres.p1.parameters())
+        self.optimizer_test2 = optim.Adam(params, lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        self.scheduler_test2 = optim.lr_scheduler.ExponentialLR(self.optimizer_test2, self.exp.get_from_config('lr_gamma'))
 
     def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
         r"""Get the outputs of the model
@@ -449,22 +468,20 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #ewc_loss = self.ewc.ewc_loss(self.lambda_ewc)
             
             # NQM loss
-            nqm_loss = 0
-            nqm_loss2 = 0
-            for b in range(inputs_loc[4].shape[0]):
-                stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-                outputs = torch.mean(stack, dim=0)
+            # nqm_loss = 0
+            # nqm_loss2 = 0
+            # for b in range(inputs_loc[4].shape[0]):
+            #     stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+            #     outputs = torch.mean(stack, dim=0)
 
-                nq_loc = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
-                nqm_loss += nq_loc #* nq_loc
+            #     nqm_loss += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
 
-                stack = torch.stack([inputs_loc[6][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-                outputs = torch.mean(stack, dim=0)
-                nq_loc = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy())
-                nqm_loss2 += nq_loc #* nq_loc
+            #     stack = torch.stack([inputs_loc[6][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+            #     outputs = torch.mean(stack, dim=0)
+            #     nqm_loss2 += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
 
-            nqm_loss = nqm_loss / inputs_loc[4].shape[0]
-            nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
+            # nqm_loss = nqm_loss / inputs_loc[4].shape[0]
+            # nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
 
             reg_loss = self.reg_loss_calculator.compute_loss(self.model, lambda_reg=100)
 
@@ -473,8 +490,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
             criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
 
-            #ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
-            #    (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
+            ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
+                (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
 
             #print(ssim_loss.item())
 
@@ -483,22 +500,38 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
                 huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
 
+            l1 = torch.nn.L1Loss()
+            mse = torch.nn.MSELoss()
+
+            max_val = torch.max(torch.abs(inputs_loc[4][..., self.input_channels:]))
+            loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
+            
+
+            self.sobel = SobelFilter()
+
+            #loss2 = l1(self.sobel(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels])), self.sobel(torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])))
+            
+
+            #print(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels].shape)
+            #loss2 = mse(torch.softmax(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels], dim=0), torch.softmax(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels], dim=0))
+
+
             loss_ret = {}# 
-            loss = nqm_loss*6 +  reg_loss  + criterion(seg_something_loss) # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
-            print(nqm_loss.item(), nqm_loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
+            loss = loss2 +  criterion(seg_something_loss) # reg_loss  +  + ssim_loss#  nqm_loss2 + # + nqm_loss2*10 + hl_loss*3000)/50#seg_something_loss*0.1  + (ssim_loss/5)
+            print(loss2.item(), reg_loss.item(), criterion(seg_something_loss).item(), hl_loss.item(), loss.item())#, loss5.item())
             loss_ret[0] = loss.item()
 
             if loss != 0:
                 loss.backward()
 
-                learning_rates = [param_group['lr'] for param_group in self.optimizer.param_groups]
+                learning_rates = [param_group['lr'] for param_group in self.optimizer.param_groups] 
                 print("Learning rates:", learning_rates)
 
-                self.optimizer.step()
-                self.scheduler.step()
+                #self.optimizer.step()
+                #self.scheduler.step()
 
-                #self.optimizer_test.step()
-                #self.scheduler_test.step()
+                self.optimizer_test2.step()
+                self.scheduler_test2.step()
 
         return loss_ret
     
@@ -511,22 +544,22 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
                 img_id: The id of the image
                 targets: The target segmentation
         """
-        mean = np.sum(images, axis=0) / images.shape[0]
+        mean = torch.sum(images, axis=0) / images.shape[0]
         stdd = 0
         for id in range(images.shape[0]):
             img = images[id] - mean
-            img = np.power(img, 2)
+            img = torch.pow(img, 2)
             stdd = stdd + img
         stdd = stdd / images.shape[0]
-        stdd = np.sqrt(stdd)
+        stdd = torch.sqrt(stdd)
 
         #plt.imshow(stdd[0, :, :, 0])
         #plt.show()
         #exit()
 
-        print("NQM Score: ", np.sum(stdd) / (np.sum(median)+1e-9))
+        print("NQM Score: ", torch.sum(stdd) / (images.shape[1] * images.shape[2]))
 
-        return np.sum(stdd) / (np.sum(median)+1e-9)
+        return torch.sum(stdd) / (images.shape[1] * images.shape[2])#(torch.sum(median)+1e-9)
 
 
 def gaussian_kernel(size, sigma):

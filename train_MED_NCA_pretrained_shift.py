@@ -4,6 +4,7 @@ from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.models.Model_M3DNCA import M3DNCA
 from src.models.Model_MedNCA_finetune import MedNCA_finetune
 from src.agents.Agent_Med_NCA_Simple_finetuning import Agent_Med_NCA_finetuning
+from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPath
 from src.models.Model_M3DNCA_alive import M3DNCA_alive
 from src.losses.LossFunctions import DiceFocalLoss_2
 from src.utils.Experiment import Experiment
@@ -15,12 +16,12 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Med_NCA_Run119_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
+    'name': r'Med_NCA_Run123_Prostate_unsupervisedTest_pretrained', #12 or 13, 54 opt,
     'pretrained': r'Med_NCA_Run8_Prostate_unsupervisedTest_pretrained', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 16e-6,
+    'lr': 3e-7,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
@@ -54,6 +55,11 @@ exp = Experiment(config, dataset, ca, agent)
 dataset.set_experiment(exp)
 exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
+
+print("--------------- TESTING HYP 99 ---------------")
+hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr", labelPath=r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr")
+hyp99_test.exp = exp
+agent.getAverageDiceScore(pseudo_ensemble=False, dataset=hyp99_test)
 
 loss_function = DiceFocalLoss_2() 
 agent.getAverageDiceScore(pseudo_ensemble=True)

@@ -16,7 +16,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/ChestX-Ray8/images/",
     'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/ChestX-Ray8/labels/",
-    'name': r'Med_NCA_Run33_Xray_Lung_pretrained', #12 or 13, 54 opt, 
+    'name': r'Med_NCA_Run56_Xray_Lung_pretrained', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run13_Xray_Lung', 
     'device':"cuda:0",
     'unlock_CPU': True,
@@ -25,15 +25,15 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 10,
-    'evaluate_interval': 10,
+    'save_interval': 5,
+    'evaluate_interval': 5,
     'n_epoch': 3000,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': [20, 10],
     'cell_fire_rate': 0.5,
-    'batch_size': 8,
+    'batch_size': 6,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 128,

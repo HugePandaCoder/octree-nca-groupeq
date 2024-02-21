@@ -81,6 +81,18 @@ class MedNCA_finetune(nn.Module):
                 outputs2_patch = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
                                                 fire_rate=self.fire_rate)
+                
+                outputs3_patch = None
+                outputs4_patch = None
+                
+                # Variance training only
+                # outputs3_patch = self.backbone_lowres(inputs_loc, 
+                #                                 steps=self.steps, 
+                #                                 fire_rate=self.fire_rate)
+                
+                # outputs4_patch = self.backbone_lowres(inputs_loc, 
+                #                                 steps=self.steps, 
+                #                                 fire_rate=self.fire_rate)
             else:
                 # Preprocess Inputs
                 inputs_loc_2 = inputs_loc.clone()
@@ -100,6 +112,17 @@ class MedNCA_finetune(nn.Module):
                 outputs2_full = self.backbone_lowres(inputs_loc, 
                                                 steps=self.steps, 
                                                 fire_rate=self.fire_rate)
+                
+                outputs3_full = None
+                outputs4_full = None
+
+                # outputs3_full = self.backbone_lowres(inputs_loc, 
+                #                                 steps=self.steps, 
+                #                                 fire_rate=self.fire_rate)
+                
+                # outputs4_full = self.backbone_lowres(inputs_loc, 
+                #                                 steps=self.steps, 
+                #                                 fire_rate=self.fire_rate)
 
                 before_patch = outputs.clone()
 
@@ -149,8 +172,8 @@ class MedNCA_finetune(nn.Module):
         print("SLICE CHANGES: ", torch.sum(inputs_loc_2[0, :, :, 0:1]  - inputs_loc_2_ori[0, :, :, 0:1]))
 
         if return_channels:
-            return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
-        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch)
+            return outputs[..., self.input_channels+self.output_channels:], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)
+        return outputs[..., self.input_channels:self.input_channels+self.output_channels], targets_loc, (inputs_loc_2, inputs_loc_2_ori, inputs_loc_3, inputs_loc_3_ori, before_patch, outputs2_full, outputs, outputs2_patch, outputs3_full, outputs3_patch, outputs4_full, outputs4_patch)
     
     def forward_eval(self, x: torch.Tensor, preprocess_model = None):
         down_scaled_size = (x.shape[1] // 4, x.shape[2] // 4)
