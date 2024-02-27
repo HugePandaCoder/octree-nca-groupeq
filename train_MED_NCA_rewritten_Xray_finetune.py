@@ -16,7 +16,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/images",
     'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/ChestX-Ray8/labels",
-    'name': r'Med_NCA_Run65_Xray_Lung_pretrained', #12 or 13, 54 opt, 
+    'name': r'Med_NCA_Run66_Xray_Lung_pretrained', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run13_Xray_Lung', 
     'device':"cuda:0",
     'unlock_CPU': True,

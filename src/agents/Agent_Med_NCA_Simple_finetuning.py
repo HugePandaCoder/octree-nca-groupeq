@@ -174,9 +174,12 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
-        inputs, targets, variance, pred = data['image'], data['label'], data['variance'], data['pred']
+        inputs, targets = data['image'], data['label']
         
-        print(inputs.shape, targets.shape, variance.shape, pred.shape)
+        if 'variance' in data:
+            variance = data['variance']
+        if 'pred' in data:
+            pred = data['pred']
 
         if self.model.training:
             inputs, targets, variance, pred, inputs_loc = self.model(inputs, targets, variance, pred, return_channels=False, preprocess_model = (self.preprocess_model, self.preprocess_model2))
@@ -479,19 +482,19 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             
             # NQM loss
             # nqm_loss = 0
-            # nqm_loss2 = 0
-            # for b in range(inputs_loc[4].shape[0]):
-            #     stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-            #     outputs = torch.mean(stack, dim=0)
+            #nqm_loss2 = 0
+            #for b in range(inputs_loc[4].shape[0]):
+            #    stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
+            #    outputs = torch.mean(stack, dim=0)
 
-            #     nqm_loss += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
+            #    nqm_loss += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
 
-            #     stack = torch.stack([inputs_loc[6][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[7][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-            #     outputs = torch.mean(stack, dim=0)
-            #     nqm_loss2 += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
+            #     stack = torch.stack([inputs_loc[6][b:b+1, ...], inputs_loc[7][b:b+1, ...]], dim=0)
+            #     outputs_loc = torch.mean(stack, dim=0)
+            #     nqm_loss2 += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs_loc))
 
             # nqm_loss = nqm_loss / inputs_loc[4].shape[0]
-            # nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
+            #nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
 
             reg_loss = self.reg_loss_calculator.compute_loss(self.model, lambda_reg=100)
 
@@ -514,7 +517,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             mse = torch.nn.MSELoss()
 
             max_val = torch.max(torch.abs(inputs_loc[4][..., self.input_channels:]))
-            loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
+            #loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
             
 
             self.sobel = SobelFilter()
@@ -535,7 +538,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
             #plt.show()
 
-            loss = loss_f(outputs, pred, variance)
+            loss = loss_f(outputs, pred, variance) #+ loss2#nqm_loss2
             print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 

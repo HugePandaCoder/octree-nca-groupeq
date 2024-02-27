@@ -49,6 +49,9 @@ def save_nifti(masks, filename):
     nib.save(nifti_img, filename)
 
 def read_dicom_and_resize(path, new_height=256, new_width=256):
+    if not os.path.exists(path):
+        print(f"File does not exist: {path}")
+        return None
     dicom = pydicom.dcmread(path)
     image = dicom.pixel_array
     #print(image.shape)
@@ -59,6 +62,10 @@ def read_dicom_and_resize(path, new_height=256, new_width=256):
 
 def read_png_and_resize(path, new_height=256, new_width=256):
     # Load the image from the specified path
+    if not os.path.exists(path):
+        #print(f"File does not exist: {path}")
+        return None
+
     image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     
     # Resize the image to the specified dimensions
@@ -85,7 +92,9 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
     if not os.path.exists(output_dir_labels):
         os.makedirs(output_dir_labels)
     
-    for index, row in tqdm(df.iloc[start_row:end_row].iterrows()):
+    count = 0
+
+    for index, row in tqdm(df.iloc[start_row:end_row+1000000].iterrows()):
         dicom_id = row[column]  # Assuming 'ImageID' matches 'dicom_id'
         #print(row)
         if record_for_path:
@@ -104,9 +113,13 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
         else:
             raise ValueError("Invalid datatype. Please specify 'nifti' or 'png'.")
         
-        left_lung_mask = get_mask_from_RLE(row['Left Lung'], 1024, 1024)
-        right_lung_mask = get_mask_from_RLE(row['Right Lung'], 1024, 1024)
-        heart_mask = get_mask_from_RLE(row['Heart'], 1024, 1024)
+        # Skip the iteration if the image could not be loaded
+        if dicom_image is None:
+            continue
+
+        left_lung_mask = get_mask_from_RLE(row['Left Lung'], row['Height'], row['Width'])
+        right_lung_mask = get_mask_from_RLE(row['Right Lung'], row['Height'], row['Width'])
+        heart_mask = get_mask_from_RLE(row['Heart'], row['Height'], row['Width'])
         
         if format == 'nifti':
             # Save DICOM as NIfTI
@@ -136,10 +149,15 @@ def batch_process(csv_path, record_list_path, output_dir_images, output_dir_labe
             #cv2.imwrite(right_lung_mask, os.path.join(output_dir_labels, f"{dicom_id}_right_lung.png"))
             #cv2.imwrite(heart_mask, os.path.join(output_dir_labels, f"{dicom_id}_heart.png"))
 
+        count += 1
+        if count >= end_row:
+            break
 
 
+
+tag = "Padchest"
 #tag = "MIMIC-CXR-JPG"
-tag = "ChestX-Ray8"
+#tag = "ChestX-Ray8"
 image_record = None
 data_dir = None
 
@@ -156,13 +174,19 @@ elif tag == "ChestX-Ray8":
     column = 'Image Index'
     data_dir = '/home/jkalkhof_locale/Downloads/cxr8/images_01/images/'
     datatype = 'png'
+elif tag == "Padchest":
+    csv_path = '/home/jkalkhof_locale/Downloads/physionet.org/files/chexmask-cxr-segmentation-data/0.3/OriginalResolution/Padchest.csv'
+    record_for_path = False
+    column = 'ImageID'
+    data_dir = '/home/jkalkhof_locale/Downloads/Padchest/images/'
+    datatype = 'png'
 
-output_dir = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/', tag)
+output_dir = os.path.join('/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest', tag)
 
 
 
 # Call the batch processing function
-batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=500, format='nifti')
+batch_process(csv_path, image_record, os.path.join(output_dir, "images"), os.path.join(output_dir, "labels"), tag, column, data_dir, datatype, record_for_path, end_row=2000, format='nifti')
 
 
 exit()

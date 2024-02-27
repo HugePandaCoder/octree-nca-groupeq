@@ -80,9 +80,10 @@ class MedNCA_finetune(nn.Module):
                                                steps=self.steps, 
                                                fire_rate=self.fire_rate)
                 # Variance training only
-                outputs2_patch = self.backbone_lowres(inputs_loc, 
-                                                steps=self.steps, 
-                                                fire_rate=self.fire_rate)
+                outputs2_patch = None
+                #outputs2_patch = self.backbone_lowres(inputs_loc, 
+                #                                steps=self.steps, 
+                #                                fire_rate=self.fire_rate)
                 
                 outputs3_patch = None
                 outputs4_patch = None
@@ -111,10 +112,10 @@ class MedNCA_finetune(nn.Module):
                                                 fire_rate=self.fire_rate)
                 
                 # Variance training only
-                outputs2_full = self.backbone_lowres(inputs_loc, 
-                                                steps=self.steps, 
-                                                fire_rate=self.fire_rate)
-                
+                #outputs2_full = self.backbone_lowres(inputs_loc, 
+                #                                steps=self.steps, 
+                #                                fire_rate=self.fire_rate)
+                outputs2_full = None
                 outputs3_full = None
                 outputs4_full = None
 

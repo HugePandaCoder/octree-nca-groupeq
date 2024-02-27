@@ -11,29 +11,31 @@ import numpy as np
 import argparse
 from src.models.vit_seg_modeling import VisionTransformer as ViT_seg
 from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
+from src.datasets.Nii_Gz_Dataset_customPath import Dataset_NiiGz_customPath
+from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'TransUnet2D_Run10',
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels",
+    'name': r'TransUnet2D_Run1_ChestX8_50',
     'device':"cuda:0",
     # Learning rate
     'lr': 1e-4,
     'lr_gamma': 0.9999,
     'betas': (0.9, 0.99),
     # Training config
-    'save_interval': 10,
-    'evaluate_interval': 10,
-    'n_epoch': 1000,
+    'save_interval': 500,
+    'evaluate_interval': 501,
+    'n_epoch': 500,
     'batch_size': 1,
     # Data
-    'input_size': (320, 320),
-    'data_split': [0.7, 0, 0.3], 
+    'input_size': (256, 256),
+    'data_split': [1.0, 0, 0.0], 
 
 }]
 
 # Define Experiment
-dataset = Dataset_NiiGz_3D(slice=2)
+dataset = Nii_Gz_Dataset()
 device = torch.device(config[0]['device'])
 #ca = TransUNet(img_dim=320, in_channels=1, out_channels=128, head_num=4, mlp_dim=512, block_num=8, patch_dim=16, class_num=1).to(device) #in_channels=1, padding=1, out_classes=1
 
@@ -58,7 +60,7 @@ parser.add_argument('--deterministic', type=int,  default=1,
 parser.add_argument('--base_lr', type=float,  default=0.01,
                     help='segmentation network learning rate')
 parser.add_argument('--img_size', type=int,
-                    default=320, help='input patch size of network input')
+                    default=256, help='input patch size of network input')
 parser.add_argument('--seed', type=int,
                     default=1234, help='random seed')
 parser.add_argument('--n_skip', type=int,
@@ -89,7 +91,16 @@ loss_function = DiceBCELoss()
 # Number of parameters
 print("Nr. Params.: ", sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-#agent.train(data_loader, loss_function)
+if True:
+    # Generate variance and segmentation masks for unseen dataset
+    print("--------------- TESTING HYP 99 ---------------")
+    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels_test")
+    hyp99_test.exp = exp
+    agent.getAverageDiceScore(pseudo_ensemble=False, dataset=hyp99_test)
+else:  
+    agent.train(data_loader, loss_function)
 
 
 start_time = time.perf_counter()

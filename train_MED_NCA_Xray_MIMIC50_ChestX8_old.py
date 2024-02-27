@@ -9,15 +9,16 @@ from src.agents.Agent_Med_NCA_Simple_finetuning import Agent_Med_NCA_finetuning
 from src.losses.LossFunctions import DiceFocalLoss, WeightedDiceBCELoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
+from src.datasets.Nii_Gz_Dataset_customPath import Dataset_NiiGz_customPath
 import time
 import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/images",
-    'label_path': r"/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/labels",
-    'name': r'Med_NCA_Run3_Xray_Lung_pretrained_dataset2', #12 or 13, 54 opt, 
-    'pretrained': r'Med_NCA_Run1_Xray_Lung_CXR8', 
+    'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50/ChestX8_50/images_test",
+    'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50/ChestX8_50/labels_test",
+    'name': r'Med_NCA_Run3_MICMIC50_ChestX850', #12 or 13, 54 opt, 
+    'pretrained': r'Med_NCA_Run2_MICMIC50', 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -25,13 +26,13 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 5,
-    'evaluate_interval': 5,
-    'n_epoch': 3000,
+    'save_interval': 500,
+    'evaluate_interval': 501,
+    'n_epoch': 500,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
-    'inference_steps': [20, 10],
+    'inference_steps': [20, 20],
     'cell_fire_rate': 0.5,
     'batch_size': 6,
     'input_channels': 1,
@@ -41,7 +42,7 @@ config = [{
     # Data
     'input_size': [(64, 64), (256, 256)] ,
     'scale_factor': 4,
-    'data_split': [0.7, 0, 0.3], 
+    'data_split': [1.0, 0, 0.0], 
     'keep_original_scale': False,
     'rescale': True,
 }
@@ -60,14 +61,21 @@ loss_function = WeightedDiceBCELoss()
 
 #agent.getAverageDiceScore(pseudo_ensemble=False)
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-agent.train(data_loader, loss_function)
+if True:
+    # Generate variance and segmentation masks for unseen dataset
+    print("--------------- TESTING HYP 99 ---------------")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
+    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
+    hyp99_test.exp = exp
+    agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)
+else:   
+    agent.train(data_loader, loss_function)
 
-start_time = time.perf_counter()
-agent.getAverageDiceScore(pseudo_ensemble=False)
-end_time = time.perf_counter()
+    start_time = time.perf_counter()
+    agent.getAverageDiceScore(pseudo_ensemble=False)
+    end_time = time.perf_counter()
 
-elapsed_time = end_time - start_time
-print(f"The function took {elapsed_time} seconds to execute.")
+    elapsed_time = end_time - start_time
+    print(f"The function took {elapsed_time} seconds to execute.")
 
 # %%

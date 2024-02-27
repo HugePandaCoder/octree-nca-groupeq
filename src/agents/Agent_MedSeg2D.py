@@ -34,7 +34,9 @@ class Agent_MedSeg2D(BaseAgent):
         # For each data sample
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
-            data_id, inputs, _, name = data['id'], data['image'], data['label'], data['name']
+            data_id, inputs, _ = data['id'], data['image'], data['label']
+            if 'name' in data:
+                name = data['name']
             outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
             if isinstance(data_id, str):
@@ -61,18 +63,24 @@ class Agent_MedSeg2D(BaseAgent):
                         outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
                         stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
                         
-                        # Calculate median
-                        outputs, _ = torch.median(stack, dim=0)
-                        stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
-
                         # save images in path
+                        outputs, _ = torch.median(stack, dim=0)
                         if True:
+                            stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+
                             print(stdd.shape, outputs.shape)
                             # SAVE VARIANCE
                             stdd = np.swapaxes(np.squeeze(stdd), 0, 1)
                             nifti_img = nib.Nifti1Image(stdd[:, :, np.newaxis], affine=np.eye(4))
                             filename = name[0]
-                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/variance/', filename)
+                             
+
+                            variance_path = os.path.join(os.path.dirname(dataset.images_path), 'variance')
+
+                            if not os.path.exists(variance_path):
+                                os.makedirs(variance_path)
+
+                            filename = os.path.join(variance_path, filename)
                             nib.save(nifti_img, filename)
 
                             # SAVE MEAN
@@ -81,7 +89,13 @@ class Agent_MedSeg2D(BaseAgent):
                             out_mean[out_mean <= 0.5] = 0
                             nifti_img = nib.Nifti1Image(out_mean[:, :, np.newaxis], affine=np.eye(4))
                             filename = name[0]
-                            filename = os.path.join('/home/jkalkhof_locale/Downloads/test_seg/MIMIC-CXR-JPG_pretrained_v2/MIMIC/pred/', filename)
+
+                            pred_path = os.path.join(os.path.dirname(dataset.images_path), 'pred')
+
+                            if not os.path.exists(pred_path):
+                                os.makedirs(pred_path)
+
+                            filename = os.path.join(pred_path, filename)
                             nib.save(nifti_img, filename)
 
 
@@ -97,6 +111,18 @@ class Agent_MedSeg2D(BaseAgent):
                 for m in range(patient_3d_label.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
+
+                        if False:
+                            print("SAVE IMAGE AS NIFTI")
+                            print(patient_3d_image.shape)
+                            patient_3d_image_np = patient_3d_image[...,m].detach().cpu().numpy()
+                            nifti_img = nib.Nifti1Image(patient_3d_image_np, affine=np.eye(4))
+                            nib.save(nifti_img, "/home/jkalkhof_locale/Downloads/test/test.nii")
+                            print("SAVE IMAGE AS NIFTI")
+                            print(patient_real_Img.shape)
+                            patient_3d_image_np = patient_real_Img.transpose(1,3).detach().cpu().numpy()
+                            nifti_img = nib.Nifti1Image(patient_3d_image_np, affine=np.eye(4))
+                            nib.save(nifti_img, "/home/jkalkhof_locale/Downloads/test/test_real.nii")
 
                         if math.isnan(loss_log[m][patient_id]):
                             loss_log[m][patient_id] = 0
