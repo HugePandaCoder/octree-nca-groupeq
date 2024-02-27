@@ -65,7 +65,7 @@ class Agent_MedSeg2D(BaseAgent):
                         
                         # save images in path
                         outputs, _ = torch.median(stack, dim=0)
-                        if True:
+                        if False:
                             stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
 
                             print(stdd.shape, outputs.shape)

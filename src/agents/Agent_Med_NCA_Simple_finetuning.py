@@ -481,52 +481,52 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #ewc_loss = self.ewc.ewc_loss(self.lambda_ewc)
             
             # NQM loss
-            # nqm_loss = 0
-            #nqm_loss2 = 0
+            nqm_loss = 0
+            nqm_loss2 = 0
             #for b in range(inputs_loc[4].shape[0]):
             #    stack = torch.stack([inputs_loc[4][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels], inputs_loc[5][b:b+1, ..., self.input_channels:self.input_channels+self.output_channels]], dim=0)
-            #    outputs = torch.mean(stack, dim=0)
+            #    outputs_loc = torch.mean(stack, dim=0)
 
-            #    nqm_loss += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs))
+            #    nqm_loss += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs_loc))
 
-            #     stack = torch.stack([inputs_loc[6][b:b+1, ...], inputs_loc[7][b:b+1, ...]], dim=0)
-            #     outputs_loc = torch.mean(stack, dim=0)
-            #     nqm_loss2 += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs_loc))
+            #    stack = torch.stack([inputs_loc[6][b:b+1, ...], inputs_loc[7][b:b+1, ...]], dim=0)
+            #    outputs_loc = torch.mean(stack, dim=0)
+            #    nqm_loss2 += self.labelVariance(torch.sigmoid(stack), torch.sigmoid(outputs_loc))
 
-            # nqm_loss = nqm_loss / inputs_loc[4].shape[0]
+            #nqm_loss = nqm_loss / inputs_loc[4].shape[0]
             #nqm_loss2 = nqm_loss2 / inputs_loc[4].shape[0]
 
-            reg_loss = self.reg_loss_calculator.compute_loss(self.model, lambda_reg=100)
+            #reg_loss = self.reg_loss_calculator.compute_loss(self.model, lambda_reg=100)
 
-            seg_something_loss = torch.mean(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]))
+            #seg_something_loss = torch.mean(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]))
 
             #criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
-            criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
+            #criterion = CustomLoss(epsilon=1e-9, scale=0.0001)
 
-            ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
-                (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
+            #ssim_loss = (1-self.ssim(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]))+1 + \
+            #    (1-self.ssim(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels]))+1
 
             #print(ssim_loss.item())
 
-            huber_loss = HuberLoss(delta=200) 
+            #huber_loss = HuberLoss(delta=200) 
 
-            hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
-                huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
+            #hl_loss = huber_loss(inputs_loc[0][..., 0:self.input_channels], inputs_loc[1][..., 0:self.input_channels]) + \
+            #    huber_loss(inputs_loc[2][..., 0:self.input_channels], inputs_loc[3][..., 0:self.input_channels])
 
             l1 = torch.nn.L1Loss()
             mse = torch.nn.MSELoss()
 
-            max_val = torch.max(torch.abs(inputs_loc[4][..., self.input_channels:]))
+            #max_val = torch.max(torch.abs(inputs_loc[4][..., self.input_channels:]))
             #loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
             
 
-            self.sobel = SobelFilter()
+            #self.sobel = SobelFilter()
 
             #loss2 = l1(self.sobel(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels])), self.sobel(torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])))
             
 
             #print(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels].shape)
-            #loss2 = mse(torch.softmax(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels], dim=0), torch.softmax(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels], dim=0))
+            loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
 
 
             loss_ret = {}# 
@@ -538,7 +538,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
             #plt.show()
 
-            loss = loss_f(outputs, pred, variance) #+ loss2#nqm_loss2
+            loss = loss_f(outputs, pred, variance) + loss2*10 #nqm_loss + nqm_loss2/16 #loss2*10#nqm_loss2
             print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 
