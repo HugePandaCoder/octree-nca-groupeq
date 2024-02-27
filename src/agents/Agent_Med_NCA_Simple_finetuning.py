@@ -526,7 +526,8 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             
 
             #print(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels].shape)
-            loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels]))
+            loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])) + \
+                l1(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]))
 
 
             loss_ret = {}# 

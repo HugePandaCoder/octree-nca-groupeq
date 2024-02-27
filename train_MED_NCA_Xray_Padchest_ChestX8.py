@@ -19,7 +19,7 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/ChestX8_50/images_test",
     'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/ChestX8_50/labels_test",
-    'name': r'Med_NCA_Run7_Padchest_ChestX850', #12 or 13, 54 opt, 
+    'name': r'Med_NCA_Run13_Padchest_ChestX850', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run2_Padchest50', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
@@ -30,7 +30,7 @@ config = [{
     # Training
     'save_interval': 50,
     'evaluate_interval': 501,
-    'n_epoch': 100,
+    'n_epoch': 150,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
