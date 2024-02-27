@@ -28,9 +28,9 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 500,
+    'save_interval': 150,
     'evaluate_interval': 501,
-    'n_epoch': 500,
+    'n_epoch': 150,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels

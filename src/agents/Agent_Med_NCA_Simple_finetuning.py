@@ -527,7 +527,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
 
             #print(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels].shape)
             loss2 = l1(torch.sigmoid(inputs_loc[4][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[5][..., self.input_channels:self.input_channels+self.output_channels])) + \
-                l1(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]))
+                l1(torch.sigmoid(inputs_loc[6][..., self.input_channels:self.input_channels+self.output_channels]), torch.sigmoid(inputs_loc[7][..., self.input_channels:self.input_channels+self.output_channels]))/16
 
 
             loss_ret = {}# 
@@ -539,7 +539,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
             #plt.show()
 
-            loss = loss_f(outputs, pred, variance) + loss2*10 #nqm_loss + nqm_loss2/16 #loss2*10#nqm_loss2
+            loss = loss_f(outputs, pred, variance) + loss2*100 #nqm_loss + nqm_loss2/16 #loss2*10#nqm_loss2
             print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 
