@@ -10,13 +10,14 @@ from src.agents.Agent_UNet import UNetAgent
 from src.datasets.Nii_Gz_Dataset_customPath import Dataset_NiiGz_customPath
 from unet import UNet2D
 from src.agents.Agent_UNet import UNetAgent 
+import segmentation_models_pytorch as smp
 
 config = [{
     #'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
     #'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
     'img_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images",
     'label_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels",
-    'name': r'UNet_Run1_Padchest_50',
+    'name': r'EfficientUNet_Run2_Padchest_50',
     'device':"cuda:0",
     # Learning rate
     'lr': 1e-4,
@@ -45,7 +46,15 @@ dataset = dataset = Nii_Gz_Dataset()
 # Define Experiment
 #dataset = Dataset_NiiGz_3D(slice=2)
 device = torch.device(config[0]['device'])
-ca = UNet2D(in_channels=1, padding=1, out_classes=1).to(device) #(channel_n=16, fire_rate=0.1, steps=48, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
+
+#ca = UNet2D(in_channels=1, padding=1, out_classes=1).to(device) #(channel_n=16, fire_rate=0.1, steps=48, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1).to("cuda:0")
+ca = smp.Unet(
+    encoder_name="efficientnet-b0",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+    encoder_weights=None,     # use `imagenet` pre-trained weights for encoder initialization
+    in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+    classes=1,                      # model output channels (number of classes in your dataset)
+).to(device)
+
 agent = UNetAgent(ca)
 exp = Experiment(config, dataset, ca, agent)
 exp.set_model_state('train')
@@ -57,7 +66,7 @@ loss_function = DiceBCELoss()
 print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 
 
-if True:
+if False:
     # Generate variance and segmentation masks for unseen dataset
     print("--------------- TESTING HYP 99 ---------------")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
@@ -70,5 +79,5 @@ else:
     agent.train(data_loader, loss_function)
 
     # Average Dice Score on Test set
-    agent.getAverageDiceScore()
+    #agent.getAverageDiceScore()
 

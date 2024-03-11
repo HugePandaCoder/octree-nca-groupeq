@@ -17,9 +17,9 @@ import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/images",
-    'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/labels",
-    'name': r'Med_NCA_Run1_MICMIC50_MIMIC50', #12 or 13, 54 opt, 
+    'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/images_test",
+    'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/labels_test",
+    'name': r'Med_NCA_Run4_MICMIC50_MIMIC50', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run2_MICMIC50', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
@@ -28,15 +28,15 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 500,
+    'save_interval': 100,
     'evaluate_interval': 501,
-    'n_epoch': 500,
+    'n_epoch': 100,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': [20, 20],
     'cell_fire_rate': 0.5,
-    'batch_size': 16,
+    'batch_size': 8,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 128,

@@ -19,12 +19,12 @@ os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 config = [{
     'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/ChestX8_50_finetune/MIMIC_50/images_test",
     'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/ChestX8_50_finetune/MIMIC_50/labels_test",
-    'name': r'Med_NCA_Run10_ChestX8_50_MIMIC_50', #12 or 13, 54 opt, 
+    'name': r'Med_NCA_Run14_ChestX8_50_MIMIC_50', #12 or 13, 54 opt, 
     'pretrained': r'Med_NCA_Run1_ChestX8_50', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
-    'lr': 3e-5,
+    'lr': 3e-6,
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
@@ -72,7 +72,7 @@ if True:
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/images", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/labels")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/ChestX8_50/images", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/ChestX8_50/labels")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/Padchest_50/images", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/Padchest_50/labels")
-        
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/ChestX8_50_finetune/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/ChestX8_50_finetune/MIMIC_50/labels_test")
     
     hyp99_test.exp = exp
     agent.getAverageDiceScore(pseudo_ensemble=True, dataset=hyp99_test)

@@ -15,9 +15,9 @@ from src.datasets.Nii_Gz_Dataset_customPath import Dataset_NiiGz_customPath
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels",
-    'name': r'TransUnet2D_Run1_Padchest_50',
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_1k/images",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_1k/labels",
+    'name': r'TransUnet2D_Run1_MIMIC_1k',
     'device':"cuda:0",
     # Learning rate
     'lr': 1e-4,
@@ -91,29 +91,23 @@ loss_function = DiceBCELoss()
 # Number of parameters
 print("Nr. Params.: ", sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-if True:
+if False:
     # Generate variance and segmentation masks for unseen dataset
     print("--------------- TESTING HYP 99 ---------------")
-    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
+    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels_test")
-    
-    # Custom dataset
-    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Downloads/MICCAI_png_Test/images_preprocessed_contrast_nifti", labelPath=r"/home/jkalkhof_locale/Downloads/MICCAI_png_Test/images_preprocessed_nifti_labels")
-    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning/images_preprocessed_awful_nii', labelPath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning/images_preprocessed_awful_nii_labels')
-    
-
     hyp99_test.exp = exp
     agent.getAverageDiceScore(pseudo_ensemble=False, dataset=hyp99_test)
 else:  
     agent.train(data_loader, loss_function)
 
 
-start_time = time.perf_counter()
-agent.getAverageDiceScore(pseudo_ensemble=False)
-end_time = time.perf_counter()
+#start_time = time.perf_counter()
+#agent.getAverageDiceScore(pseudo_ensemble=False)
+#end_time = time.perf_counter()
 
-elapsed_time = end_time - start_time
-print(f"The function took {elapsed_time} seconds to execute.")
+#elapsed_time = end_time - start_time
+#print(f"The function took {elapsed_time} seconds to execute.")
 
 

@@ -109,7 +109,10 @@ class Nii_Gz_Dataset(Dataset_Base):
 
         # Preprocess Labels
 
-        label = label[:,:, 0:1] + label[:,:, 1:2]
+        if len(label.shape) == 3:
+            label = label[:,:, 0:1] + label[:,:, 1:2]
+        else:
+            label = label[:,:, np.newaxis]
 
         #print(np.unique(label))
         #plt.imshow(img*80)

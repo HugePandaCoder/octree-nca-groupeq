@@ -6,6 +6,7 @@ import math
 from matplotlib import pyplot as plt
 import nibabel as nib
 import os
+from src.losses.LossFunctions import DiceLoss
 
 class Agent_MedSeg2D(BaseAgent):
     @torch.no_grad()
@@ -17,6 +18,7 @@ class Agent_MedSeg2D(BaseAgent):
                 loss_f (torch.nn.Module)
                 steps (int): Number of steps to do for inference
         """
+        loss_f = DiceLoss()
         # Prepare dataset for testing
         if dataset is None:
             dataset = self.exp.dataset
@@ -66,50 +68,90 @@ class Agent_MedSeg2D(BaseAgent):
                         # save images in path
                         outputs, _ = torch.median(stack, dim=0)
                         if False:
-                            stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+                            if True:
+                                # SAVE MEAN
+                                out_mean = np.swapaxes(np.squeeze(torch.sigmoid(outputs).detach().cpu().numpy()), 0, 1)
+                                out_mean[out_mean > 0.5] = 1
+                                out_mean[out_mean <= 0.5] = 0
+                                print(out_mean.shape)
+                                nifti_img = nib.Nifti1Image(out_mean[:, :, np.newaxis], affine=np.eye(4))
+                                filename = name[0]
 
-                            print(stdd.shape, outputs.shape)
-                            # SAVE VARIANCE
-                            stdd = np.swapaxes(np.squeeze(stdd), 0, 1)
-                            nifti_img = nib.Nifti1Image(stdd[:, :, np.newaxis], affine=np.eye(4))
-                            filename = name[0]
-                             
+                                pred_path = os.path.join(os.path.dirname(dataset.images_path), 'pred')
+                                #pred_path = '/home/jkalkhof_locale/Downloads/miccai_chestx8_mimic/pred/'
 
-                            variance_path = os.path.join(os.path.dirname(dataset.images_path), 'variance')
+                                if not os.path.exists(pred_path):
+                                    os.makedirs(pred_path)
 
-                            if not os.path.exists(variance_path):
-                                os.makedirs(variance_path)
+                                filename = os.path.join(pred_path, filename)
+                                nib.save(nifti_img, filename)
+                            if True:
+                                stdd = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
 
-                            filename = os.path.join(variance_path, filename)
-                            nib.save(nifti_img, filename)
+                                print(stdd.shape, outputs.shape)
+                                # SAVE VARIANCE
+                                stdd = np.swapaxes(np.squeeze(stdd), 0, 1)
+                                nifti_img = nib.Nifti1Image(stdd[:, :, np.newaxis], affine=np.eye(4))
+                                filename = name[0]
+                                
 
-                            # SAVE MEAN
-                            out_mean = np.swapaxes(np.squeeze(torch.sigmoid(outputs).detach().cpu().numpy()), 0, 1)
-                            out_mean[out_mean > 0.5] = 1
-                            out_mean[out_mean <= 0.5] = 0
-                            nifti_img = nib.Nifti1Image(out_mean[:, :, np.newaxis], affine=np.eye(4))
-                            filename = name[0]
+                                variance_path = os.path.join(os.path.dirname(dataset.images_path), 'variance')
+                                #variance_path = '/home/jkalkhof_locale/Downloads/miccai_chestx8_mimic/variance/'
 
-                            pred_path = os.path.join(os.path.dirname(dataset.images_path), 'pred')
+                                if not os.path.exists(variance_path):
+                                    os.makedirs(variance_path)
 
-                            if not os.path.exists(pred_path):
-                                os.makedirs(pred_path)
+                                filename = os.path.join(variance_path, filename)
+                                nib.save(nifti_img, filename)
 
-                            filename = os.path.join(pred_path, filename)
-                            nib.save(nifti_img, filename)
+                                if False:
+                                    # Save mask
+                                    stack_path = '/home/jkalkhof_locale/Downloads/miccai_chestx8_mimic/stack/'
 
+                                    if not os.path.exists(stack_path):
+                                        os.makedirs(stack_path)
+
+                                    filename = name[0]
+                                    filename = os.path.join(stack_path, filename)
+                                    stack = torch.squeeze(stack.detach().cpu())
+
+                                    stack = np.swapaxes(np.squeeze(torch.sigmoid(stack).numpy())[..., np.newaxis], 0, 2)
+                                    stack[stack > 0.5] = 1
+                                    stack[stack <= 0.5] = 0
+
+                                    print(stack.shape)
+                                    nifti_img = nib.Nifti1Image(stack, affine=np.eye(4))
+                                    nib.save(nifti_img, filename)
+
+                                    # # Save image
+                                    # image_path = '/home/jkalkhof_locale/Downloads/miccai_variance/image/'
+
+                                    # if not os.path.exists(image_path):
+                                    #     os.makedirs(image_path)
+                                        
+                                    # filename = os.path.join(image_path, filename)
+                                    # nifti_img = nib.Nifti1Image(data['image'], affine=np.eye(4))
+                                    # nib.save(nifti_img, filename)
 
 
                     else:
                         outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
 
-
+            
             # --------------- 2D ---------------------
             # If next patient
             if (id != patient_id or dataset.slice == -1) and patient_id != None:
                 out = str(patient_id) + ", "
                 for m in range(patient_3d_label.shape[3]):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
+
+
+                        if "4993" in name: 
+                            plt.imshow(np.squeeze(torch.sigmoid(patient_3d_image[0, :, :, m]).detach().cpu().numpy()))
+                            plt.show()
+                            plt.imshow(np.squeeze(patient_3d_label[0, :, :, m].detach().cpu().numpy()), alpha=0.5)
+                            plt.show()
+                            exit()
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
 
                         if False:
@@ -129,7 +171,7 @@ class Agent_MedSeg2D(BaseAgent):
                         out = out + str(loss_log[m][patient_id]) + ", "
                     else:
                         out = out + " , "
-                print(out)
+                print("PATIENT ID", name, out)
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
             # If first slice of volume
             if patient_3d_image == None:

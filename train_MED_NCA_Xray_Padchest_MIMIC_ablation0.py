@@ -17,10 +17,10 @@ import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/Padchest_50/images_test",
-    'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/Padchest_50/labels_test",
-    'name': r'Med_NCA_Run4_MICMIC50_Padchest', #12 or 13, 54 opt, 
-    'pretrained': r'Med_NCA_Run2_MICMIC50', #12 or 13, 54 opt, 
+    'img_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/MIMIC_50/images_test",
+    'label_path': r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/MIMIC_50/labels_test",
+    'name': r'Med_NCA_Run2_Padchest_MIMIC_50_ablG0', #12 or 13, 54 opt, 
+    'pretrained': r'Med_NCA_Run2_Padchest50', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -28,7 +28,7 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 100,
+    'save_interval': 50,
     'evaluate_interval': 501,
     'n_epoch': 100,
     'batch_duplication': 1,
@@ -53,7 +53,7 @@ config = [{
 dataset = Nii_Gz_Dataset()#store=True)
 device = torch.device(config[0]['device'])
 ca = MedNCA_finetune(channel_n=16, fire_rate=0.5, steps=50, device = "cuda:0", hidden_size=128, input_channels=1, output_channels=1, batch_duplication=1).to("cuda:0")
-agent = Agent_Med_NCA_finetuning(ca)
+agent = Agent_Med_NCA_finetuning(ca, gamma=0)
 exp = Experiment(config, dataset, ca, agent)
 dataset.set_experiment(exp)
 exp.set_model_state('train')
@@ -64,9 +64,9 @@ loss_function = WeightedDiceBCELoss()
 if True:
     # Generate variance and segmentation masks for unseen dataset
     print("--------------- TESTING HYP 99 ---------------")
-    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
+    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
-    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels_test")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels_test")
     
     # Generate mean and variance maps
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/images", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/MIMIC_50_finetune/MIMIC_50/labels")

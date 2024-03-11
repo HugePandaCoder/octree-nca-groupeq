@@ -150,6 +150,10 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
     """Med-NCA training agent that uses 2d patches across 2-levels during training to optimize VRAM.
     """
 
+    def __init__(self, model: torch.nn.Module, gamma = 100):
+        super().__init__(model)
+        self.gamma = gamma
+
     def initialize(self):
         # create test  model
         super().initialize()
@@ -539,7 +543,7 @@ class Agent_Med_NCA_finetuning(MedNCAAgent):
             #plt.imshow(pred.detach().cpu().numpy()[0, :, :, 0])
             #plt.show()
 
-            loss = loss_f(outputs, pred, variance) + loss2*100 #nqm_loss + nqm_loss2/16 #loss2*10#nqm_loss2
+            loss = loss_f(outputs, pred, variance) + loss2*self.gamma #nqm_loss + nqm_loss2/16 #loss2*10#nqm_loss2
             print("LOSS", loss.item())
             loss_ret[0] = loss.item()
 

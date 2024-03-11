@@ -57,18 +57,24 @@ exp.set_model_state('train')
 data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
 
 loss_function = DiceFocalLoss() 
-
+print(sum(p.numel() for p in ca.parameters() if p.requires_grad))
 if True:
     # Generate variance and segmentation masks for unseen dataset
     print("--------------- TESTING HYP 99 ---------------")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/MIMIC_50/labels_test")
-    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/ChestX8_50/labels_test")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/Data/MICCAI24/Padchest_50/labels_test")
     
+    # Custom dataset
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Downloads/MICCAI_png_Test/images_preprocessed_contrast_nifti", labelPath=r"/home/jkalkhof_locale/Downloads/MICCAI_png_Test/images_preprocessed_nifti_labels")
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning/images_preprocessed_awful_nii', labelPath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning/images_preprocessed_awful_nii_labels')
+    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning_blue/images_preprocessed_blue_nii', labelPath=r'/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Custom_finetuning_blue/images_preprocessed_blue_nii_labels')
+    
+
     # Generate mean and variance maps
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/MIMIC_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/MIMIC_50/labels_test")
     #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/ChestX8_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/ChestX8_50/labels_test")
-    #hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/Padchest_50/images", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/Padchest_50/labels")
+    hyp99_test = Dataset_NiiGz_customPath(resize=True, slice=2, size=(256, 256), imagePath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/Padchest_50/images_test", labelPath=r"/home/jkalkhof_locale/Documents/MICCAI24_finetuning/Padchest_50_finetune/Padchest_50/labels_test")
         
     
     hyp99_test.exp = exp
