@@ -1,5 +1,13 @@
 
 # %%
+import sys
+import os
+script_path = os.path.abspath(__file__)  # Gets the absolute path of the current file
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_path))) # Adjust the path to the project root
+print(project_root)
+sys.path.append(project_root)
+
+
 import torch
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.models.Model_M3DNCA import M3DNCA
@@ -8,13 +16,13 @@ from src.losses.LossFunctions import DiceFocalLoss
 from src.utils.Experiment import Experiment
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 import time
-import os
+
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 config = [{
-    'img_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/home/jkalkhof_locale/Documents/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'M3D_NCA_Run1_hippocampus', #12 or 13, 54 opt, 
+    'img_path': r"/home/jkalkhof_locale/Documents/Data/MedIA24/Task04_Hippocampus/train/imagesTr/",
+    'label_path': r"/home/jkalkhof_locale/Documents/Data/MedIA24/Task04_Hippocampus/train/labelsTr/",
+    'name': r'M3D_NCA_Run3_hippocampus', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -22,23 +30,23 @@ config = [{
     'lr_gamma': 0.9999,#0.9999,
     'betas': (0.9, 0.99),
     # Training
-    'save_interval': 10,
-    'evaluate_interval': 10,
-    'n_epoch': 1000,
+    'save_interval': 50,
+    'evaluate_interval': 501,
+    'n_epoch': 500,
     'batch_duplication': 1,
     # Model
     'channel_n': 16,        # Number of CA state channels
-    'inference_steps': [20, 40],
+    'inference_steps': [20],
     'cell_fire_rate': 0.5,
     'batch_size': 4,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 64,
-    'train_model':1,
+    'train_model':0,
     # Data
-    'input_size': [(80, 80, 6), (320, 320, 24)] ,
+    'input_size': [(64, 64, 52)] ,
     'scale_factor': 2,
-    'data_split': [0.7, 0, 0.3], 
+    'data_split': [1.0, 0, 0.0], 
     'keep_original_scale': False,
     'rescale': True,
 }
