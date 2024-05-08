@@ -153,13 +153,44 @@ class EXP_OctreeNCA(ExperimentWrapper):
         config = merge_config(merge_config(study_config, config), detail_config)
         print("CONFIG", config)
         if dataset is None:
-            dataset = Dataset_NiiGz_3D(slice=2)
+            assert False, "Dataset is None"
         model = OctreeNCA(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'])
         agent = MedNCAAgent(model)
         loss_function = DiceBCELoss() 
 
         return super().createExperiment(config, model, agent, dataset, loss_function)
     
+from src.models.Model_OctreeNCA_3D import OctreeNCA3D
+class EXP_OctreeNCA3D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
+        config = {
+            'description': 'OctreeNCA3D',#OctreeNCA
+            'lr': 16e-4,
+            'batch_duplication': 1,
+            # Model
+            'channel_n': 32,        # Number of CA state channels
+            'inference_steps': 64,
+            'cell_fire_rate': 0.5,
+            'batch_size': 12,
+            'hidden_size': 128,
+            'train_model':1,
+            'betas': (0.9, 0.99),
+            # Data
+            'scale_factor': 4,
+            'kernel_size': 3,
+            'levels': 2,
+            'input_size': (320,320) ,
+        }
+
+        config = merge_config(merge_config(study_config, config), detail_config)
+        print("CONFIG", config)
+        if dataset is None:
+            assert False, "Dataset is None"
+        model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'])
+        agent = M3DNCAAgent(model)
+        loss_function = DiceBCELoss() 
+
+        return super().createExperiment(config, model, agent, dataset, loss_function)
 
 import argparse
 from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
