@@ -90,6 +90,8 @@ class BaseAgent():
                 loss item
         """
         data = self.prepare_data(data)
+        # data["image"]: BCHW
+        # data["label"]: BCHW
         outputs, targets = self.get_outputs(data)
         self.optimizer.zero_grad()
         loss = 0

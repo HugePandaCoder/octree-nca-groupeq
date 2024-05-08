@@ -32,6 +32,7 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         data['image'] = inputs
         data['label'] = targets
 
+
         return data
 
     def get_outputs(self, data: tuple, **kwargs) -> tuple:

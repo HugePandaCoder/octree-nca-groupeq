@@ -27,6 +27,7 @@ class png_seg_Dataset(Dataset_NiiGz_3D):
             #Args
                 path (String): The path to the nib file to be loaded."""
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        assert img is not None
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 

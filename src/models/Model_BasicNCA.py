@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class BasicNCA(nn.Module):
     r"""Basic implementation of an NCA using a sobel x and y filter for the perception
     """
-    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard"):
+    def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", steps: int = 64):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -17,6 +17,8 @@ class BasicNCA(nn.Module):
                 init_method: Weight initialisation function
         """
         super(BasicNCA, self).__init__()
+
+        self.steps = steps
 
         self.device = device
         self.channel_n = channel_n
@@ -83,13 +85,15 @@ class BasicNCA(nn.Module):
 
         return x
 
-    def forward(self, x, steps=64, fire_rate=0.5):
+    def forward(self, x, steps=None, fire_rate=0.5):
         r"""Forward function applies update function s times leaving input channels unchanged
             #Args:
                 x: image
                 steps: number of steps to run update
                 fire_rate: random activation rate of each cell
         """
+        if steps is None:
+            steps = self.steps
         for step in range(steps):
             x2 = self.update(x, fire_rate).clone() #[...,3:][...,3:]
             x = torch.concat((x[...,:self.input_channels], x2[...,self.input_channels:]), 3)

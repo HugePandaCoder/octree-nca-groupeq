@@ -447,4 +447,7 @@ def merge_config(config_parent: dict, config_child: dict) -> None:
     #    config_child['name'] = config_parent['name'] + "_" + config_child['name']
     #except:
     #    print('MISSING NAME IN CONFIG')
-    return {**config_parent, **config_child}
+    #return {**config_parent, **config_child}
+
+    #this way the parent config has priority
+    return config_child | config_parent

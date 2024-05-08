@@ -1,6 +1,5 @@
 from .Experiment import Experiment
 
-
 class Study():
     r"""This class handles:
             - Running multiple experiments at once
@@ -21,6 +20,7 @@ class Study():
         """
         for experiment in self.experiments:
             experiment.agent.train(experiment.data_loader, experiment.loss_function)
+            
 
     def eval_experiments(self) -> None:
         r"""Eval all experiments

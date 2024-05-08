@@ -1,8 +1,9 @@
 import torch
+from src.agents.Agent import BaseAgent
 from src.utils.Experiment import Experiment
 
 class ExperimentWrapper():
-    def createExperiment(self, config : dict, model, agent, dataset, loss_function):
+    def createExperiment(self, config : dict, model, agent: BaseAgent, dataset, loss_function):
         model.to(config['device'])
         exp = Experiment(config, dataset, model, agent)
         data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
