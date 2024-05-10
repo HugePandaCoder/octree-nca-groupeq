@@ -109,9 +109,6 @@ class OctreeNCA(nn.Module):
                 lod.upscale_states(level)
 
         outputs = lod.levels_of_detail[0]
-
-        print(self.fire_rate)
-        exit()
         return inference_series
         
 

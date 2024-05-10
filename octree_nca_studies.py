@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.models.Model_M3DNCA import M3DNCA
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
@@ -7,6 +8,7 @@ from src.utils.ProjectConfiguration import ProjectConfiguration
 from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_UNet2D, EXP_M3DNCA, EXP_TransUNet, EXP_MEDNCA, EXP_OctreeNCA, EXP_BasicNCA
 from src.datasets.png_seg_Dataset import png_seg_Dataset
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
+import octree_vis
 
 ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 
@@ -35,6 +37,10 @@ def setup_chest():
         'data_split': [0.7, 0, 0.3], 
         'keep_original_scale': True,
         'rescale': False,
+        # Octree - specific
+        #'octree_res_and_steps': [((256,256), 2), ((128,128), 2), ((64,64), 2), ((32,32), 2), ((16,16), 16)],
+        #TODO implement this
+
 
         ### TEMP
         
@@ -63,18 +69,20 @@ def setup_prostate():
         'input_channels': 1,
         'output_channels': 1,
         # Data
-        'input_size': [(256, 256, 16)],
+        'input_size': [(320, 320, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         'data_split': [0.7, 0, 0.3], 
         'keep_original_scale': True,
         'rescale': False,
+        # Octree - specific
+        'octree_res_and_steps': [((320,320,24), 2), ((160,160,12), 2), ((80,80,12), 2), ((40,40,12), 2), ((20,20,12), 3)],
 
         ### TEMP
         
-        'batch_size': 6,
+        'batch_size': 1,
     }
     study = Study(study_config)
     dataset = Dataset_NiiGz_3D()
-    study.add_experiment(EXP_OctreeNCA().createExperiment(study_config, detail_config={'input_size':(256, 256, 16)}, dataset=dataset))
+    study.add_experiment(EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset))
     return study
 
 
@@ -101,6 +109,8 @@ def setup_hippocampus():
         'data_split': [0.7, 0, 0.3], 
         'keep_original_scale': True,
         'rescale': False,
+        # Octree - specific
+        'octree_res_and_steps': [((44,60,48), 2), ((22,30,24), 2), ((11,15,12), 16)],
 
         ### TEMP
         
@@ -112,7 +122,45 @@ def setup_hippocampus():
     return study
 
 
+def setup_hippocampus2():
+    study_config = {
+        'img_path': r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task04_Hippocampus/imagesTr/",
+        'label_path': r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task04_Hippocampus/labelsTr/",
+        'name': r'Hippocampus2',
+        'device':"cuda:0",
+        'unlock_CPU': True,
+        # Optimizer
+        'lr': 16e-4,
+        'lr_gamma': 0.9999,
+        'betas': (0.5, 0.5),
+        # Training
+        'save_interval': 10,
+        'evaluate_interval': 5,
+        'n_epoch': 10000,
+        # Model
+        'input_channels': 1,
+        'output_channels': 1,
+        # Data
+        'input_size': [(44, 60, 48)],#(44, 60, 48) -> (22, 30, 24) -> (11, 15, 12)
+        'data_split': [0.7, 0, 0.3], 
+        'keep_original_scale': True,
+        'rescale': False,
+        # Octree - specific
+        'octree_res_and_steps': [((44,60,48), 2), ((22,30,24), 2), ((11,15,12), 16)],
+
+
+        ### TEMP
+        
+        'batch_size': 6, #probably make this a lot bigger
+    }
+    study = Study(study_config)
+    dataset = Dataset_NiiGz_3D()
+    study.add_experiment(EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset))
+    return study
+
 if __name__ == "__main__":
-    study = setup_hippocampus()
-    study.run_experiments()
-    study.eval_experiments()
+    study = setup_hippocampus2()
+    figure = octree_vis.visualize(study.experiments[0])
+    plt.savefig("inference_test.png", bbox_inches='tight')
+    #study.run_experiments()
+    #study.eval_experiments()

@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 from src.models.Model_BasicNCA3D import BasicNCA3D
@@ -12,7 +13,8 @@ class OctreeNCA3D(nn.Module):
     r"""Implementation of M3D-NCA
     """
     def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
-                 scale_factor=None, levels=None, kernel_size=None):
+                 scale_factor=None, levels=None, kernel_size=None,
+                 octree_res_and_steps: list=None):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -33,6 +35,9 @@ class OctreeNCA3D(nn.Module):
         self.levels = levels
         self.fast_inf = False
         self.margin = 20
+
+        self.octree_res = [r_s[0] for r_s in octree_res_and_steps]
+        self.inference_steps = [r_s[1] for r_s in octree_res_and_steps]
 
         self.backbone_nca = BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels, kernel_size=3)
 
@@ -59,12 +64,6 @@ class OctreeNCA3D(nn.Module):
     def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=1):
         #x: BHWDC
         #y: BHWDC
-        
-        #show image and save
-        #plt.imshow(x[0,:,:,31,:].cpu())
-        #plt.savefig("temp.pdf")
-
-
         x = self.make_seed(x).to(self.device)
         #x: BHWDC
         x = x.permute(0, 4, 1, 2, 3)
@@ -88,7 +87,7 @@ class OctreeNCA3D(nn.Module):
 
     def forward_train(self, x: torch.Tensor, y: torch.Tensor):
         x = x.to(self.device)
-        lod = Octree3D(x, self.input_channels)
+        lod = Octree3D(x, self.input_channels, self.octree_res)
         #lod.plot("hippocampus_octree.pdf")
         #exit()
 
@@ -96,18 +95,13 @@ class OctreeNCA3D(nn.Module):
         #[print(x.shape) for x in lod.levels_of_detail]
         #print("LOD")
 
-
-        steps_arr = [2] * len(lod.levels_of_detail)
-        steps_arr[-1] = 16
-
         
         for level in list(range(len(lod.levels_of_detail)))[::-1]: #micro to macro (low res to high res)
             x = lod.levels_of_detail[level]
             #x: BCHWD
             x = x.permute(0, 2,3,4, 1)
             #x: BHWDC
-
-            x = self.backbone_nca(x, steps=steps_arr[level], fire_rate=self.fire_rate)
+            x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
             #x: BHWDC
             x = x.permute(0, 4, 1, 2, 3)
             # x: BCHWD
@@ -128,20 +122,53 @@ class OctreeNCA3D(nn.Module):
         out, _ = self.forward_train(x, x)
         return out
     
+    def create_inference_series(self, x: torch.Tensor, steps=None):
+        #x: BCHWD
+        x = x.permute(0, 2,3,4, 1)
+        #x: BHWDC
+        x = self.make_seed(x)
+        x = x.permute(0, 4, 1, 2, 3)
+        # x: BCHWD
+        x = x.to(self.device)
+        lod = Octree3D(x, self.input_channels, self.octree_res)
+        
+        inference_series = [] #list of BHWDC tensors
+
+        for level in list(range(len(lod.levels_of_detail)))[::-1]:
+            x = lod.levels_of_detail[level]
+            #x: BCHWD
+            x = x.permute(0, 2,3,4, 1)
+            #x: BHWDC
+            inference_series.append(x)
+            x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+            inference_series.append(x)
+            #x: BHWDC
+            x = x.permute(0, 4, 1, 2, 3)
+            # x: BCHWD
+
+            lod.levels_of_detail[level] = x
+            if level > 0:
+                lod.upscale_states(level)
+
+        outputs = lod.levels_of_detail[0]
+        return inference_series
+    
 
 class Octree3D:
     @torch.no_grad()
-    def __init__(self, init_batch: torch.Tensor, input_channels: int) -> None:
+    def __init__(self, init_batch: torch.Tensor, input_channels: int, octree_res: list[int]) -> None:
         self.input_channels = input_channels
+        self.octree_res = octree_res
 
         assert init_batch.ndim == 5, f"init_batch must be BCHWD tensor, got shape {init_batch.shape}"
-        #assert init_batch.shape[2] == init_batch.shape[3], f"init_batch must be square, got shape {init_batch.shape}"
-        #assert init_batch.shape[3] == init_batch.shape[4], f"init_batch must be square, got shape {init_batch.shape}"
         
         self.levels_of_detail = [init_batch]
-        while self.levels_of_detail[-1].shape[2] > 16 or self.levels_of_detail[-1].shape[3] > 16 or self.levels_of_detail[-1].shape[4] > 16:
-            lower_res = F.avg_pool3d(self.levels_of_detail[-1], 2)
+        assert init_batch.shape[2:] == octree_res[0], f"init_batch must have shape {octree_res[0]}, got shape {init_batch.shape[2:]}"
+
+        for resolution in octree_res[1:]:
+            lower_res = F.interpolate(self.levels_of_detail[-1], size=resolution)
             self.levels_of_detail.append(lower_res)
+                                     
 
     def plot(self, output_path: str = 'octree.pdf') -> None:
         fig, axs = plt.subplots(1, len(self.levels_of_detail), figsize=(20, 20))
@@ -156,6 +183,6 @@ class Octree3D:
         #temp: BCHWD
         temp = temp[:, self.input_channels:]
 
-        upsampled_states = torch.nn.Upsample(scale_factor=2, mode='nearest')(temp)
+        upsampled_states = torch.nn.Upsample(size=self.octree_res[from_level-1], mode='nearest')(temp)
 
         self.levels_of_detail[from_level-1] = torch.cat([self.levels_of_detail[from_level-1][:, :self.input_channels], upsampled_states], dim=1)

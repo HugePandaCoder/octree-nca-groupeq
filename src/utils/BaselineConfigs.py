@@ -186,7 +186,8 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
         print("CONFIG", config)
         if dataset is None:
             assert False, "Dataset is None"
-        model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'])
+        model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
+                            octree_res_and_steps=config['octree_res_and_steps'])
         agent = M3DNCAAgent(model)
         loss_function = DiceBCELoss() 
 
