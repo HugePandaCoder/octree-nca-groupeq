@@ -43,7 +43,7 @@ class Agent_Multi_NCA(Agent_NCA):
             torch.save(o.state_dict(), os.path.join(model_path, 'optimizer'+ str(id) +'.pth'))
             torch.save(s.state_dict(), os.path.join(model_path, 'scheduler'+ str(id) +'.pth'))
 
-    def load_state(self, model_path: str) -> None:
+    def load_state(self, model_path: str, pretrained) -> None:
         r"""Load state of current model
         """
         for id, z in enumerate(zip(self.model, self.optimizer, self.scheduler)):
