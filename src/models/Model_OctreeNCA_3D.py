@@ -14,7 +14,8 @@ class OctreeNCA3D(nn.Module):
     """
     def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
                  scale_factor=None, levels=None, kernel_size=None,
-                 octree_res_and_steps: list=None, separate_models: bool=False):
+                 octree_res_and_steps: list=None, separate_models: bool=False,
+                 compile: bool=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -37,26 +38,35 @@ class OctreeNCA3D(nn.Module):
         self.margin = 20
 
 
-        self.patch_size = (160, 160, 12)
-        self.patchification_level = 4
-
-        # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
-        self.patch_sizes = [((160, 160, 12)),
-                            None,
-                            None,
-                            None,
-                            None]
-        self.patch_sizes[0] = None
-
-
         self.octree_res = [r_s[0] for r_s in octree_res_and_steps]
         self.inference_steps = [r_s[1] for r_s in octree_res_and_steps]
 
         self.separate_models = separate_models
+
+        if compile:
+            torch.set_float32_matmul_precision('high')
+        
         if separate_models:
-            self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels, kernel_size=3) for _ in range(len(octree_res_and_steps))])
+            if isinstance(kernel_size, list):
+                assert len(kernel_size) == len(octree_res_and_steps), "kernel_size must have same length as octree_res_and_steps"
+            else:
+                kernel_size = [kernel_size] * len(octree_res_and_steps)
         else:
-            self.backbone_nca = BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, input_channels=input_channels, kernel_size=3)
+            assert isinstance(kernel_size, int), "kernel_size must be an integer"
+
+
+        if separate_models:
+            self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
+                                                           hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l]) 
+                                                           for l in range(len(octree_res_and_steps))])
+            if compile:
+                for i, model in enumerate(self.backbone_ncas):
+                    self.backbone_ncas[i] = torch.compile(model)
+        else:
+            self.backbone_nca = BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
+                                           input_channels=input_channels, kernel_size=kernel_size)
+            if compile:
+                self.backbone_nca = torch.compile(self.backbone_nca)
 
     def make_seed(self, x):
         # x: BHWDC
@@ -112,36 +122,12 @@ class OctreeNCA3D(nn.Module):
         #[print(x.shape) for x in lod.levels_of_detail]
         #print("LOD")
 
-        current_patch = None
-
         for level in list(range(len(lod.levels_of_detail)))[::-1]: #micro to macro (low res to high res)
             x = lod.levels_of_detail[level]
             #x: BCHWD
 
-            if self.patch_sizes[level] is not None:
-                assert current_patch is None, "Cannot have patch sizes for multiple levels"
-                assert x.shape[2] > self.patch_sizes[level][0], f"Patch size {self.patch_sizes[level]} too large for level {level} with shape {x.shape}"
-                assert x.shape[3] > self.patch_sizes[level][1], f"Patch size {self.patch_sizes[level]} too large for level {level} with shape {x.shape}"
-                assert x.shape[4] > self.patch_sizes[level][2], f"Patch size {self.patch_sizes[level]} too large for level {level} with shape {x.shape}"
-                x_min = np.random.randint(0, x.shape[2] - self.patch_sizes[level][0])
-                y_min = np.random.randint(0, x.shape[3] - self.patch_sizes[level][1])
-                z_min = np.random.randint(0, x.shape[4] - self.patch_sizes[level][2])
-                current_patch = ((x_min, y_min, z_min), self.patch_sizes[level])
-
-                x = x[:, :, x_min:x_min+self.patch_sizes[level][0], y_min:y_min+self.patch_sizes[level][1], z_min:z_min+self.patch_sizes[level][2]]
-            elif current_patch is not None:
-                # cut to the correct location
-                x = x[:, :,
-                  current_patch[0][0]:current_patch[0][0]+current_patch[1][0], 
-                  current_patch[0][1]:current_patch[0][1]+current_patch[1][1], 
-                  current_patch[0][2]:current_patch[0][2]+current_patch[1][2]]
-
-
-
             x = x.permute(0, 2,3,4, 1)
             #x: BHWDC
-
-            print(x.shape)
 
             if self.separate_models:
                 x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
@@ -152,32 +138,14 @@ class OctreeNCA3D(nn.Module):
             x = x.permute(0, 4, 1, 2, 3)
             # x: BCHWD
 
-            if current_patch is not None:
-                lod.levels_of_detail[level][:, :, x_min:x_min+self.patch_sizes[level][0], y_min:y_min+self.patch_sizes[level][1], z_min:z_min+self.patch_sizes[level][2]] = x
-            else:
-                lod.levels_of_detail[level] = x
+            lod.levels_of_detail[level] = x
 
 
             if level > 0:
                 lod.upscale_states(level)
-                if current_patch is not None:
-                    #TODO upscale current_patch_location
-                    assert False, "Not implemented"
         
         outputs = lod.levels_of_detail[0].permute(0, 2,3,4, 1)
         #outputs: BHWDC
-
-        if current_patch is not None:
-            #y: BHWDC
-            y = y[:, 
-                  current_patch[0][0]:current_patch[0][0]+current_patch[1][0], 
-                  current_patch[0][1]:current_patch[0][1]+current_patch[1][1], 
-                  current_patch[0][2]:current_patch[0][2]+current_patch[1][2], :]
-            outputs = outputs[:, 
-                  current_patch[0][0]:current_patch[0][0]+current_patch[1][0], 
-                  current_patch[0][1]:current_patch[0][1]+current_patch[1][1], 
-                  current_patch[0][2]:current_patch[0][2]+current_patch[1][2], :]
-
 
         return outputs[..., self.input_channels:self.input_channels+self.output_channels], y
     

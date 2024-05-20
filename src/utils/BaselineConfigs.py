@@ -1,3 +1,4 @@
+from src.models.Model_OctreeNCA_3d_patching import OctreeNCA3DPatch
 from src.utils.ExperimentWrapper import ExperimentWrapper
 from src.utils.Experiment import merge_config
 import numpy as np
@@ -175,6 +176,7 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             'hidden_size': 128,
             'train_model':1,
             'betas': (0.9, 0.99),
+            'kernel_size': 3,
             # Data
             'scale_factor': 4,
             'kernel_size': 3,
@@ -186,8 +188,15 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
         print("CONFIG", config)
         if dataset is None:
             assert False, "Dataset is None"
-        model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
-                            octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'])
+
+        if 'patch_sizes' in config:
+            model = OctreeNCA3DPatch(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
+                            octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
+                            compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'])
+        else:
+            model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
+                                octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
+                                compile=config['compile'], kernel_size=config['kernel_size'])
         agent = M3DNCAAgent(model)
         loss_function = DiceBCELoss() 
 

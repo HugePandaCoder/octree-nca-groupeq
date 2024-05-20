@@ -92,7 +92,7 @@ def setup_prostate2():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate6',
+        'name': r'Prostate26',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -107,6 +107,8 @@ def setup_prostate2():
         'output_channels': 1,
         'hidden_size': 64,
         'train_model':1,
+        'channel_n': 16,
+        'kernel_size': 7,
         # Data
         'input_size': [(320, 320, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         
@@ -114,11 +116,17 @@ def setup_prostate2():
         'keep_original_scale': False,
         'rescale': True,
         # Octree - specific
-        'octree_res_and_steps': [((320,320,24), 5), ((160,160,12), 5), ((80,80,12), 5), ((40,40,12), 5), ((20,20,12), 23)],
+        'octree_res_and_steps': [((320,320,24), 40), ((160,160,12), 0), ((80,80,6), 20), ((40,40,6), 0), ((20,20,6), 0)],
         'separate_models': True,
+        # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
+        'patch_sizes':[((80, 80, 6)), None, None, None, None],
+        #'patch_sizes': [None] *5,
         ### TEMP
         
-        'batch_size': 1,
+
+        'compile': False,
+        'batch_size': 4,
+        'batch_duplication': 2,
     }
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     torch.autograd.set_detect_anomaly(True)

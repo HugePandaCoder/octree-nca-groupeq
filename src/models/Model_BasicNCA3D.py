@@ -84,7 +84,9 @@ class BasicNCA3D(nn.Module):
                 steps: number of steps to run update
                 fire_rate: random activation rate of each cell
         """
+        #x: BHWDC
         for step in range(steps):
             x2 = self.update(x, fire_rate).clone() #[...,3:][...,3:]
+            #x2: BHWDC
             x = torch.concat((x[...,0:self.input_channels], x2[...,self.input_channels:]), 4)
         return x
