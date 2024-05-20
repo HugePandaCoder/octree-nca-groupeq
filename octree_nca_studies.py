@@ -92,7 +92,7 @@ def setup_prostate2():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate26',
+        'name': r'Prostate28',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -119,12 +119,12 @@ def setup_prostate2():
         'octree_res_and_steps': [((320,320,24), 40), ((160,160,12), 0), ((80,80,6), 20), ((40,40,6), 0), ((20,20,6), 0)],
         'separate_models': True,
         # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
-        'patch_sizes':[((80, 80, 6)), None, None, None, None],
+        'patch_sizes':[(80, 80, 6), None, None, None, None],
         #'patch_sizes': [None] *5,
         ### TEMP
         
 
-        'compile': False,
+        'compile': True,
         'batch_size': 4,
         'batch_duplication': 2,
     }
