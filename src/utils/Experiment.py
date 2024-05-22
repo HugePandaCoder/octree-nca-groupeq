@@ -19,8 +19,6 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from torchmetrics.image.kid import KernelInceptionDistance
 from tqdm import tqdm
 
-
-
 class Experiment():
     r"""This class handles:
             - Interactions with the experiment folder

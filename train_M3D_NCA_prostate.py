@@ -29,7 +29,7 @@ ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 config = [{
     'img_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTr/",
-    'name': r'MIA_prostate_M3D_NCA_Run4', #12 or 13, 54 opt, 
+    'name': r'MIA_prostate_M3D_NCA_Run6', #12 or 13, 54 opt, 
     'device':"cuda:0",
     'unlock_CPU': True,
     # Optimizer
@@ -45,7 +45,7 @@ config = [{
     'channel_n': 16,        # Number of CA state channels
     'inference_steps': [20, 40],
     'cell_fire_rate': 0.5,
-    'batch_size': 4,
+    'batch_size': 3,
     'input_channels': 1,
     'output_channels': 1,
     'hidden_size': 64,
@@ -71,7 +71,7 @@ data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.
 
 loss_function = DiceFocalLoss() 
 
-#os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 agent.train(data_loader, loss_function)
 
 if True:

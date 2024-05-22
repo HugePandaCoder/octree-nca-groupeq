@@ -1,3 +1,5 @@
+from src.agents.Agent_M3DNCA_GradAccum import M3DNCAAgentGradientAccum
+from src.agents.Agent_M3D_NCA import Agent_M3D_NCA
 from src.models.Model_OctreeNCA_3d_patching import OctreeNCA3DPatch
 from src.models.Model_OctreeNCA_3d_patching2 import OctreeNCA3DPatch2
 from src.utils.ExperimentWrapper import ExperimentWrapper
@@ -198,7 +200,12 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
                                 octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
                                 compile=config['compile'], kernel_size=config['kernel_size'])
-        agent = M3DNCAAgent(model)
+            
+        if 'gradient_accumulation' in config and config['gradient_accumulation']:
+            agent = M3DNCAAgentGradientAccum(model)
+        else:
+            agent = M3DNCAAgent(model)
+            #agent = Agent_M3D_NCA(model)
         loss_function = DiceBCELoss() 
 
         return super().createExperiment(config, model, agent, dataset, loss_function)

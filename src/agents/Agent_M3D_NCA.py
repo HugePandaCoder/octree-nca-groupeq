@@ -176,7 +176,7 @@ class Agent_M3D_NCA(Agent_Multi_NCA, Agent_MedSeg3D):
 
                     # Run model inference on patch
                     outputs = self.model[m](inputs_loc, steps=self.getInferenceSteps()[m], fire_rate=self.exp.get_from_config('cell_fire_rate'))
-                    
+
                     # Upscale lowres features to next level
                     up = torch.nn.Upsample(scale_factor=scale_fac, mode='nearest')
                     outputs = torch.permute(outputs, (0, 4, 1, 2, 3))

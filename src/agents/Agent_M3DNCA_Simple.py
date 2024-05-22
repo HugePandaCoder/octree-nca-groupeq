@@ -19,7 +19,7 @@ class M3DNCAAgent(UNetAgent):
         
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
-        inputs, targets = self.model(inputs, targets)
+        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('batch_duplication'))
         return inputs, targets 
         #if len(inputs.shape) == 4:
         #    return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
@@ -34,14 +34,15 @@ class M3DNCAAgent(UNetAgent):
             #Returns:
                 loss item
         """
+        self.optimizer.zero_grad()
         data = self.prepare_data(data)
         rnd = random.randint(0, 1000000000)
         random.seed(rnd)
         outputs, targets = self.get_outputs(data)
         #print("______________________")
-        random.seed(rnd)
-        outputs2, targets2 = self.get_outputs(data)
-        self.optimizer.zero_grad()
+        if self.exp.get_from_config('train_quality_control') in ["NQM", "MSE"]:
+            random.seed(rnd)
+            outputs2, targets2 = self.get_outputs(data)
         loss = 0
         loss_ret = {}
         if len(outputs.shape) == 5 and targets.shape[-1] == 1:
@@ -64,7 +65,7 @@ class M3DNCAAgent(UNetAgent):
         #        loss_ret[m] = loss_loc.item()
 
         # CALC NQM
-        if False:
+        if self.exp.get_from_config('train_quality_control') == "NQM":
             stack = torch.stack([outputs, outputs2], dim=0)
             outputs = torch.sigmoid(torch.mean(stack, dim=0))
             stack = torch.sigmoid(stack)
@@ -86,7 +87,7 @@ class M3DNCAAgent(UNetAgent):
                     if nqm > 0:
                         print("NQM: ", nqm)
                         loss = loss + nqm #
-        else:
+        elif self.exp.get_from_config('train_quality_control') == "MSE":
             loss += F.mse_loss(outputs, outputs2)
 
             #print(nqm)
