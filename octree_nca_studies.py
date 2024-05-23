@@ -148,9 +148,9 @@ def setup_prostate2():
 
 def setup_prostate3():
     study_config = {
-        'img_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTr/",
-        'label_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate47',
+        'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+        'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
+        'name': r'Prostate50',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -158,8 +158,8 @@ def setup_prostate3():
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 10,
-        'evaluate_interval': 10,
-        'n_epoch': 1500,
+        'evaluate_interval': 100,
+        'n_epoch': 2000,
         # Model
         'input_channels': 1,
         'output_channels': 1,
@@ -170,8 +170,8 @@ def setup_prostate3():
         # Data
         'input_size': [(320, 320, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         
-        'data_split': [1.0, 0, 0.0], 
-        'keep_original_scale': False,
+        'data_split': [0.7, 0, 0.3],
+        'keep_original_scale': True,
         'rescale': True,
         # Octree - specific
         'octree_res_and_steps': [((320,320,24), 40), ((80,80,6), 20)],
@@ -184,8 +184,8 @@ def setup_prostate3():
         'train_quality_control': False, #or "NQM" or "MSE"
 
         'compile': True,
-        'batch_size': 3,
-        'batch_duplication': 2,
+        'batch_size': 1,
+        'batch_duplication': 1,
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     #torch.autograd.set_detect_anomaly(True)
@@ -193,16 +193,6 @@ def setup_prostate3():
     dataset = Dataset_NiiGz_3D()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
-    
-    hyp99_test = Dataset_NiiGz_3D_customPath(resize=True, size=(320, 320, 24), imagePath=r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTs", labelPath=r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTs")
-    hyp99_test.exp = exp
-    study.my_custom_evaluation_set = hyp99_test
-    def evaluate():
-        print("RUNNING CUSTOM EVALUATION")
-
-        exp.agent.getAverageDiceScore(pseudo_ensemble=True, dataset=study.my_custom_evaluation_set)
-    
-    study.eval_experiments = evaluate
     return study
 
 def setup_hippocampus():
