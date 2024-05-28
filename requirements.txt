@@ -8,7 +8,7 @@
 #pip install -r requirements.txt 
 opencv-python
 nibabel
-torchio
+torchio==0.18.82
 matplotlib
 seaborn
 aim
@@ -16,3 +16,6 @@ gitpython
 pytest
 black
 ipykernel
+torchmetrics
+unet
+ml-collections
