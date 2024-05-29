@@ -30,12 +30,12 @@ random.seed(seed_value)
 import numpy as np
 np.random.seed(seed_value)
 config = [{
-    'name': r'train_M3D_NCA_prostate2_2',
+    'name': r'Prostate49_original_baseline',
     'out_path': r"/local/scratch/clmn1/octree_study/",
     'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
     'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
     'data_type': '.nii.gz', # .nii.gz, .jpg
-    'model_path': r'/local/scratch/clmn1/octree_study/Models/NCA3d__prostate5',
+    'model_path': r'/local/scratch/clmn1/octree_study/Models/NCA3d__prostate6',
     'device':"cuda:0",
     'n_epoch': 2000,
     # Learning rate

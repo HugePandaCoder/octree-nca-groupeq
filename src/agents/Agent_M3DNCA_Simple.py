@@ -3,6 +3,7 @@ from src.agents.Agent_UNet import UNetAgent
 import torch.nn.functional as F
 import random
 from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
+from src.utils.MyDataParallel import MyDataParallel
 
 class M3DNCAAgent(UNetAgent):
     """Base agent for training UNet models
@@ -10,12 +11,21 @@ class M3DNCAAgent(UNetAgent):
     def initialize(self):
         super().initialize()
 
+        if self.exp.get_from_config('data_parallel'):
+            self.model = MyDataParallel(self.model)
+
+        self.model.to(self.device)
+
+
     def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
         inputs, targets = data['image'], data['label']
+
+        #inputs: BCHWD
+        #targets: BHWDC
         
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
@@ -45,6 +55,9 @@ class M3DNCAAgent(UNetAgent):
             outputs2, targets2 = self.get_outputs(data)
         loss = 0
         loss_ret = {}
+        print(outputs.shape)
+        print(targets.shape)
+        exit()
         if len(outputs.shape) == 5 and targets.shape[-1] == 1:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])

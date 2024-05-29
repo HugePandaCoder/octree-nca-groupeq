@@ -11,13 +11,16 @@ from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_UNet2D, EXP_M3DNCA, E
 from src.datasets.png_seg_Dataset import png_seg_Dataset
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
 import octree_vis, os, torch
-
+import pickle as pkl
 ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 
 print(ProjectConfiguration.STUDY_PATH)
 
 PROSTATE_IMGS = r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task05_Prostate/imagesTr/"
 PROSTATE_LBLS = r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task05_Prostate/labelsTr/"
+
+PROSTATE_49_SPLIT = pkl.load(open(r"/local/scratch/clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.dt", "rb"))
+
 
 def setup_chest():
     study_config = {
@@ -152,7 +155,7 @@ def setup_prostate3():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate53',
+        'name': r'Prostate49_data_parallel',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -186,7 +189,7 @@ def setup_prostate3():
         'train_quality_control': False, #or "NQM" or "MSE"
 
         'compile': False,
-        'custom_ddp': True,
+        'data_parallel': True,
         'batch_size': 3,
         'batch_duplication': 2,
     }
@@ -196,6 +199,10 @@ def setup_prostate3():
     dataset = Dataset_NiiGz_3D()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
+
+    for split in "train", "val", "test":
+        assert exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split)
+
     return study
 
 
@@ -261,10 +268,11 @@ def setup_prostate4():
 
 
 def setup_davis():
+    #os.environ['CUDA_VISIBLE_DEVICES'] = "3,4"
     study_config = {
         'img_path': r"/local/scratch/clmn1/data/DAVIS/JPEGImages/480p/",
         'label_path': r"/local/scratch/clmn1/data/DAVIS/Annotations/480p/",
-        'name': r'Davis',
+        'name': r'Davis1',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -275,14 +283,14 @@ def setup_davis():
         'evaluate_interval': 100,
         'n_epoch': 2000,
         # Model
-        'input_channels': 1,
+        'input_channels': 3,
         'output_channels': 1,
         'hidden_size': 64,
         'train_model':1,
         'channel_n': 16,
         'kernel_size': [3, 7],
         # Data
-        'input_size': [(427, 240, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        'input_size': [(424, 240, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         
         'data_split': [0.7, 0, 0.3],
         'keep_original_scale': True,
@@ -298,7 +306,8 @@ def setup_davis():
         'train_quality_control': False, #or "NQM" or "MSE"
 
         'compile': False,
-        'batch_size': 1,
+        'data_parallel': False,
+        'batch_size': 2,
         'batch_duplication': 1,
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -350,7 +359,7 @@ def setup_hippocampus2():
     study_config = {
         'img_path': r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task04_Hippocampus/imagesTr/",
         'label_path': r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task04_Hippocampus/labelsTr/",
-        'name': r'Hippocampus2',
+        'name': r'Hippocampus3',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -375,7 +384,9 @@ def setup_hippocampus2():
 
         ### TEMP
         
-        'batch_size': 6, #probably make this a lot bigger
+        'batch_size': 1, #probably make this a lot bigger
+        'separate_models': False,
+        'compile': False,
     }
     study = Study(study_config)
     dataset = Dataset_NiiGz_3D()
@@ -494,8 +505,9 @@ def train_prostate_baseline():
 
 
 if __name__ == "__main__":
-    study = setup_prostate3()
-    #study = setup_hippocampus()
+    #study = setup_davis()
+    #study = setup_prostate4()
+    study = setup_hippocampus2()
     #figure = octree_vis.visualize(study.experiments[0], study.my_custom_evaluation_set)
     #plt.savefig("inference_test.png", bbox_inches='tight')
     study.run_experiments()

@@ -44,8 +44,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         #x: BHWDC
         #y: BHWDC
 
-        if y is not None:
-            y = y.to(self.device)
+        #if y is not None:
+        #    y = y.to(self.device)
 
         if self.training:
             if batch_duplication != 1:

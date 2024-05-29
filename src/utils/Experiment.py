@@ -3,6 +3,7 @@
 #    from src.agents.Agent import BaseAgent
 
 import os
+from filelock import Timeout
 import torch
 from src.utils.helper import dump_json_file, load_json_file, dump_pickle_file, load_pickle_file
 #from torch.utils.tensorboard import SummaryWriter
@@ -140,7 +141,18 @@ class Experiment():
 
         # Find most recent Experiment with name and reload
         print(self.projectConfig['hash'])
-        self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+
+        try:
+            self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+        except Timeout as e:
+            print("Timeout Error: ", e)
+            in_key = input("Do you want to unlock manually? [y, N] ")
+            if in_key.lower() == 'y':
+                self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'),
+                               force_resume=True)
+            else:
+                raise e
+            
 
         self.config = self.projectConfig
 

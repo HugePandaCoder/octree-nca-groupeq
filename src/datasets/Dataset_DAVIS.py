@@ -7,6 +7,9 @@ import numpy as np
 import cv2
 
 class Dataset_DAVIS(Dataset_Base):
+    def __init__(self):
+        super().__init__()
+        self.slice = 0 # i dont know what this is supposed to mean, but do not set it to None
     
     def getFilesInPath(self, path: str):
         r"""Get files in path
@@ -46,7 +49,7 @@ class Dataset_DAVIS(Dataset_Base):
         #DHWC, D = time
 
 
-        def reshape_batch(instack):
+        def reshape_batch(instack) -> np.ndarray:
             #https://stackoverflow.com/questions/65154879/using-opencv-resize-multiple-the-same-size-of-images-at-once-in-python
             N,H,W,C = instack.shape
             instack = instack.transpose((1,2,3,0)).reshape((H,W,C*N))
@@ -57,11 +60,13 @@ class Dataset_DAVIS(Dataset_Base):
         imgs = reshape_batch(imgs)
         lbls = reshape_batch(lbls)
 
+        imgs = imgs.transpose(3, 1, 2, 0)#DHWC -> CHWD
+        lbls = lbls.transpose(1, 2, 0, 3)#DHWC -> HWDC
+
         data_dict = {}
         data_dict['id'] = self.images_list[idx]
         data_dict['image'] = imgs
         data_dict['label'] = lbls
-
         return data_dict
     
     def setPaths(self, images_path: str, images_list: str, labels_path: str, labels_list: str) -> None:

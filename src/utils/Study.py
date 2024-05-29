@@ -1,3 +1,5 @@
+from typing import List
+
 from .Experiment import Experiment
 
 class Study():
@@ -6,7 +8,7 @@ class Study():
     """
 
     def __init__(self, study_config : dict = {}) -> None:
-        self.experiments = []
+        self.experiments: List[Experiment] = []
 
     def add_experiment(self, experiment: Experiment) -> None:
         r"""Add an experiment to the study
@@ -26,4 +28,4 @@ class Study():
         r"""Eval all experiments
         """
         for experiment in self.experiments:
-            experiment.agent.getAverageDiceScore()  
+            experiment.agent.getAverageDiceScore(pseudo_ensemble=True)  
