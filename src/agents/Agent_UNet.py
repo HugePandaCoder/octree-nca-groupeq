@@ -2,6 +2,7 @@ import torch
 from src.agents.Agent import BaseAgent
 from src.agents.Agent_MedSeg2D import Agent_MedSeg2D
 from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
+from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 
 class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
     """Base agent for training UNet models
@@ -22,7 +23,11 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         id, inputs, targets = data['id'], data['image'], data['label']
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
-        if self.exp.dataset.slice is None:
+        
+        # for some reason other datasets come without designated channel dimension
+        # hence, it is added here
+        # Dataset_DAVIS returns RGB images with channel dimension so we dont need to do this here
+        if self.exp.dataset.slice is None and not self.exp.dataset.delivers_channel_axis:
             inputs, targets = torch.unsqueeze(inputs, 1), targets #torch.unsqueeze(targets, 1) 
         if len(inputs.shape) == 4:
             inputs = inputs.permute(0, 3, 1, 2)

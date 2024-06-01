@@ -55,9 +55,9 @@ class M3DNCAAgent(UNetAgent):
             outputs2, targets2 = self.get_outputs(data)
         loss = 0
         loss_ret = {}
-        print(outputs.shape)
-        print(targets.shape)
-        exit()
+        #print(outputs.shape)
+        #print(targets.shape)
+        #exit()
         if len(outputs.shape) == 5 and targets.shape[-1] == 1:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])

@@ -10,8 +10,10 @@ from src.utils.ProjectConfiguration import ProjectConfiguration
 from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_UNet2D, EXP_M3DNCA, EXP_TransUNet, EXP_MEDNCA, EXP_OctreeNCA, EXP_BasicNCA
 from src.datasets.png_seg_Dataset import png_seg_Dataset
 from src.datasets.Nii_Gz_Dataset import Nii_Gz_Dataset
-import octree_vis, os, torch
+import octree_vis, os, torch, shutil
 import pickle as pkl
+from src.datasets.Dataset_CholecSeg import Dataset_CholecSeg
+from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_preprocessed
 ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 
 print(ProjectConfiguration.STUDY_PATH)
@@ -19,7 +21,8 @@ print(ProjectConfiguration.STUDY_PATH)
 PROSTATE_IMGS = r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task05_Prostate/imagesTr/"
 PROSTATE_LBLS = r"/local/scratch/clmn1/cardiacProstate/nnUnet_raw_data_base/Task05_Prostate/labelsTr/"
 
-PROSTATE_49_SPLIT = pkl.load(open(r"/local/scratch/clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.dt", "rb"))
+PROSTATE_49_SPLIT_FILE = r"/local/scratch/clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.dt"
+PROSTATE_49_SPLIT = pkl.load(open(PROSTATE_49_SPLIT_FILE, "rb"))
 
 
 def setup_chest():
@@ -96,7 +99,7 @@ def setup_prostate2():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate41',
+        'name': r'test1',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -104,7 +107,7 @@ def setup_prostate2():
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 10,
-        'evaluate_interval': 10,
+        'evaluate_interval': 1,
         'n_epoch': 1500,
         # Model
         'input_channels': 1,
@@ -155,7 +158,7 @@ def setup_prostate3():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_data_parallel',
+        'name': r'Prostate49_redone3',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -188,10 +191,11 @@ def setup_prostate3():
         'gradient_accumulation': False,
         'train_quality_control': False, #or "NQM" or "MSE"
 
-        'compile': False,
-        'data_parallel': True,
+        'compile': True,
+        'data_parallel': False,
         'batch_size': 3,
         'batch_duplication': 2,
+        'num_workers': 0
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     #torch.autograd.set_detect_anomaly(True)
@@ -200,11 +204,85 @@ def setup_prostate3():
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
 
+    
+    for split in "train", "val", "test":
+        if not exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split):
+            print("SPLIT MISMATCH")
+            os.remove(f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
+            os.symlink(PROSTATE_49_SPLIT_FILE, f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
+            print("restart experiment!")
+            exit()
+            
+    for split in "train", "val", "test":
+        assert exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split)
+
+
+    return study
+
+def setup_prostate5():
+    #os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    study_config = {
+        'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+        'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
+        'name': r'Prostate49_octree_9',
+        'device':"cuda:0",
+        'unlock_CPU': True,
+        # Optimizer
+        'lr_gamma': 0.9999,
+        'betas': (0.9, 0.99),
+        # Training
+        'save_interval': 10,
+        'evaluate_interval': 100,
+        'n_epoch': 2000,
+        # Model
+        'input_channels': 1,
+        'output_channels': 1,
+        'hidden_size': 64,
+        'train_model':1,
+        'channel_n': 16,
+        'kernel_size': [3, 3, 3, 3, 3],
+        # Data
+        'input_size': [(320, 320, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        
+        'data_split': [0.7, 0, 0.3],
+        'keep_original_scale': True,
+        'rescale': True,
+        # Octree - specific
+        'octree_res_and_steps': [((320,320,24), 5), ((160,160,12), 5), ((80,80,6), 5), ((40,40,6), 5), ((20,20,6), 20)],
+        'separate_models': True,
+        # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
+        'patch_sizes':[(80, 80, 6), (80, 80, 6), None, None, None],
+        #'patch_sizes': [None] *5,
+        ### TEMP
+        'gradient_accumulation': False,
+        'train_quality_control': False, #or "NQM" or "MSE"
+
+        'compile': True,
+        'data_parallel': False,
+        'batch_size': 3,
+        'batch_duplication': 2,
+        'num_workers': 0
+    }
+    #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    #torch.autograd.set_detect_anomaly(True)
+    study = Study(study_config)
+    dataset = Dataset_NiiGz_3D()
+    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
+    study.add_experiment(exp)
+
+
+    for split in "train", "val", "test":
+        if not exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split):
+            print("SPLIT MISMATCH")
+            os.remove(f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
+            os.symlink(PROSTATE_49_SPLIT_FILE, f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
+            print("restart experiment!")
+            exit()
+            
     for split in "train", "val", "test":
         assert exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split)
 
     return study
-
 
 
 def setup_prostate4():
@@ -272,7 +350,7 @@ def setup_davis():
     study_config = {
         'img_path': r"/local/scratch/clmn1/data/DAVIS/JPEGImages/480p/",
         'label_path': r"/local/scratch/clmn1/data/DAVIS/Annotations/480p/",
-        'name': r'Davis1',
+        'name': r'Davis3',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -290,13 +368,66 @@ def setup_davis():
         'channel_n': 16,
         'kernel_size': [3, 7],
         # Data
-        'input_size': [(424, 240, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        'input_size': [(240, 424, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         
         'data_split': [0.7, 0, 0.3],
         'keep_original_scale': True,
         'rescale': True,
         # Octree - specific
-        'octree_res_and_steps': [((424, 240, 24), 40), ((106,60,6), 20)],
+        #'octree_res_and_steps': [((424, 240, 24), 40), ((106,60,6), 20)],
+        'octree_res_and_steps': [((240, 424, 24), 40), ((60,106,6), 20)],
+        'separate_models': True,
+        # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
+        'patch_sizes':[(80, 80, 6), None],
+        #'patch_sizes': [None] *5,
+        ### TEMP
+        'gradient_accumulation': False,
+        'train_quality_control': False, #or "NQM" or "MSE"
+
+        'compile': True,
+        'data_parallel': False,
+        'batch_size': 3,
+        'batch_duplication': 2,
+    }
+    #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    #torch.autograd.set_detect_anomaly(True)
+    study = Study(study_config)
+    dataset = Dataset_DAVIS()
+    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
+    study.add_experiment(exp)
+    return study
+
+def setup_cholec():
+    #os.environ['CUDA_VISIBLE_DEVICES'] = "3,4"
+    study_config = {
+        'img_path': r"/local/scratch/clmn1/data/cholecseg8k/",
+        'label_path': r"/local/scratch/clmn1/data/cholecseg8k/",
+        'name': r'cholecseg8k_10',
+        'device':"cuda:0",
+        'unlock_CPU': True,
+        # Optimizer
+        'lr_gamma': 0.9999,
+        'betas': (0.9, 0.99),
+        # Training
+        'save_interval': 10,
+        'evaluate_interval': 100,
+        'n_epoch': 2000,
+        # Model
+        'input_channels': 3,
+        'output_channels': 12,
+        'hidden_size': 64,
+        'train_model':1,
+        'channel_n': 16,
+        'kernel_size': [3, 7],
+        # Data
+        'input_size': [(240, 424, 80)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        
+        'data_split': [0.7, 0, 0.3],
+        'keep_original_scale': True,
+        'rescale': True,
+        # Octree - specific
+        #'octree_res_and_steps': [((424, 240, 24), 40), ((106,60,6), 20)],
+        'octree_res_and_steps': [((240, 424, 80), 40), ((60,106,20), 20)],
         'separate_models': True,
         # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
         'patch_sizes':[(80, 80, 6), None],
@@ -306,14 +437,67 @@ def setup_davis():
         'train_quality_control': False, #or "NQM" or "MSE"
 
         'compile': False,
-        'data_parallel': False,
+        'data_parallel': True,
         'batch_size': 2,
         'batch_duplication': 1,
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     #torch.autograd.set_detect_anomaly(True)
     study = Study(study_config)
-    dataset = Dataset_DAVIS()
+    dataset = Dataset_CholecSeg()
+    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
+    study.add_experiment(exp)
+    return study
+
+def setup_cholec_preprocessed():
+    #os.environ['CUDA_VISIBLE_DEVICES'] = "3,4"
+    study_config = {
+        'img_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed/",
+        'label_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed/",
+        'name': r'cholecseg8k_17',
+        'device':"cuda:0",
+        'unlock_CPU': True,
+        # Optimizer
+        'lr_gamma': 0.9999,
+        'betas': (0.9, 0.99),
+        # Training
+        'save_interval': 10,
+        'evaluate_interval': 100,
+        'n_epoch': 2000,
+        # Model
+        'input_channels': 3,
+        'output_channels': 12,
+        'hidden_size': 64,
+        'train_model':1,
+        'channel_n': 16,
+        'kernel_size': [3, 7],
+        # Data
+        'input_size': [(240, 424, 80)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        
+        'data_split': [0.7, 0, 0.3],
+        'keep_original_scale': True,
+        'rescale': True,
+        # Octree - specific
+        #'octree_res_and_steps': [((424, 240, 24), 40), ((106,60,6), 20)],
+        'octree_res_and_steps': [((240, 424, 80), 40), ((60,106,20), 20)],
+        'separate_models': True,
+        # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
+        'patch_sizes':[(80, 80, 6), None],
+        #'patch_sizes': [None] *5,
+        ### TEMP
+        'gradient_accumulation': False,
+        'train_quality_control': False, #or "NQM" or "MSE"
+
+        'compile': True,
+        'data_parallel': False,
+        'batch_size': 2,
+        'batch_duplication': 2,
+        'num_workers': 4,
+    }
+    #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    #torch.autograd.set_detect_anomaly(True)
+    study = Study(study_config)
+    dataset = Dataset_CholecSeg_preprocessed()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
     return study
@@ -505,9 +689,11 @@ def train_prostate_baseline():
 
 
 if __name__ == "__main__":
+    #study = setup_cholec_preprocessed()
     #study = setup_davis()
-    #study = setup_prostate4()
-    study = setup_hippocampus2()
+    study = setup_prostate5()
+    #study = setup_prostate3()
+    #study = setup_hippocampus2()
     #figure = octree_vis.visualize(study.experiments[0], study.my_custom_evaluation_set)
     #plt.savefig("inference_test.png", bbox_inches='tight')
     study.run_experiments()

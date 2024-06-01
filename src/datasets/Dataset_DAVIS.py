@@ -9,7 +9,9 @@ import cv2
 class Dataset_DAVIS(Dataset_Base):
     def __init__(self):
         super().__init__()
-        self.slice = 0 # i dont know what this is supposed to mean, but do not set it to None
+        self.slice = None
+        self.delivers_channel_axis = True
+        self.is_rgb = True
     
     def getFilesInPath(self, path: str):
         r"""Get files in path
@@ -56,12 +58,27 @@ class Dataset_DAVIS(Dataset_Base):
             outstack = cv2.resize(instack, (self.size[1], self.size[0]))
             return outstack.reshape((self.size[0], self.size[1], C, N)).transpose((3,0,1,2))
 
-
         imgs = reshape_batch(imgs)
         lbls = reshape_batch(lbls)
 
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+
+        imgs = imgs.astype(np.float32)
+        imgs /= 255.0
+
+        imgs -= mean
+        imgs /= std
+
+
+
+
         imgs = imgs.transpose(3, 1, 2, 0)#DHWC -> CHWD
         lbls = lbls.transpose(1, 2, 0, 3)#DHWC -> HWDC
+
+
+
+        lbls[lbls > 0] = 1
 
         data_dict = {}
         data_dict['id'] = self.images_list[idx]

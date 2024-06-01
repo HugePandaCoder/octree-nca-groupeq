@@ -10,6 +10,8 @@ class Dataset_Base(Dataset):
         self.resize = resize
         self.count = 42
         self.data = Data_Container()
+        self.delivers_channel_axis = False
+        self.is_rgb = False
 
     def set_size(self, size: tuple) -> None:
         r"""Set size of images

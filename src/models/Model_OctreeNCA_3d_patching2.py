@@ -174,7 +174,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
 
                         current_patch[b, 0] += np.array([h_offset, w_offset, d_offset])
                         current_patch[b, 1] = current_patch[b, 0] + np.array(self.patch_sizes[level-1])
-
+                        
                         x_new[b, :self.input_channels] = original_right_resolution[b, :,
                                         current_patch[b,0,0]:current_patch[b,1,0],
                                         current_patch[b,0,1]:current_patch[b,1,1],

@@ -16,6 +16,8 @@ import nibabel as nib
 import os
 import torch
 import warnings
+import torchvision
+import torchvision.transforms.functional
 
 def dump_pickle_file(file, path):
     r"""Dump pickle file in path
@@ -122,11 +124,17 @@ def normalize_image(image):
 
     return normalized
 
-def merge_img_label_gt_simplified(img, label, gt, rgb=True):
+def merge_img_label_gt_simplified(img, label, gt, rgb=False):
     if label.size()[-1] != 1:
         label = label[..., 0]
         gt = gt[..., 0]
         warnings.warn("WARNING: Currently image output supports one label only")
+
+
+    if rgb:
+        img = img.permute(0,4,1,2,3) # BCHWD -> BDCHW
+        img = torchvision.transforms.functional.rgb_to_grayscale(img)
+        img = img.permute(0,2,3,4,1) # BDCHW -> BCHWD
 
     print(img.shape, label.shape, gt.shape)
     img = torch.squeeze(img)

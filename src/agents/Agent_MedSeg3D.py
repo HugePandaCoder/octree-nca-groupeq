@@ -1,5 +1,6 @@
 import torch
 from src.agents.Agent import BaseAgent
+from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
 import numpy as np
 import math 
@@ -83,7 +84,7 @@ class Agent_MedSeg3D(BaseAgent):
                         middle_slice = int(patient_3d_real_Img.shape[3] /2)
                         #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
                         self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                        merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label),
+                                        merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
                                         #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                         self.exp.currentStep)
                         #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 

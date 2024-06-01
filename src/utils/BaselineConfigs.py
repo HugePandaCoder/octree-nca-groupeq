@@ -193,11 +193,13 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             assert False, "Dataset is None"
 
         if 'patch_sizes' in config:
-            model = OctreeNCA3DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
+            model = OctreeNCA3DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
+                                      output_channels=config['output_channels'], steps=config['inference_steps'],
                             octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
                             compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'])
         else:
-            model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'],
+            model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
+                                output_channels=config['output_channels'], steps=config['inference_steps'],
                                 octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
                                 compile=config['compile'], kernel_size=config['kernel_size'])
             
