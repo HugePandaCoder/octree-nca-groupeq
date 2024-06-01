@@ -224,7 +224,7 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_9',
+        'name': r'Prostate49_octree_11',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -259,9 +259,11 @@ def setup_prostate5():
 
         'compile': True,
         'data_parallel': False,
-        'batch_size': 3,
-        'batch_duplication': 2,
+        'batch_size': 2,
+        'batch_duplication': 3,
         'num_workers': 0
+         # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
+         # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     #torch.autograd.set_detect_anomaly(True)

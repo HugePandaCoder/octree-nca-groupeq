@@ -157,7 +157,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 #upscale states
                 x = self.align_tensor_to(x, "BCHWD")
                 self.remove_names(x)
-                x = torch.nn.Upsample(size=self.octree_res[level-1], 
+                x = torch.nn.Upsample(scale_factor=tuple(self.computed_upsampling_scales[level-1][0]), 
                                       mode='nearest')(x)
                 current_patch *= self.computed_upsampling_scales[level-1]
             
