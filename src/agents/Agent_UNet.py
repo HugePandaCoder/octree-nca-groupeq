@@ -61,6 +61,6 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
     def test(self, *args, **kwargs):
         dataset = self.exp.dataset
         if dataset.slice is not None:
-            Agent_MedSeg2D.test(self, *args, **kwargs)
+            return Agent_MedSeg2D.test(self, *args, **kwargs)
         else:
-            Agent_MedSeg3D.test(self, *args, **kwargs)
+            return Agent_MedSeg3D.test(self, *args, **kwargs)
