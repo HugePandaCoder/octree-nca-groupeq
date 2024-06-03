@@ -6,7 +6,8 @@ import numpy as np
 import math 
 
 class Agent_MedSeg3D(BaseAgent):
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, dataset=None, **kwargs):
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, dataset=None, 
+             split='test', **kwargs):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -19,6 +20,11 @@ class Agent_MedSeg3D(BaseAgent):
             if dataset is None:
                 dataset = self.exp.dataset
             self.exp.set_model_state('test')
+            if split is not 'test':
+                assert split == 'train'
+                dataset.setPaths(self.exp.config['img_path'], self.exp.data_split.get_images('train'), 
+                                 self.exp.config['label_path'], self.exp.data_split.get_labels('train'))
+                dataset.setState('test')
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
             # Prepare arrays
             patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0

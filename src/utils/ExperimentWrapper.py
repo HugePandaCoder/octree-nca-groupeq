@@ -1,6 +1,7 @@
-import torch
+import torch.utils.data
 from src.agents.Agent import BaseAgent
 from src.utils.Experiment import Experiment
+from torch.utils.data import RandomSampler
 
 class ExperimentWrapper():
     def createExperiment(self, config : dict, model, agent: BaseAgent, dataset, loss_function):

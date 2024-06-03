@@ -128,7 +128,8 @@ class M3DNCAAgent(UNetAgent):
 
 
             self.optimizer.step()
-            self.scheduler.step()
+            if not self.exp.get_from_config('update_lr_per_epoch'):
+                self.update_lr()
         return loss_ret
 
     #def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:

@@ -131,8 +131,15 @@ class BaseAgent():
 
 
             self.optimizer.step()
-            self.scheduler.step()
+            if not self.exp.get_from_config('update_lr_per_epoch'):
+                self.update_lr()
         return loss_ret
+
+    def update_lr(self) -> None:
+        for i, lr in enumerate(self.scheduler.get_last_lr()):
+            self.exp.write_scalar(f'lr/{i}', lr, None)
+        self.scheduler.step()
+        
 
     def intermediate_results(self, epoch: int, loss_log: list) -> None:
         r"""Write intermediate results to tensorboard
@@ -160,7 +167,7 @@ class BaseAgent():
         plot = plot.get_figure()
         return plot
 
-    def intermediate_evaluation(self, dataloader, epoch: int) -> None:
+    def intermediate_evaluation(self, dataloader, epoch: int, split='test') -> None:
         r"""Do an intermediate evluation during training 
             .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
             #Args
@@ -168,14 +175,14 @@ class BaseAgent():
                 epoch (int)
         """
         diceLoss = DiceLoss(useSigmoid=True)
-        loss_log = self.test(diceLoss)
+        loss_log = self.test(diceLoss, split=split, tag=f'{split}/img/')
         if loss_log is not None:
             for key in loss_log.keys():
                 img_plot = self.plot_results_byPatient(loss_log[key])
                 self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
                 if len(loss_log[key]) > 0:
-                    self.exp.write_scalar('Dice/test/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-                    self.exp.write_histogram('Dice/test/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
+                    self.exp.write_scalar(f'Dice/{split}/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
+                    self.exp.write_histogram(f'Dice/{split}/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
         # TODO: ADD AGAIN 
         #for param in self.model.parameters():
@@ -236,10 +243,14 @@ class BaseAgent():
                         loss_log[key].append(loss_item[key])
                     else:
                         loss_log[key].append(loss_item[key].detach())
+            if self.exp.get_from_config('update_lr_per_epoch'):
+                self.update_lr()
             self.intermediate_results(epoch, loss_log)
             if epoch % self.exp.get_from_config('evaluate_interval') == 0:
                 print("Evaluate model")
                 self.intermediate_evaluation(dataloader, epoch)
+                if self.exp.get_from_config('also_eval_on_train'):
+                    self.intermediate_evaluation(dataloader, epoch, split='train')
             #if epoch % self.exp.get_from_config('ood_interval') == 0:
             #    print("Evaluate model in OOD cases")
             #    self.ood_evaluation(epoch=epoch)

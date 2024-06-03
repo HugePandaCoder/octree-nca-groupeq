@@ -87,6 +87,7 @@ class M3DNCAAgentGradientAccum(M3DNCAAgent):
 
 
         self.optimizer.step()
-        self.scheduler.step()
+        if not self.exp.get_from_config('update_lr_per_epoch'):
+            self.update_lr()
         return loss_ret
     

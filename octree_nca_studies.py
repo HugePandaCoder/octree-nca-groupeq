@@ -5,6 +5,7 @@ from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPat
 from src.models.Model_M3DNCA import M3DNCA
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 from src.losses.LossFunctions import DiceFocalLoss
+from src.utils.DataAugmentations import get_augmentation_dataset
 from src.utils.Study import Study
 from src.utils.ProjectConfiguration import ProjectConfiguration
 from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_UNet2D, EXP_M3DNCA, EXP_TransUNet, EXP_MEDNCA, EXP_OctreeNCA, EXP_BasicNCA
@@ -224,17 +225,17 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_16',
+        'name': r'Prostate49_octree_24',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
-        'lr_gamma': 0.9994,
-        'lr': 0.06,
+        'lr_gamma': 0.9999,
+        'lr': 16e-4,
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 10,
         'evaluate_interval': 200,
-        'n_epoch': 8000,
+        'n_epoch': 16000,
         # Model
         'input_channels': 1,
         'output_channels': 1,
@@ -262,14 +263,22 @@ def setup_prostate5():
         'data_parallel': False,
         'batch_size': 3,
         'batch_duplication': 2,
-        'num_workers': 0
+        'num_workers': 12,
+        'update_lr_per_epoch': True, # is false by default
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
+        'also_eval_on_train': True,
+        #TODO num_iter_per_epoch
+        'train_data_augmentations': True, 
+
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     #torch.autograd.set_detect_anomaly(True)
     study = Study(study_config)
-    dataset = Dataset_NiiGz_3D()
+    if study_config['train_data_augmentations']:
+        dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
+    else:
+        dataset = Dataset_NiiGz_3D()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
 

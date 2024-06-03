@@ -12,7 +12,6 @@ from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from unet import UNet2D
 from src.agents.Agent_UNet import UNetAgent 
 
-
 class EXP_UNet2D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
         config = {
