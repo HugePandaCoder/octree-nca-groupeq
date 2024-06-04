@@ -112,15 +112,17 @@ class BaseAgent():
         if loss != 0:
             loss.backward()
 
-            if gradient_norm:
-                max_norm = 1.0
-                # Gradient normalization
+            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
                 total_norm = 0
                 for p in self.model.parameters():
                     if p.grad is not None:
-                        param_norm = p.grad.data.norm(2)
+                        param_norm = p.grad.detach().data.norm(2)
                         total_norm += param_norm.item() ** 2
                 total_norm = total_norm ** 0.5
+
+            if gradient_norm:
+                max_norm = 1.0
+                # Gradient normalization
 
                 # Calculate scaling factor and scale gradients if necessary
                 scale_factor = max_norm / (total_norm + 1e-6)
@@ -129,6 +131,10 @@ class BaseAgent():
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
 
+            if self.exp.get_from_config('track_gradient_norm'):
+                if not hasattr(self, 'epoch_grad_norm'):
+                    self.epoch_grad_norm = []
+                self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
             if not self.exp.get_from_config('update_lr_per_epoch'):
@@ -243,6 +249,8 @@ class BaseAgent():
                         loss_log[key].append(loss_item[key])
                     else:
                         loss_log[key].append(loss_item[key].detach())
+
+            self.maybe_track_grad_norm()
             if self.exp.get_from_config('update_lr_per_epoch'):
                 self.update_lr()
             self.intermediate_results(epoch, loss_log)
@@ -267,6 +275,11 @@ class BaseAgent():
         """
         return image
 
+    def maybe_track_grad_norm(self) -> None:
+        if not self.exp.get_from_config('track_gradient_norm'):
+            return
+        self.exp.write_scalar('Model/grad_norm', np.mean(self.epoch_grad_norm), self.exp.currentStep)
+        self.epoch_grad_norm = []
 
     #def ood_evaluation(self, ood_cases=["random_noise", "random_spike", "random_anitrosopy"], epoch=0):
     #    print("OOD EVALUATION")

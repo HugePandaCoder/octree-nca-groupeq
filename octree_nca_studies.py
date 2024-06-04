@@ -225,17 +225,17 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24',
+        'name': r'Prostate49_27',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
-        'lr_gamma': 0.9999,
+        'lr_gamma': 0.999,
         'lr': 16e-4,
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 10,
         'evaluate_interval': 200,
-        'n_epoch': 16000,
+        'n_epoch': 250,
         # Model
         'input_channels': 1,
         'output_channels': 1,
@@ -259,7 +259,7 @@ def setup_prostate5():
         'gradient_accumulation': False,
         'train_quality_control': False, #or "NQM" or "MSE"
 
-        'compile': True,
+        'compile': False,
         'data_parallel': False,
         'batch_size': 3,
         'batch_duplication': 2,
@@ -268,8 +268,9 @@ def setup_prostate5():
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
         'also_eval_on_train': True,
-        #TODO num_iter_per_epoch
-        'train_data_augmentations': True, 
+        'num_steps_per_epoch': None,
+        'train_data_augmentations': True,
+        'track_gradient_norm': True,
 
     }
     #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'

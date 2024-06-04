@@ -108,16 +108,18 @@ class M3DNCAAgent(UNetAgent):
         if loss != 0:
             loss.backward()
 
+            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
+                total_norm = 0
+                for p in self.model.parameters():
+                    if p.grad is not None:
+                        param_norm = p.grad.detach().data.norm(2)
+                        total_norm += param_norm.item() ** 2
+                total_norm = total_norm ** 0.5
+
             if gradient_norm:
                 print("GRADIENT NORM")
                 max_norm = 1.0
                 # Gradient normalization
-                total_norm = 0
-                for p in self.model.parameters():
-                    if p.grad is not None:
-                        param_norm = p.grad.data.norm(2)
-                        total_norm += param_norm.item() ** 2
-                total_norm = total_norm ** 0.5
 
                 # Calculate scaling factor and scale gradients if necessary
                 scale_factor = max_norm / (total_norm + 1e-6)
@@ -125,7 +127,11 @@ class M3DNCAAgent(UNetAgent):
                     for p in self.model.parameters():
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
-
+            
+            if self.exp.get_from_config('track_gradient_norm'):
+                if not hasattr(self, 'epoch_grad_norm'):
+                    self.epoch_grad_norm = []
+                self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
             if not self.exp.get_from_config('update_lr_per_epoch'):
