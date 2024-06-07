@@ -41,6 +41,7 @@ class Dataset_Base(Dataset):
         self.labels_path = labels_path
         self.labels_list = labels_list
         self.length = len(self.images_list)
+        self.state = 'train'
 
     def getImagePaths(self) -> list:
         r"""Get a list of all images in dataset

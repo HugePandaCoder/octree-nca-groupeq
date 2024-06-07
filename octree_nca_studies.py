@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from src.datasets.BatchgeneratorsDataLoader import get_batchgenerators_dataloader_dataset
 from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPath
@@ -225,17 +226,17 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_27',
+        'name': r'Prostate49_octree_24_batchgenerators',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
-        'lr_gamma': 0.999,
+        'lr_gamma': 0.9999,
         'lr': 16e-4,
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 10,
         'evaluate_interval': 200,
-        'n_epoch': 250,
+        'n_epoch': 16000,
         # Model
         'input_channels': 1,
         'output_channels': 1,
@@ -259,11 +260,11 @@ def setup_prostate5():
         'gradient_accumulation': False,
         'train_quality_control': False, #or "NQM" or "MSE"
 
-        'compile': False,
+        'compile': True,
         'data_parallel': False,
         'batch_size': 3,
         'batch_duplication': 2,
-        'num_workers': 12,
+        'num_workers': 8,
         'update_lr_per_epoch': True, # is false by default
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
@@ -271,15 +272,25 @@ def setup_prostate5():
         'num_steps_per_epoch': None,
         'train_data_augmentations': True,
         'track_gradient_norm': True,
-
+        'batchgenerators': True, #TODO just implement a dataset wrapper holding multiple datasets in parallel
+        # TODO 'lambda_dice_loss'
+        # TODO maybe diffulty weighted sampling, or
+        # TODO train on the patch that has the highest loss in the previous epoch, or
+        # TODO sample the patch, so that each pixel has a similar probability of appearing in the patch
+        # TODO more data augmentations
     }
-    #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-    #torch.autograd.set_detect_anomaly(True)
+    #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']
     study = Study(study_config)
-    if study_config['train_data_augmentations']:
-        dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
+
+    if study_config['batchgenerators']:
+        dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
+                                                         study_config['num_steps_per_epoch'], study_config['batch_size'],
+                                                         study_config['num_workers'])()
     else:
-        dataset = Dataset_NiiGz_3D()
+        if study_config['train_data_augmentations']:
+            dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
+        else:
+            dataset = Dataset_NiiGz_3D()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
     study.add_experiment(exp)
 
@@ -707,7 +718,7 @@ if __name__ == "__main__":
     study = setup_prostate5()
     #study = setup_prostate3()
     #study = setup_hippocampus2()
-    #figure = octree_vis.visualize(study.experiments[0], study.my_custom_evaluation_set)
+    #figure = octree_vis.visualize(study.experiments[0], sample_id="prostate_13.nii.gz")
     #plt.savefig("inference_test.png", bbox_inches='tight')
     study.run_experiments()
     study.eval_experiments()

@@ -12,17 +12,51 @@ from src.utils.Experiment import Experiment
 from torch.utils.data import DataLoader
 
 
+def find_sample_by_id(experiment, dataset: Dataset_Base, id:str):
+    for split in ['train', 'val', 'test']:
+        if len(experiment.data_split.get_images(split)) == 0:
+            continue
+        experiment.dataset.setPaths(experiment.config['img_path'], experiment.data_split.get_images(split), 
+                                    experiment.config['label_path'], experiment.data_split.get_labels(split))
+        experiment.dataset.setState(split)
+
+        print(experiment.dataset.images_list)
+
+        try:
+            item = dataset.getItemByName((id, id, 0))
+            return item
+        except ValueError:
+            pass
+    assert False, f"Could not find sample with id {id}"
+
 @torch.no_grad()
-def visualize(experiment: Experiment, dataset: Dataset_Base = None) -> plt.Figure:
-    if isinstance(experiment.model, OctreeNCA):
-        return visualize2d(experiment, dataset)
+def visualize(experiment: Experiment, dataset: Dataset_Base = None, split: str='test', sample_id: str=None) -> plt.Figure:
+    
+    if dataset is None:
+        if sample_id is None:
+            experiment.dataset.setPaths(experiment.config['img_path'], experiment.data_split.get_images(split), 
+                                        experiment.config['label_path'], experiment.data_split.get_labels(split))
+            experiment.dataset.setState(split)
+            data = next(iter(experiment.data_loader))
+        else:
+            data = find_sample_by_id(experiment, experiment.dataset, sample_id)
     else:
-        return visualize3d(experiment, dataset)
+        if sample_id is None:
+            loader = DataLoader(dataset)
+            data = next(iter(loader))
+        else:
+            data = find_sample_by_id(experiment, dataset, sample_id)
+
+
+    if isinstance(experiment.model, OctreeNCA):
+        return visualize2d(experiment, data)
+    else:
+        return visualize3d(experiment, data)
 
 
 @torch.no_grad()
-def visualize2d(experiment: Experiment, dataset: Dataset_Base = None) -> plt.Figure:
-    assert dataset is None, "not implemented yet"
+def visualize2d(experiment: Experiment, data) -> plt.Figure:
+    assert False, "not implemented yet"
     assert isinstance(experiment.agent, MedNCAAgent)
     assert isinstance(experiment.model, OctreeNCA)
 
@@ -52,15 +86,10 @@ def visualize2d(experiment: Experiment, dataset: Dataset_Base = None) -> plt.Fig
 
 
 @torch.no_grad()
-def visualize3d(experiment: Experiment, dataset: Dataset_Base = None) -> plt.Figure:
+def visualize3d(experiment: Experiment, data) -> plt.Figure:
     assert isinstance(experiment.agent, M3DNCAAgent)
     assert isinstance(experiment.model, OctreeNCA3D)
 
-    if dataset is None:
-        data = next(iter(experiment.data_loader))
-    else:
-        loader = DataLoader(dataset)
-        data = next(iter(loader))
     experiment.agent.prepare_data(data)
     inputs, targets = data['image'], data['label']
     gallery = experiment.model.create_inference_series(inputs) #list of BHWDC tensors
