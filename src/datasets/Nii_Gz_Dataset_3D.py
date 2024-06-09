@@ -5,6 +5,12 @@ import numpy as np
 import cv2
 import random
 import torchio
+import src.numpyio.RescaleIntensity as NioRescaleIntensity
+import src.numpyio.ZNormalization as NioZNormalization
+
+def my_print(*args, **kwargs):
+    pass
+    #print(*args, **kwargs)
 
 class Dataset_NiiGz_3D(Dataset_3D):
     """This dataset is used for all NiiGz 3D datasets. It can handle 3D data on its own, but is also able to split them into slices. """
@@ -219,20 +225,28 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img (numpy): Image data
                 label (numpy): Label data
         """
-        rescale = torchio.RescaleIntensity(out_min_max=(0,1), percentiles=(0.5, 99.5))
-        znormalisation = torchio.ZNormalization()
+        my_print("Dataset_NiiGz_3D line 222, idx: ", idx)
+        #rescale = torchio.RescaleIntensity(out_min_max=(0,1), percentiles=(0.5, 99.5))
+        #znormalisation = torchio.ZNormalization()
+        rescale = NioRescaleIntensity.RescaleIntensity(out_min_max=(0,1), percentiles=(0.5, 99.5))
+        znormalisation = NioZNormalization.ZNormalization()
+
 
         img = self.data.get_data(key=self.images_list[idx])
+        my_print("Dataset_NiiGz_3D line 227")
         if not img:
+            my_print("Dataset_NiiGz_3D line 229")
             img_name, p_id, img_id = self.images_list[idx]
 
             label_name, _, _ = self.labels_list[idx]
 
             img, label = self.load_item(os.path.join(self.images_path, img_name)), self.load_item(os.path.join(self.labels_path, img_name))
 
+            my_print("Dataset_NiiGz_3D line 235")
             # Augmentations
             if self.augment is not None:
-               # print("AUGMENTATION " + self.augment)
+                assert False, "Augmentations not implemented"
+                print("AUGMENTATION " + self.augment)
 
                 img_tio = torchio.ScalarImage(tensor=img)
                 if self.augment == "spike":
@@ -244,6 +258,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img = img_tio.tensor.numpy()
 
 
+            my_print("Dataset_NiiGz_3D line 255, slice:", self.slice)
             # 2D
             if self.slice is not None:
                 if len(img.shape) == 4:
@@ -262,26 +277,33 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img, label = self.preprocessing(img), self.preprocessing(label, isLabel=True)
             # 3D
             else:
+                my_print("Dataset_NiiGz_3D line 270")
                 if len(img.shape) == 4:
                     img = img[..., 0]
                 img = np.expand_dims(img, axis=0)
+                my_print("Dataset_NiiGz_3D line 274, mean img:",np.mean(img))
                 img = rescale(img) 
+                my_print("Dataset_NiiGz_3D line 276")
                 img = np.squeeze(img)
+                my_print("Dataset_NiiGz_3D line 278")
                 if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
                     img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
                 if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
                     img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
                 # Add dim to label
+                my_print("Dataset_NiiGz_3D line 282")
                 if len(label.shape) == 3:
                     label = np.expand_dims(label, axis=-1)
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
+            my_print("Dataset_NiiGz_3D line 284")
             if self.store:
                 self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
                 img = self.data.get_data(key=self.images_list[idx])
             else:
                 img = (img_id, img, label)
            
+        my_print("Dataset_NiiGz_3D line 291")
         
 
         id, img, label = img

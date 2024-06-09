@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 from src.datasets.BatchgeneratorsDataLoader import get_batchgenerators_dataloader_dataset
+from src.datasets.BatchgeneratorsDatasetWrapperDataset import get_batchgenerators_dataset
 from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPath
@@ -283,9 +284,11 @@ def setup_prostate5():
     study = Study(study_config)
 
     if study_config['batchgenerators']:
-        dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
-                                                         study_config['num_steps_per_epoch'], study_config['batch_size'],
-                                                         study_config['num_workers'])()
+        #dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
+        #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
+        #                                                 study_config['num_workers'])()
+        dataset = get_batchgenerators_dataset(Dataset_NiiGz_3D, study_config['num_workers'], 
+                                              study_config['num_steps_per_epoch'], study_config['batch_size'])()
     else:
         if study_config['train_data_augmentations']:
             dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()

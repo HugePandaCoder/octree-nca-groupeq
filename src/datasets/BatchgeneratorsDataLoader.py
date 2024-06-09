@@ -10,10 +10,7 @@ from batchgenerators.transforms.abstract_transforms import Compose
 
 from src.utils.DataAugmentations import get_transform_arr
 
-def get_batchgenerators_dataloader_dataset(dataset_class, augmentations:bool, num_steps_per_epoch: int,
-                                           batch_size: int, num_workers: int):
-    logging.basicConfig(level=logging.DEBUG)
-    def my_default_collate(batch):
+def my_default_collate(batch):
         '''
         heavily inspired by the default_collate function of pytorch
         :param batch:
@@ -36,6 +33,12 @@ def get_batchgenerators_dataloader_dataset(dataset_class, augmentations:bool, nu
             return batch
         else:
             raise TypeError('unknown type for batch:', type(batch))
+        
+
+def get_batchgenerators_dataloader_dataset(dataset_class, augmentations:bool, num_steps_per_epoch: int,
+                                           batch_size: int, num_workers: int):
+    logging.basicConfig(level=logging.DEBUG)
+    
         
 
     class MyMultiThreadedAugmenter(MultiThreadedAugmenter):
