@@ -64,7 +64,11 @@ class StepsPerEpochGenerator(SlimDataLoaderBase):
         if self.counter > self.num_steps_per_epoch:
             raise StopIteration
         self.counter += 1
-        return np.random.choice(self._data, self.batch_size)
+        indices = np.random.choice(np.arange(len(self._data)), self.batch_size)
+        batch = [self._data[i] for i in indices]
+        batch = my_default_collate(batch)
+        return batch
+
 
 class MultiThreadedAugmenterWithLength(MultiThreadedAugmenter):
     def __len__(self):

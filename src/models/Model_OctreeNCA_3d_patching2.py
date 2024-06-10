@@ -42,6 +42,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         self.patch_sizes = patch_sizes
         self.loss_weighted_patching = loss_weighted_patching
 
+        self.SAVE_VRAM_DURING_BATCHED_FORWARD = True
+
     def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=1):
         #x: BHWDC
         #y: BHWDC
@@ -50,11 +52,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         #    y = y.to(self.device)
 
         if self.training:
-            #if batch_duplication != 1:
-            #    x = torch.cat([x] * batch_duplication, dim=0)
-            #    y = torch.cat([y] * batch_duplication, dim=0)
-
-            x, y = self.forward_train(x, y)
+            x, y = self.forward_train(x, y, batch_duplication)
             return x, y
             
         else:
@@ -104,7 +102,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 self.remove_names(x)
                 self.remove_names(y)
                 self.eval()
-                if False: # activate this to minimize memory usage, resulting in lower runtime performance
+                if self.SAVE_VRAM_DURING_BATCHED_FORWARD: # activate this to minimize memory usage, resulting in lower runtime performance
                     initial_pred = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3], self.output_channels), device=self.device)
                     for b in range(x.shape[0]):
                         initial_pred[b] = self.forward_eval(x[b:b+1])
