@@ -227,7 +227,7 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24_batchgenerators',
+        'name': r'Prostate49_octree_24_loss_weighted_patching4',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -274,6 +274,7 @@ def setup_prostate5():
         'train_data_augmentations': True,
         'track_gradient_norm': True,
         'batchgenerators': True, #TODO just implement a dataset wrapper holding multiple datasets in parallel
+        'loss_weighted_patching': True
         # TODO 'lambda_dice_loss'
         # TODO maybe diffulty weighted sampling, or
         # TODO train on the patch that has the highest loss in the previous epoch, or

@@ -19,7 +19,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                  scale_factor=None, levels=None, kernel_size=None,
                  octree_res_and_steps: list=None, separate_models: bool=False,
                  compile: bool=False,
-                 patch_sizes=None):
+                 patch_sizes=None,
+                 loss_weighted_patching=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -39,6 +40,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
             self.computed_upsampling_scales.append(np.array(t).reshape(1, 3))
 
         self.patch_sizes = patch_sizes
+        self.loss_weighted_patching = loss_weighted_patching
 
     def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=1):
         #x: BHWDC
@@ -48,9 +50,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         #    y = y.to(self.device)
 
         if self.training:
-            if batch_duplication != 1:
-                x = torch.cat([x] * batch_duplication, dim=0)
-                y = torch.cat([y] * batch_duplication, dim=0)
+            #if batch_duplication != 1:
+            #    x = torch.cat([x] * batch_duplication, dim=0)
+            #    y = torch.cat([y] * batch_duplication, dim=0)
 
             x, y = self.forward_train(x, y)
             return x, y
@@ -93,14 +95,49 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 return x
         assert False, f"Expected to be aligned to BCHWD or BHWDC, got {to}"
 
+    def forward_train(self, x: torch.Tensor, y: torch.Tensor, batch_duplication=1):
+        #x: BHWDC
+        #y: BHWDC
 
-    def forward_train(self, x: torch.Tensor, y: torch.Tensor):
+        if self.loss_weighted_patching and not all([p is None for p in self.patch_sizes]):
+            with torch.no_grad():
+                self.remove_names(x)
+                self.remove_names(y)
+                self.eval()
+                if False: # activate this to minimize memory usage, resulting in lower runtime performance
+                    initial_pred = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3], self.output_channels), device=self.device)
+                    for b in range(x.shape[0]):
+                        initial_pred[b] = self.forward_eval(x[b:b+1])
+                else:
+                    initial_pred = self.forward_eval(x)
+                self.train()
+
+                loss = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3]), device=self.device) # HWD 
+                if len(initial_pred.shape) == 5 and y.shape[-1] == 1:
+                    for m in range(y.shape[-1]):
+                        temp = torch.nn.functional.binary_cross_entropy_with_logits(initial_pred[..., m].squeeze(), y[...].squeeze(), reduction='none')
+                        loss += temp
+                else:
+                    for m in range(initial_pred.shape[-1]):
+                        if 1 in y[..., m]:
+                            temp = torch.nn.functional.binary_cross_entropy_with_logits(initial_pred[..., m].squeeze(), y[..., m].squeeze(), reduction='none')
+                            loss += temp
+            del initial_pred
+            #x.names = ('B', 'H', 'W', 'D', 'C')
+            #y.names = ('B', 'H', 'W', 'D', 'C')
+            #loss.names = ('B', 'H', 'W', 'D')
+
+        if batch_duplication != 1:
+            x = torch.cat([x] * batch_duplication, dim=0)
+            y = torch.cat([y] * batch_duplication, dim=0)
+            if self.loss_weighted_patching:
+                loss = torch.cat([loss] * batch_duplication, dim=0)
+
         original = x.permute(0, 4, 1, 2, 3)
         x.names = ('B', 'H', 'W', 'D', 'C')
         y.names = ('B', 'H', 'W', 'D', 'C')
         original.names = ('B', 'C', 'H', 'W', 'D')
-        #x: BHWDC
-        #y: BHWDC
+        
 
         if self.patch_sizes[-1] is not None:
             x_new = torch.zeros(x.shape[0], *self.patch_sizes[-1], self.channel_n,
@@ -111,10 +148,17 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
             x = self.align_tensor_to(x, "BHWDC")
             self.remove_names(x_new)
             self.remove_names(x)
+
+            if self.loss_weighted_patching:
+                loss_weighted_probabilities = self.compute_probabilities_matrix(loss, -1).cpu().numpy()
+
             for b in range(x.shape[0]):
-                h_start = self.my_rand_int(0, self.octree_res[-1][0]-self.patch_sizes[-1][0])
-                w_start = self.my_rand_int(0, self.octree_res[-1][1]-self.patch_sizes[-1][1])
-                d_start = self.my_rand_int(0, self.octree_res[-1][2]-self.patch_sizes[-1][2])
+                if self.loss_weighted_patching:
+                    h_start, w_start, d_start = self.sample_index(loss_weighted_probabilities[b])
+                else:
+                    h_start = self.my_rand_int(0, self.octree_res[-1][0]-self.patch_sizes[-1][0])
+                    w_start = self.my_rand_int(0, self.octree_res[-1][1]-self.patch_sizes[-1][1])
+                    d_start = self.my_rand_int(0, self.octree_res[-1][2]-self.patch_sizes[-1][2])
                 current_patch[b] = np.array([[h_start, w_start, d_start], 
                                         [self.patch_sizes[-1][0] + h_start, 
                                         self.patch_sizes[-1][1] + w_start, 
@@ -167,11 +211,30 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 #cut out patch from input_channels
                 if self.patch_sizes[level-1] is not None:
                     x_new = torch.zeros(x.shape[0], self.channel_n, *self.patch_sizes[level-1], device=self.device, dtype=torch.float)
-                    for b in range(x.shape[0]):
-                        h_offset = self.my_rand_int(0, x.shape[2]-self.patch_sizes[level-1][0])
-                        w_offset = self.my_rand_int(0, x.shape[3]-self.patch_sizes[level-1][1])
-                        d_offset = self.my_rand_int(0, x.shape[4]-self.patch_sizes[level-1][2])
+                    
+                    if self.loss_weighted_patching:
+                        loss_weighted_probabilities = self.compute_probabilities_matrix(loss, level-1).cpu().numpy()
 
+                    for b in range(x.shape[0]):
+                        if self.loss_weighted_patching:
+                            temp = loss_weighted_probabilities[b,
+                                                                          current_patch[b,0,0]:current_patch[b,1,0]+1-self.patch_sizes[level-1][0],
+                                                                          current_patch[b,0,1]:current_patch[b,1,1]+1-self.patch_sizes[level-1][1],
+                                                                          current_patch[b,0,2]:current_patch[b,1,2]+1-self.patch_sizes[level-1][2],
+                                                                          ]
+                            h_start, w_start, d_start = self.sample_index(temp)
+                            h_offset = h_start #- current_patch[b,0,0]
+                            w_offset = w_start #- current_patch[b,0,1]
+                            d_offset = d_start #- current_patch[b,0,2]
+                            assert h_offset <= x.shape[2]-self.patch_sizes[level-1][0]
+                            assert w_offset <= x.shape[3]-self.patch_sizes[level-1][1]
+                            assert d_offset <= x.shape[4]-self.patch_sizes[level-1][2]
+                        else:
+                            h_offset = self.my_rand_int(0, x.shape[2]-self.patch_sizes[level-1][0])
+                            w_offset = self.my_rand_int(0, x.shape[3]-self.patch_sizes[level-1][1])
+                            d_offset = self.my_rand_int(0, x.shape[4]-self.patch_sizes[level-1][2])
+
+                        #coordinates in current_patch are relative to the latest resolution of the whole image
                         current_patch[b, 0] += np.array([h_offset, w_offset, d_offset])
                         current_patch[b, 1] = current_patch[b, 0] + np.array(self.patch_sizes[level-1])
                         
@@ -257,9 +320,25 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
     def my_rand_int(self, low, high):
         if high == low:
             return low
+        assert high > low, f"high must be greater than low, got {low} and {high}"
         return random.randint(low, high)
         #return np.random.randint(low, high)
     
+    def sample_index(self, p):
+        #https://stackoverflow.com/questions/61047932/numpy-sampling-from-a-2d-numpy-array-of-probabilities
+        p = p / np.sum(p)
+        i = np.random.choice(np.arange(p.size), p=p.ravel())
+        return np.unravel_index(i, p.shape)
+
+    @torch.no_grad()
+    def compute_probabilities_matrix(self, loss: torch.Tensor, level: int) -> torch.Tensor:
+        patch_size = self.patch_sizes[level]
+        loss = loss.unsqueeze(1)
+        loss = F.interpolate(loss, size=self.octree_res[level])
+        loss_per_patch = F.conv3d(loss, torch.ones((1, 1, *patch_size), device=self.device), padding=(0,0,0))
+        loss_per_patch = loss_per_patch[:,0]
+        loss_per_patch = loss_per_patch / torch.sum(loss_per_patch, dim=(1,2,3)).view(loss_per_patch.shape[0], 1, 1, 1)
+        return loss_per_patch
 
 class Octree3DNoStates:
     @torch.no_grad()
