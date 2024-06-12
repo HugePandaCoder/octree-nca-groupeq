@@ -227,7 +227,7 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24_4',
+        'name': r'Prostate49_octree_24_5',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -290,6 +290,7 @@ def setup_prostate5():
         'polynomial_scheduler_power': 1.8,
     }
     if study_config['difficulty_weighted_sampling']:
+        assert study_config['batchgenerators']
         assert study_config['also_eval_on_train']
         assert study_config['num_steps_per_epoch'] is not None
     #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']

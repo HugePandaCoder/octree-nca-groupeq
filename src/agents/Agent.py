@@ -214,6 +214,7 @@ class BaseAgent():
                 #loss_log does not contain the loss but the segmentation score!
                 self.exp.dataset.difficulties[patient_id] = 1 - loss_sum_per_patient[patient_id]
             print(f"Updated difficulties for {len(loss_sum_per_patient)} patients")
+            self.exp.dataset.dataloader.restart()
 
         if loss_log is not None:
             for key in loss_log.keys():

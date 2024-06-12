@@ -76,6 +76,7 @@ class StepsPerEpochGenerator(SlimDataLoaderBase):
         if self.difficulty_weighted_sampling:
             ids = [self._data.getPublicIdByIndex(i) for i, _ in enumerate(self._data.images_list)]
             weights = np.array([self._data.difficulties[id] for id in ids])
+            #print(weights)
             indices = np.random.choice(np.arange(0, len(self._data)), self.batch_size, p=weights/weights.sum())
             batch = [self._data[img_id] for img_id in indices]
         else:
