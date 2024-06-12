@@ -55,17 +55,32 @@ class DatasetPerEpochGenerator(SlimDataLoaderBase):
             raise StopIteration
 
 class StepsPerEpochGenerator(SlimDataLoaderBase):
-    def __init__(self, data, num_steps_per_epoch:int, num_threads_in_mt=12, batch_size=4):
+    def __init__(self, data, num_steps_per_epoch:int, num_threads_in_mt=12, batch_size=4, difficulty_weighted_sampling:bool=False):
         # This initializes self._data, self.batch_size and self.number_of_threads_in_multithreaded
         super(StepsPerEpochGenerator, self).__init__(data, batch_size, num_threads_in_mt)
         self.num_steps_per_epoch = num_steps_per_epoch
-        self.counter = 0
+        self.was_initialized = False
+        self.difficulty_weighted_sampling = difficulty_weighted_sampling
+
+    def reset(self):
+        self.counter = self.thread_id
+        self.was_initialized = True
+
     def generate_train_batch(self):
-        if self.counter > self.num_steps_per_epoch:
+        if not self.was_initialized:
+            self.reset()
+        if self.counter >= self.num_steps_per_epoch:
+            self.reset()
             raise StopIteration
-        self.counter += 1
-        indices = np.random.choice(np.arange(len(self._data)), self.batch_size)
-        batch = [self._data[i] for i in indices]
+        self.counter += self.number_of_threads_in_multithreaded
+        if self.difficulty_weighted_sampling:
+            ids = [self._data.getPublicIdByIndex(i) for i, _ in enumerate(self._data.images_list)]
+            weights = np.array([self._data.difficulties[id] for id in ids])
+            indices = np.random.choice(np.arange(0, len(self._data)), self.batch_size, p=weights/weights.sum())
+            batch = [self._data[img_id] for img_id in indices]
+        else:
+            indices = np.random.choice(np.arange(len(self._data)), self.batch_size)
+            batch = [self._data[i] for i in indices]
         batch = my_default_collate(batch)
         return batch
 
@@ -77,14 +92,14 @@ class MultiThreadedAugmenterWithLength(MultiThreadedAugmenter):
         else:
             return -1
         
-def get_batchgenerators_dataset(dataset_class, num_processes: int, num_steps_per_epoch: int, batch_size: int):
+def get_batchgenerators_dataset(dataset_class, num_processes: int, num_steps_per_epoch: int, batch_size: int, difficulty_weighted_sampling:bool):
     class BatchgeneratorsDataset(dataset_class):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             if num_steps_per_epoch is None:
                 generator = DatasetPerEpochGenerator(self, num_processes, batch_size)
             else:
-                generator = StepsPerEpochGenerator(self, num_steps_per_epoch, num_processes, batch_size)
+                generator = StepsPerEpochGenerator(self, num_steps_per_epoch, num_processes, batch_size, difficulty_weighted_sampling)
             transforms = get_transform_arr()
             transforms.append(NumpyToTensor(keys=['image', 'label']))
             self.dataloader = MultiThreadedAugmenterWithLength(generator, Compose(transforms), num_processes=num_processes)
@@ -112,6 +127,15 @@ def get_batchgenerators_dataset(dataset_class, num_processes: int, num_steps_per
             else:
                 paths_changed = True
             super().setPaths(images_path, images_list, labels_path, labels_list)
+
+            if difficulty_weighted_sampling:
+                if not hasattr(self, 'difficulties'):
+                    self.difficulties = {}
+                for i, _ in enumerate(self.images_list):
+                    id = self.getPublicIdByIndex(i)
+                    if id not in self.difficulties:
+                        self.difficulties[id] = 1
+
             if paths_changed:
                 self.setDataloaderLength()
                 self.dataloader.restart()

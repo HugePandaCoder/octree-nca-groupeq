@@ -217,6 +217,12 @@ class Dataset_NiiGz_3D(Dataset_3D):
         return img, label
         
 
+    def getPublicIdByIndex(self, idx: int):
+        img_name, p_id, img_id = self.images_list[idx]
+        img_id = "_" + str(p_id) + "_" + str(img_id)
+        return img_id 
+
+
     def __getitem__(self, idx: str) -> tuple:
         r"""Standard get item function
             #Args

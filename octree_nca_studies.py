@@ -227,16 +227,16 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24_loss_weighted_patching6',
+        'name': r'Prostate49_octree_24_4',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
-        'lr_gamma': 0.999,
-        'lr': 16e-4,
+        'lr_gamma': 0.9999**8,
+        'lr': 1e-2,
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 5,
-        'evaluate_interval': 10,
+        'evaluate_interval': 1,
         'n_epoch': 300,
         # Model
         'input_channels': 1,
@@ -270,17 +270,28 @@ def setup_prostate5():
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
         'also_eval_on_train': True,
-        'num_steps_per_epoch': 250, #default ist None
+        'num_steps_per_epoch': 250, #default is None
         'train_data_augmentations': True,
         'track_gradient_norm': True,
-        'batchgenerators': True, #TODO just implement a dataset wrapper holding multiple datasets in parallel
-        'loss_weighted_patching': True
+        'batchgenerators': True, 
+        'loss_weighted_patching': True,# default false, train on the patch that has the highest loss in the previous epoch
         # TODO 'lambda_dice_loss'
-        # TODO maybe diffulty weighted sampling, or
-        # TODO train on the patch that has the highest loss in the previous epoch, or
-        # TODO sample the patch, so that each pixel has a similar probability of appearing in the patch
+        # TODO maybe diffulty weighted sampling
         # TODO more data augmentations
+        # TODO different weight initializations
+        # TODO maybe mask CE loss on correctly segmented areas
+        'difficulty_weighted_sampling': True, #default is False. Difficulty is evaluated at every 'evaluate_interval' epoch. Also, 'also_eval_on_train' _must_ be True
+
+        'optimizer': "Adam",# default is "Adam"
+        'sgd_momentum': 0.99,
+        'sgd_nesterov': True,
+
+        'scheduler': "polynomial",#default is exponential
+        'polynomial_scheduler_power': 1.8,
     }
+    if study_config['difficulty_weighted_sampling']:
+        assert study_config['also_eval_on_train']
+        assert study_config['num_steps_per_epoch'] is not None
     #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']
     study = Study(study_config)
 
@@ -289,7 +300,8 @@ def setup_prostate5():
         #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
         #                                                 study_config['num_workers'])()
         dataset = get_batchgenerators_dataset(Dataset_NiiGz_3D, study_config['num_workers'], 
-                                              study_config['num_steps_per_epoch'], study_config['batch_size'])()
+                                              study_config['num_steps_per_epoch'], study_config['batch_size'],
+                                              study_config['difficulty_weighted_sampling'])()
     else:
         if study_config['train_data_augmentations']:
             dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()

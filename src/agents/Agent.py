@@ -26,7 +26,26 @@ class BaseAgent():
         self.exp = exp
         self.initialize()
 
-    def initialize(self):
+    def create_optimizer(self, model: torch.nn.Module) -> torch.optim:
+        if self.exp.get_from_config('optimizer') == "Adam":
+            return optim.Adam(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
+        elif self.exp.get_from_config('optimizer') == "AdamW":
+            return optim.AdamW(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'),
+                                                weight_decay=0)
+        elif self.exp.get_from_config('optimizer') == "SGD":
+            return optim.SGD(model.parameters(), lr=self.exp.get_from_config('lr'), momentum=self.exp.get_from_config('sgd_momentum'),
+                                            nesterov=self.exp.get_from_config('sgd_nesterov'))
+        else:
+            assert False, f"Optimizer {self.exp.get_from_config('optimizer')} not implemented"
+
+    def create_scheduler(self, optimizer: torch.optim) -> torch.optim.lr_scheduler:
+        if self.exp.get_from_config('scheduler') == "exponential":
+            return optim.lr_scheduler.ExponentialLR(optimizer, self.exp.get_from_config('lr_gamma'))
+        elif self.exp.get_from_config('scheduler') == "polynomial":
+            return optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.exp.get_from_config('n_epoch'), 
+                                                   power=self.exp.get_from_config('polynomial_scheduler_power'))
+
+    def initialize(self): 
         r"""Initialize agent with optimizers and schedulers
         """
         self.device = torch.device(self.exp.get_from_config('device'))
@@ -36,15 +55,13 @@ class BaseAgent():
             self.optimizer = []
             self.scheduler = []
             for m in range(len(self.model)):
-                self.optimizer.append(optim.Adam(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                #print("SGD")
-                #self.optimizer.append(optim.AdamW(self.model[m].parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas')))
-                #self.optimizer.append(optim.SGD(self.model[m].parameters(), lr=self.exp.get_from_config('lr')))
-                self.scheduler.append(optim.lr_scheduler.ExponentialLR(self.optimizer[m], self.exp.get_from_config('lr_gamma')))
+                self.optimizer.append(self.create_optimizer(self.model[m]))
+                    
+                self.scheduler.append(self.create_scheduler(self.optimizer[m]))
         else:
-            self.optimizer = optim.Adam(self.model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-            #self.optimizer = optim.SGD(self.model.parameters(), lr=self.exp.get_from_config('lr'))
-            self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, self.exp.get_from_config('lr_gamma'))
+            self.optimizer = self.create_optimizer(self.model)
+            
+            self.scheduler = self.create_scheduler(self.optimizer)
 
     def printIntermediateResults(self, loss: torch.Tensor, epoch: int) -> None:
         r"""Prints intermediate results of training and adds it to tensorboard
@@ -182,6 +199,22 @@ class BaseAgent():
         """
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss, split=split, tag=f'{split}/img/')
+
+        
+        if self.exp.get_from_config('difficulty_weighted_sampling'):
+            assert loss_log is not None
+            loss_sum_per_patient = {}
+            for mask in loss_log.keys():
+                for patient_id in loss_log[mask].keys():
+                    if patient_id not in loss_sum_per_patient:
+                        loss_sum_per_patient[patient_id] = 0
+                    loss_sum_per_patient[patient_id] += loss_log[mask][patient_id]
+            for patient_id in loss_sum_per_patient.keys():
+                loss_sum_per_patient[patient_id] /= len(loss_log.keys())
+                #loss_log does not contain the loss but the segmentation score!
+                self.exp.dataset.difficulties[patient_id] = 1 - loss_sum_per_patient[patient_id]
+            print(f"Updated difficulties for {len(loss_sum_per_patient)} patients")
+
         if loss_log is not None:
             for key in loss_log.keys():
                 img_plot = self.plot_results_byPatient(loss_log[key])
