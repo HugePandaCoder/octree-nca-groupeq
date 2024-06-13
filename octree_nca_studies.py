@@ -227,17 +227,17 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24_5',
+        'name': r'Prostate49_octree_24_6',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
         'lr_gamma': 0.9999**8,
-        'lr': 1e-2,
+        'lr': 0.0016,
         'betas': (0.9, 0.99),
         # Training
-        'save_interval': 5,
-        'evaluate_interval': 1,
-        'n_epoch': 300,
+        'save_interval': 50,
+        'evaluate_interval': 200,
+        'n_epoch': 2000,
         # Model
         'input_channels': 1,
         'output_channels': 1,
@@ -270,7 +270,7 @@ def setup_prostate5():
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
         'also_eval_on_train': True,
-        'num_steps_per_epoch': 250, #default is None
+        'num_steps_per_epoch': None, #default is None
         'train_data_augmentations': True,
         'track_gradient_norm': True,
         'batchgenerators': True, 
@@ -280,14 +280,18 @@ def setup_prostate5():
         # TODO more data augmentations
         # TODO different weight initializations
         # TODO maybe mask CE loss on correctly segmented areas
-        'difficulty_weighted_sampling': True, #default is False. Difficulty is evaluated at every 'evaluate_interval' epoch. Also, 'also_eval_on_train' _must_ be True
+        # TODO try adam params (0.5, 0.5)
+        'difficulty_weighted_sampling': False, #default is False. Difficulty is evaluated at every 'evaluate_interval' epoch. Also, 'also_eval_on_train' _must_ be True
 
         'optimizer': "Adam",# default is "Adam"
         'sgd_momentum': 0.99,
         'sgd_nesterov': True,
 
-        'scheduler': "polynomial",#default is exponential
+        'scheduler': "exponential",#default is exponential
         'polynomial_scheduler_power': 1.8,
+
+        'find_best_model_on': 'train', # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
+        'always_eval_in_last_epochs': 300, #default is None
     }
     if study_config['difficulty_weighted_sampling']:
         assert study_config['batchgenerators']

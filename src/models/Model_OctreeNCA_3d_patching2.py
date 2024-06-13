@@ -128,7 +128,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         if batch_duplication != 1:
             x = torch.cat([x] * batch_duplication, dim=0)
             y = torch.cat([y] * batch_duplication, dim=0)
-            if self.loss_weighted_patching:
+            if self.loss_weighted_patching and not all([p is None for p in self.patch_sizes]):
                 loss = torch.cat([loss] * batch_duplication, dim=0)
 
         original = x.permute(0, 4, 1, 2, 3)

@@ -3,7 +3,7 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
-from src.utils.helper import convert_image, merge_img_label_gt
+from src.utils.helper import convert_image, load_json_file, merge_img_label_gt, dump_json_file
 from src.losses.LossFunctions import DiceLoss
 from src.utils.Experiment import Experiment
 import seaborn as sns
@@ -62,6 +62,12 @@ class BaseAgent():
             self.optimizer = self.create_optimizer(self.model)
             
             self.scheduler = self.create_scheduler(self.optimizer)
+
+        if self.exp.get_from_config('find_best_model_on') is not None:
+            self.best_model = {
+                'epoch': 0,
+                'dice': 0
+            }
 
     def printIntermediateResults(self, loss: torch.Tensor, epoch: int) -> None:
         r"""Prints intermediate results of training and adds it to tensorboard
@@ -224,6 +230,16 @@ class BaseAgent():
                     self.exp.write_scalar(f'Dice/{split}/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
                     self.exp.write_histogram(f'Dice/{split}/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
+
+        if self.exp.get_from_config('find_best_model_on') == split:
+            assert loss_log is not None
+            dices = [sum(loss_log[key].values())/len(loss_log[key]) for key in loss_log.keys()]
+            dice = sum(dices) / len(dices)
+            if dice > self.best_model['dice']:
+                self.best_model['dice'] = dice
+                self.best_model['epoch'] = epoch
+                self.exp.write_scalar('Model/best_dice', dice, epoch)
+
         # TODO: ADD AGAIN 
         #for param in self.model.parameters():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
@@ -233,6 +249,13 @@ class BaseAgent():
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
+        
+        if self.exp.get_from_config("find_best_model_on") is not None:
+            find_best_model_on = self.exp.get_from_config("find_best_model_on")
+            best_model_epoch = self.best_model['epoch']
+            print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
+            self.load_state(os.path.join(self.exp.config['model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
+
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble, dataset = dataset)
 
@@ -254,6 +277,8 @@ class BaseAgent():
         torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
+        if self.exp.get_from_config('find_best_model_on') is not None:
+            dump_json_file(self.best_model, os.path.join(self.exp.config['model_path'], 'best_model.json'))
 
     def load_state(self, model_path: str, pretrained=False) -> None:
         r"""Load state of current model
@@ -262,6 +287,8 @@ class BaseAgent():
         if not pretrained:
             self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
             self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
+            if self.exp.get_from_config('find_best_model_on') is not None:
+                self.best_model = load_json_file(os.path.join(self.exp.config['model_path'], 'best_model.json'))
 
     def train(self, dataloader: DataLoader, loss_f: torch.Tensor) -> None:
         r"""Execute training of model
@@ -288,7 +315,11 @@ class BaseAgent():
             if self.exp.get_from_config('update_lr_per_epoch'):
                 self.update_lr()
             self.intermediate_results(epoch, loss_log)
-            if epoch % self.exp.get_from_config('evaluate_interval') == 0:
+            do_eval = False
+            if self.exp.get_from_config('always_eval_in_last_epochs') is not None:
+                if epoch > self.exp.get_max_steps() - self.exp.get_from_config('always_eval_in_last_epochs'):
+                    do_eval = True 
+            if epoch % self.exp.get_from_config('evaluate_interval') == 0 or do_eval:
                 print("Evaluate model")
                 self.intermediate_evaluation(dataloader, epoch)
                 if self.exp.get_from_config('also_eval_on_train'):
@@ -296,7 +327,11 @@ class BaseAgent():
             #if epoch % self.exp.get_from_config('ood_interval') == 0:
             #    print("Evaluate model in OOD cases")
             #    self.ood_evaluation(epoch=epoch)
-            if epoch % self.exp.get_from_config('save_interval') == 0:
+            save_best_model = False
+            if self.exp.get_from_config('find_best_model_on') is not None:
+                if self.best_model['epoch'] == epoch:
+                    save_best_model = True
+            if epoch % self.exp.get_from_config('save_interval') == 0 or save_best_model:
                 print("Model saved")
                 self.save_state(os.path.join(self.exp.get_from_config('model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
             self.conclude_epoch()
