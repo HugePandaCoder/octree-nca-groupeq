@@ -3,6 +3,7 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
+from src.utils.EMA import EMA
 from src.utils.helper import convert_image, load_json_file, merge_img_label_gt, dump_json_file
 from src.losses.LossFunctions import DiceLoss
 from src.utils.Experiment import Experiment
@@ -68,6 +69,10 @@ class BaseAgent():
                 'epoch': 0,
                 'dice': 0
             }
+
+        if self.exp.get_from_config('apply_ema'):
+            self.ema: EMA = EMA(self.model, self.exp.get_from_config('ema_decay'))
+            assert self.exp.get_from_config('ema_update_per') in ['batch', 'epoch']
 
     def printIntermediateResults(self, loss: torch.Tensor, epoch: int) -> None:
         r"""Prints intermediate results of training and adds it to tensorboard
@@ -162,6 +167,10 @@ class BaseAgent():
             self.optimizer.step()
             if not self.exp.get_from_config('update_lr_per_epoch'):
                 self.update_lr()
+            
+            if self.exp.get_from_config('apply_ema') and self.exp.get_from_config('ema_update_per') == 'batch':
+                self.ema.update()
+
         return loss_ret
 
     def update_lr(self) -> None:
@@ -203,8 +212,12 @@ class BaseAgent():
                 dataset (Dataset)
                 epoch (int)
         """
+        if self.exp.get_from_config('apply_ema'):
+            self.ema.apply_shadow()
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss, split=split, tag=f'{split}/img/')
+        if self.exp.get_from_config('apply_ema'):
+            self.ema.restore_original()
 
         
         if self.exp.get_from_config('difficulty_weighted_sampling'):
@@ -239,6 +252,8 @@ class BaseAgent():
                 self.best_model['dice'] = dice
                 self.best_model['epoch'] = epoch
                 self.exp.write_scalar('Model/best_dice', dice, epoch)
+
+
 
         # TODO: ADD AGAIN 
         #for param in self.model.parameters():
@@ -279,6 +294,9 @@ class BaseAgent():
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
         if self.exp.get_from_config('find_best_model_on') is not None:
             dump_json_file(self.best_model, os.path.join(self.exp.config['model_path'], 'best_model.json'))
+        
+        if self.exp.get_from_config('apply_ema'):
+            torch.save(self.ema.shadow, os.path.join(model_path, 'ema.pth'))
 
     def load_state(self, model_path: str, pretrained=False) -> None:
         r"""Load state of current model
@@ -289,6 +307,11 @@ class BaseAgent():
             self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
             if self.exp.get_from_config('find_best_model_on') is not None:
                 self.best_model = load_json_file(os.path.join(self.exp.config['model_path'], 'best_model.json'))
+        
+        if self.exp.get_from_config('apply_ema'):
+            loaded_shadow = torch.load(os.path.join(model_path, 'ema.pth'))
+            assert self.ema.shadow.keys() == loaded_shadow.keys(), "Loaded EMA shadow does not match model parameters!"
+            self.ema.shadow = loaded_shadow
 
     def train(self, dataloader: DataLoader, loss_f: torch.Tensor) -> None:
         r"""Execute training of model
@@ -310,6 +333,9 @@ class BaseAgent():
                         loss_log[key].append(loss_item[key])
                     else:
                         loss_log[key].append(loss_item[key].detach())
+
+            if self.exp.get_from_config('apply_ema') and self.exp.get_from_config('ema_update_per') == 'epoch':
+                self.ema.update()
 
             self.maybe_track_grad_norm()
             if self.exp.get_from_config('update_lr_per_epoch'):

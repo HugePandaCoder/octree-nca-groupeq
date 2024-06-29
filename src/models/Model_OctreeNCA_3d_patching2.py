@@ -20,7 +20,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                  octree_res_and_steps: list=None, separate_models: bool=False,
                  compile: bool=False,
                  patch_sizes=None,
-                 loss_weighted_patching=False):
+                 loss_weighted_patching=False,
+                 track_running_stats: bool=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -29,7 +30,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 hidden_size: hidden size of model
                 input_channels: number of input channels
         """
-        super(OctreeNCA3DPatch2, self).__init__(channel_n, fire_rate, device, steps, hidden_size, input_channels, output_channels, scale_factor, levels, kernel_size, octree_res_and_steps, separate_models, compile)
+        super(OctreeNCA3DPatch2, self).__init__(channel_n, fire_rate, device, steps, hidden_size, input_channels, 
+                                                output_channels, scale_factor, levels, kernel_size, octree_res_and_steps, separate_models, 
+                                                compile, track_running_stats)
 
 
         self.computed_upsampling_scales = []

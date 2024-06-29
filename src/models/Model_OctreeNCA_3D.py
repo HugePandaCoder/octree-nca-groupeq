@@ -15,7 +15,8 @@ class OctreeNCA3D(nn.Module):
     def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
                  scale_factor=None, levels=None, kernel_size=None,
                  octree_res_and_steps: list=None, separate_models: bool=False,
-                 compile: bool=False):
+                 compile: bool=False,
+                 track_running_stats: bool=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -57,7 +58,8 @@ class OctreeNCA3D(nn.Module):
 
         if separate_models:
             self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
-                                                           hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l]) 
+                                                           hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
+                                                           track_running_stats=track_running_stats) 
                                                            for l in range(len(octree_res_and_steps))])
             if compile:
                 for i, model in enumerate(self.backbone_ncas):

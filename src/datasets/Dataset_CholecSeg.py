@@ -28,9 +28,12 @@ class Dataset_CholecSeg(Dataset_Base):
                             (165, 160, 255): 10,    #Gallbladder                (08.9%)
                             (128, 50, 0): 11,       #Heptatic vein              (00.02%)
                             (0, 74, 111): 12}       #Liver ligament             (00.6%)
-        self.labels_mapping_reverse = {}
-        for k, v in self.color_class_mapping.items():
-            self.labels_mapping_reverse[v] = k
+        
+        self.color_classes = [k for k in self.color_class_mapping.keys()]
+
+        #self.labels_mapping_reverse = {}
+        #for k, v in self.color_class_mapping.items():
+        #    self.labels_mapping_reverse[v] = k
 
 
     
@@ -103,9 +106,13 @@ class Dataset_CholecSeg(Dataset_Base):
 
 
 
-        for k, v in self.color_class_mapping.items():
+        #for k, v in self.color_class_mapping.items():
+        #    #k is a color
+        #    mask = np.all(lbls == k, axis=-1)
+        #    new_new_labels[mask, v-1] = 1
+        for i, k in enumerate(self.color_classes):
             mask = np.all(lbls == k, axis=-1)
-            new_new_labels[mask, v-1] = 1
+            new_new_labels[mask, i] = 1
 
         
 

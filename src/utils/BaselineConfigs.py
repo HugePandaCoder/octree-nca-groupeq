@@ -168,7 +168,6 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
         config = {
             'description': 'OctreeNCA3D',#OctreeNCA
-            'lr': 16e-4,
             'batch_duplication': 1,
             # Model
             'channel_n': 32,        # Number of CA state channels
@@ -177,13 +176,38 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             'batch_size': 12,
             'hidden_size': 128,
             'train_model':1,
-            'betas': (0.9, 0.99),
             'kernel_size': 3,
             # Data
             'scale_factor': 4,
             'kernel_size': 3,
             'levels': 2,
-            'input_size': (320,320) ,
+            'input_size': (320,320),
+
+            'batchnorm_track_running_stats': False,
+
+            'tack_gradient_norm': True, #default is False, but this is just tracking
+
+            #EMA
+            'apply_ema': False,
+            'ema_decay': 0.999,
+            'ema_update_per': 'epoch', # 'epoch' or 'batch'
+
+            #instead of EMA, you could find the best model and save it
+            'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
+            'always_eval_in_last_epochs': None,
+            
+
+            # Optimizer
+            'optimizer': "Adam",# default is "Adam"
+            'sgd_momentum': 0.99,
+            'sgd_nesterov': True,
+            'betas': (0.9, 0.99),
+
+            # LR - Scheduler
+            'scheduler': "exponential",#default is exponential
+            'lr': 16e-4,
+            'polynomial_scheduler_power': 1.8,
+
         }
 
         config = merge_config(merge_config(study_config, config), detail_config)
@@ -196,7 +220,7 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
                                       output_channels=config['output_channels'], steps=config['inference_steps'],
                             octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
                             compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
-                            loss_weighted_patching=config['loss_weighted_patching'])
+                            loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'])
         else:
             model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
                                 output_channels=config['output_channels'], steps=config['inference_steps'],
