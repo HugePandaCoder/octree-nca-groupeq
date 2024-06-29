@@ -5,6 +5,8 @@
 import os
 from filelock import Timeout
 import torch
+from src.datasets.BatchgeneratorDatagenerator import DatasetPerEpochGenerator, StepsPerEpochGenerator
+from src.utils.MyMultiThreadedAugmenter import MyMultiThreadedAugmenter
 from src.utils.helper import dump_json_file, load_json_file, dump_pickle_file, load_pickle_file
 #from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset
@@ -19,6 +21,10 @@ from matplotlib import figure
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchmetrics.image.kid import KernelInceptionDistance
 from tqdm import tqdm
+from src.utils.DataAugmentations import get_transform_arr
+from batchgenerators.transforms.utility_transforms import NumpyToTensor
+from batchgenerators.transforms.abstract_transforms import Compose
+
 
 class Experiment():
     r"""This class handles:
@@ -218,12 +224,29 @@ class Experiment():
 
                 self.datasets[split].set_experiment(self)
         
+
+        assert self.get_from_config('difficulty_weighted_sampling') is False, "not implemented yet"
         self.data_loaders = {}
         assert len(self.data_split.get_images('train')) > 0, "No training data available"
         if self.config['batchgenerators']:
-            assert False, "Batchgenerators not implemented"
-            self.data_loaders["train"] = iter(self.datasets["train"])
+            if self.get_from_config('num_steps_per_epoch') is not None:
+                data_generator = StepsPerEpochGenerator(self.datasets["train"], self.config['num_steps_per_epoch'], num_threads_in_mt=self.config['num_workers'], batch_size=self.config['batch_size'])
+            else:
+                data_generator = DatasetPerEpochGenerator(self.datasets["train"], num_threads_in_mt=self.config['num_workers'], batch_size=self.config['batch_size']) 
+
+            if self.get_from_config('train_data_augmentations'):
+                transforms = get_transform_arr()
+            else:
+                transforms = []
+
+            transforms.append(NumpyToTensor(keys=['image', 'label']))
+
+            self.data_loaders["train"] = MyMultiThreadedAugmenter(data_generator, Compose(transforms), num_processes=self.config['num_workers'])
+
+
         else:
+            assert self.get_from_config('train_data_augmentations') is False, "not implemented yet"
+            assert self.get_from_config('num_steps_per_epoch') is None, "not implemented yet"
             self.data_loaders["train"] = torch.utils.data.DataLoader(self.datasets["train"], shuffle=True, batch_size=self.config['batch_size'],
                                                         num_workers=self.config['num_workers'])
 

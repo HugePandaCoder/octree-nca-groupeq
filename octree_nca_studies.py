@@ -334,7 +334,7 @@ def setup_prostate6():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_test6',
+        'name': r'Prostate49_test7',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -380,7 +380,7 @@ def setup_prostate6():
         'num_steps_per_epoch': None, #default is None
         'train_data_augmentations': True,
         'track_gradient_norm': True,
-        'batchgenerators': False, 
+        'batchgenerators': True, 
         'loss_weighted_patching': False,# default false, train on the patch that has the highest loss in the previous epoch
         # TODO 'lambda_dice_loss'
         # TODO maybe diffulty weighted sampling
@@ -415,18 +415,18 @@ def setup_prostate6():
     #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']
     study = Study(study_config)
 
-    #if study_config['batchgenerators']:
-    #    #dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
-    #    #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
-    #    #                                                 study_config['num_workers'])()
-    #    dataset = get_batchgenerators_dataset(Dataset_NiiGz_3D, study_config['num_workers'], 
-    #                                          study_config['num_steps_per_epoch'], study_config['batch_size'],
-    #                                          study_config['difficulty_weighted_sampling'])()
-    #else:
-    #    if study_config['train_data_augmentations']:
-    #        dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
-    #    else:
-    #        dataset = Dataset_NiiGz_3D()
+    if study_config['batchgenerators']:
+        #dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
+        #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
+        #                                                 study_config['num_workers'])()
+        dataset = get_batchgenerators_dataset(Dataset_NiiGz_3D, study_config['num_workers'], 
+                                              study_config['num_steps_per_epoch'], study_config['batch_size'],
+                                              study_config['difficulty_weighted_sampling'])()
+    else:
+        if study_config['train_data_augmentations']:
+            dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
+        else:
+            dataset = Dataset_NiiGz_3D()
     dataset = Dataset_NiiGz_3D()
     exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args = {})
     study.add_experiment(exp)
