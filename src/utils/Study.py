@@ -21,7 +21,7 @@ class Study():
         r"""Run all experiments
         """
         for experiment in self.experiments:
-            experiment.agent.train(experiment.data_loader, experiment.loss_function)
+            experiment.agent.train(experiment.data_loaders['train'], experiment.loss_function)
             
 
     def eval_experiments(self) -> None:

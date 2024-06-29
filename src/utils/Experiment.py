@@ -26,7 +26,7 @@ class Experiment():
             - Loading / Saving experiments
             - Datasets
     """
-    def __init__(self, config: dict, dataset: Dataset, model: nn.Module, agent) -> None:
+    def __init__(self, config: dict, dataset_class, dataset_args: dict, model: nn.Module, agent) -> None:
         # Backward compatibility
         if isinstance(config, list):
             config = config[0]
@@ -34,12 +34,13 @@ class Experiment():
         self.projectConfig = config
         self.add_required_to_config()
         self.config = self.projectConfig
-        self.dataset = dataset
+        self.dataset_class = dataset_class
+        self.dataset_args = dataset_args
         self.model = model
         self.agent = agent
         self.storage = {}
         self.model_state = "train"
-        self.general()
+        self.general_preload()
         if(os.path.isdir(os.path.join(self.config['model_path'], 'models'))):
             self.reload()
         else:
@@ -47,6 +48,8 @@ class Experiment():
             # Load pretrained model
             if 'pretrained' in self.config and self.currentStep == 0:
                 self.load_model()
+
+        self.general_postload()
 
 
 
@@ -87,9 +90,6 @@ class Experiment():
     def set_loss_function(self, loss_function) -> None:
         self.loss_function = loss_function
 
-    def set_data_loader(self, data_loader) -> None:
-        self.data_loader = data_loader
-
     def setup(self) -> None:
         r"""Initial experiment setup when first started
         """
@@ -110,7 +110,7 @@ class Experiment():
         dump_json_file(self.projectConfig, os.path.join(self.config['model_path'], 'config.dt'))
 
     def new_datasplit(self) -> 'DataSplit':
-        return DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset)
+        return DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset_class(**self.dataset_args))
 
     def temporarly_overwrite_config(self, config: dict):
         r"""This function is useful for evaluation purposes where you want to change the config, e.g. data paths or similar.
@@ -181,29 +181,64 @@ class Experiment():
 
 
     def set_size(self) -> None:
-        if isinstance(self.config['input_size'][0], tuple):
-            self.dataset.set_size(self.config['input_size'][-1])
-        else:
-            print(self.config['input_size'])
-            self.dataset.set_size(self.config['input_size'])
+        for dataset in self.datasets.values():
+            if isinstance(self.config['input_size'][0], tuple):
+                dataset.set_size(self.config['input_size'][-1])
+            else:
+                print(self.config['input_size'])
+                dataset.set_size(self.config['input_size'])
 
-    def general(self) -> None:
+    def general_preload(self) -> None:
         r"""General experiment configurations needed after setup or loading
         """
         self.currentStep = self.current_step()
-        self.set_size()
         #self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
         #self.set_current_config()
         self.agent.set_exp(self)
         self.fid = None
         self.kid = None
-        self.dataset.set_experiment(self)
         #if self.currentStep == 0:
         #    self.write_text('config', str(self.projectConfig), 0)
 
         if self.get_from_config('unlock_CPU') is None or self.get_from_config('unlock_CPU') is False:
             print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
             torch.set_num_threads(4)
+
+
+
+    def general_postload(self) -> None:
+        #create datasets and dataloaders
+        self.datasets = {}
+        for split in ['train', 'val', 'test']:
+            if len(self.data_split.get_images(split)) > 0:
+                self.datasets[split] = self.dataset_class(**self.dataset_args)
+                self.datasets[split].setState(split)
+                self.datasets[split].setPaths(self.config['img_path'], self.data_split.get_images(split), 
+                                              self.config['label_path'], self.data_split.get_labels(split))
+
+                self.datasets[split].set_experiment(self)
+        
+        self.data_loaders = {}
+        assert len(self.data_split.get_images('train')) > 0, "No training data available"
+        if self.config['batchgenerators']:
+            assert False, "Batchgenerators not implemented"
+            self.data_loaders["train"] = iter(self.datasets["train"])
+        else:
+            self.data_loaders["train"] = torch.utils.data.DataLoader(self.datasets["train"], shuffle=True, batch_size=self.config['batch_size'],
+                                                        num_workers=self.config['num_workers'])
+
+
+        for split in ['val', 'test']:
+            if len(self.data_split.get_images(split)) > 0:
+                if self.config['batchgenerators']:
+                    assert False, "Batchgenerators not implemented"
+                    self.data_loaders[split] = iter(self.datasets[split])
+                else:
+                    self.data_loaders[split] = torch.utils.data.DataLoader(self.datasets[split], shuffle=False, batch_size=1,
+                                                        num_workers=0)
+        
+        self.set_size()
+
 
     def getFID(self) -> FrechetInceptionDistance:
         if self.fid is None:
@@ -305,8 +340,6 @@ class Experiment():
     def set_model_state(self, state: str) -> None:
         r"""TODO: remove? """
         self.model_state = state
-        self.dataset.setPaths(self.config['img_path'], self.data_split.get_images(state), self.config['label_path'], self.data_split.get_labels(state))
-        self.dataset.setState(state)
 
         models = [self.model] if not isinstance(self.model, list) else self.model
         for m in models:

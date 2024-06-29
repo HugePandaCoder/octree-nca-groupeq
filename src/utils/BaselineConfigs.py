@@ -165,7 +165,7 @@ class EXP_OctreeNCA(ExperimentWrapper):
     
 from src.models.Model_OctreeNCA_3D import OctreeNCA3D
 class EXP_OctreeNCA3D(ExperimentWrapper):
-    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
         config = {
             'description': 'OctreeNCA3D',#OctreeNCA
             'batch_duplication': 1,
@@ -212,7 +212,7 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
 
         config = merge_config(merge_config(study_config, config), detail_config)
         print("CONFIG", config)
-        if dataset is None:
+        if dataset_class is None:
             assert False, "Dataset is None"
 
         if 'patch_sizes' in config:
@@ -234,7 +234,7 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             #agent = Agent_M3D_NCA(model)
         loss_function = DiceBCELoss() 
 
-        return super().createExperiment(config, model, agent, dataset, loss_function)
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 
 import argparse
 from src.models.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
