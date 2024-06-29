@@ -27,7 +27,7 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         # for some reason other datasets come without designated channel dimension
         # hence, it is added here
         # Dataset_DAVIS returns RGB images with channel dimension so we dont need to do this here
-        if self.exp.dataset.slice is None and not self.exp.dataset.delivers_channel_axis:
+        if self.exp.datasets['train'].slice is None and not self.exp.datasets['train'].delivers_channel_axis:
             inputs, targets = torch.unsqueeze(inputs, 1), targets #torch.unsqueeze(targets, 1) 
         if len(inputs.shape) == 4:
             inputs = inputs.permute(0, 3, 1, 2)
@@ -59,7 +59,7 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         return image
     
     def test(self, *args, **kwargs):
-        dataset = self.exp.dataset
+        dataset = self.exp.datasets["train"]
         if dataset.slice is not None:
             return Agent_MedSeg2D.test(self, *args, **kwargs)
         else:

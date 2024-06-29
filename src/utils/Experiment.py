@@ -182,7 +182,7 @@ class Experiment():
 
     def set_size(self) -> None:
         for dataset in self.datasets.values():
-            if isinstance(self.config['input_size'][0], tuple):
+            if isinstance(self.config['input_size'][0], (tuple, list)):
                 dataset.set_size(self.config['input_size'][-1])
             else:
                 print(self.config['input_size'])
@@ -228,14 +228,14 @@ class Experiment():
                                                         num_workers=self.config['num_workers'])
 
 
-        for split in ['val', 'test']:
-            if len(self.data_split.get_images(split)) > 0:
-                if self.config['batchgenerators']:
-                    assert False, "Batchgenerators not implemented"
-                    self.data_loaders[split] = iter(self.datasets[split])
-                else:
-                    self.data_loaders[split] = torch.utils.data.DataLoader(self.datasets[split], shuffle=False, batch_size=1,
-                                                        num_workers=0)
+        #for split in ['val', 'test']:
+        #    if len(self.data_split.get_images(split)) > 0:
+        #        if self.config['batchgenerators']:
+        #            assert False, "Batchgenerators not implemented"
+        #            self.data_loaders[split] = iter(self.datasets[split])
+        #        else:
+        #            self.data_loaders[split] = torch.utils.data.DataLoader(self.datasets[split], shuffle=False, batch_size=1,
+        #                                                num_workers=0)
         
         self.set_size()
 

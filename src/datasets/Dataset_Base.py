@@ -19,8 +19,6 @@ class Dataset_Base(Dataset):
                 size (int, int): Size of images
         """
         self.size = tuple(size)
-        print(type(size))
-        input(self.size)
 
     def set_experiment(self, experiment: Experiment) -> None:
         r"""Set experiment

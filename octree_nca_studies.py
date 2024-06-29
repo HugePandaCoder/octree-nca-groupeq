@@ -334,7 +334,7 @@ def setup_prostate6():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_test5',
+        'name': r'Prostate49_test6',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -406,6 +406,8 @@ def setup_prostate6():
         'ema_decay': 0.999,
         'ema_update_per': "epoch",
     }
+
+    
     if study_config['difficulty_weighted_sampling']:
         assert study_config['batchgenerators']
         assert study_config['also_eval_on_train']

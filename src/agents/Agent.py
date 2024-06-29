@@ -205,7 +205,7 @@ class BaseAgent():
         plot = plot.get_figure()
         return plot
 
-    def intermediate_evaluation(self, dataloader, epoch: int, split='test') -> None:
+    def intermediate_evaluation(self, epoch: int, split='test') -> None:
         r"""Do an intermediate evluation during training 
             .. todo:: Make variable for more evaluation scores (Maybe pass list of metrics)
             #Args
@@ -347,9 +347,9 @@ class BaseAgent():
                     do_eval = True 
             if epoch % self.exp.get_from_config('evaluate_interval') == 0 or do_eval:
                 print("Evaluate model")
-                self.intermediate_evaluation(dataloader, epoch)
+                self.intermediate_evaluation(epoch, split='test')
                 if self.exp.get_from_config('also_eval_on_train'):
-                    self.intermediate_evaluation(dataloader, epoch, split='train')
+                    self.intermediate_evaluation(epoch, split='train')
             #if epoch % self.exp.get_from_config('ood_interval') == 0:
             #    print("Evaluate model in OOD cases")
             #    self.ood_evaluation(epoch=epoch)

@@ -4,6 +4,7 @@ from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
 import numpy as np
 import math 
+import torch.utils.data
 
 class Agent_MedSeg3D(BaseAgent):
 
@@ -18,7 +19,8 @@ class Agent_MedSeg3D(BaseAgent):
                 steps (int): Number of steps to do for inference
         """
         dataset = self.exp.datasets[split]
-        dataloader = self.exp.data_loaders[split]
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        self.exp.set_model_state('test')
         
         # Prepare arrays
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
@@ -32,6 +34,7 @@ class Agent_MedSeg3D(BaseAgent):
         # For each data sample
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
+            assert data['image'].shape[0] == 1, "Batch size must be 1 for evaluation"
             data_id, inputs, *_ = data['id'], data['image'], data['label']
             outputs, targets = self.get_outputs(data, full_img=True, tag="0")
 
