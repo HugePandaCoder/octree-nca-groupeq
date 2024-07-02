@@ -63,14 +63,13 @@ class Dataset_AGGC(Dataset_Base):
         img = img / 255.0
         img = (img - mean) / std
 
-        img = np.transpose(img, (2, 0, 1)) # HWC -> CHW
-        label = np.transpose(label, (2, 0, 1)) # HWC -> CHW
-
-        print(img.shape, label.shape)
-
         data_dict = {}
         data_dict['id'] = self.images_list[idx]
         data_dict['image'] = img
         data_dict['label'] = label
+
+
+        print( data_dict['image'].shape, data_dict['label'].shape)
+        #2D: data_dict['image']: HWC, data_dict['label']: HWC
 
         return data_dict
