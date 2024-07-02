@@ -125,6 +125,7 @@ class BaseAgent():
         loss = 0
         loss_ret = {}
         print(outputs.shape, targets.shape)
+        #2D: outputs: BHWC, targets: BHWC
         exit()
         if len(outputs.shape) == 5:
             for m in range(targets.shape[-1]):
