@@ -24,11 +24,16 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         inputs, targets = inputs.type(torch.FloatTensor), targets.type(torch.FloatTensor)
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         
+        #2D: inputs: BHWC, targets: BHWC
+
         # for some reason other datasets come without designated channel dimension
         # hence, it is added here
         # Dataset_DAVIS returns RGB images with channel dimension so we dont need to do this here
         if self.exp.datasets['train'].slice is None and not self.exp.datasets['train'].delivers_channel_axis:
             inputs, targets = torch.unsqueeze(inputs, 1), targets #torch.unsqueeze(targets, 1) 
+        
+        #2D: inputs: BHWC, targets: BHWC
+        
         if len(inputs.shape) == 4:
             inputs = inputs.permute(0, 3, 1, 2)
             targets = targets.permute(0, 3, 1, 2)
@@ -37,6 +42,7 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
         data['image'] = inputs
         data['label'] = targets
 
+        #2D: inputs: BCHW, targets: BCHW
 
         return data
 
