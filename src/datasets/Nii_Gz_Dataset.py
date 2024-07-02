@@ -83,6 +83,7 @@ class Nii_Gz_Dataset(Dataset_Base):
         data_dict['label'] = label
         data_dict['name'] = img_name
 
+        #2D: data_dict['image']: HWC, data_dict['label']: HWC
 
         return data_dict
 
