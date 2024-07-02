@@ -131,9 +131,9 @@ class EXP_BasicNCA(ExperimentWrapper):
         return super().createExperiment(config, model, agent, dataset, loss_function)
     
 
-from src.models.Model_OctreeNCA import OctreeNCA
+from src.models.Model_OctreeNCA_2d_patching2 import OctreeNCA2DPatch2
 class EXP_OctreeNCA(ExperimentWrapper):
-    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset : Dataset = None):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
         config = {
             'description': 'OctreeNCA',#OctreeNCA
             'lr': 16e-4,
@@ -155,13 +155,22 @@ class EXP_OctreeNCA(ExperimentWrapper):
 
         config = merge_config(merge_config(study_config, config), detail_config)
         print("CONFIG", config)
-        if dataset is None:
+        if dataset_class is None:
             assert False, "Dataset is None"
-        model = OctreeNCA(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], steps=config['inference_steps'])
+        model = OctreeNCA2DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
+                                    output_channels=config['output_channels'], steps=config['inference_steps'],
+                        octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
+                        compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
+                        loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'])
+        
+        assert config['batchnorm_track_running_stats'] == False
+        assert config['gradient_accumulation'] == False
+        assert config['train_quality_control'] == False
+
         agent = MedNCAAgent(model)
         loss_function = DiceBCELoss() 
 
-        return super().createExperiment(config, model, agent, dataset, loss_function)
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
     
 from src.models.Model_OctreeNCA_3D import OctreeNCA3D
 class EXP_OctreeNCA3D(ExperimentWrapper):
@@ -183,9 +192,11 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             'levels': 2,
             'input_size': (320,320),
 
+            #miscellaneous
             'batchnorm_track_running_stats': False,
-
-            'tack_gradient_norm': True, #default is False, but this is just tracking
+            'gradient_accumulation': False, #this does not work currently!
+            'track_gradient_norm': True, #default is False, but this is just tracking
+            'train_quality_control': False, #False or "NQM" or "MSE"
 
             #EMA
             'apply_ema': False,
@@ -207,6 +218,11 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
             'scheduler': "exponential",#default is exponential
             'lr': 16e-4,
             'polynomial_scheduler_power': 1.8,
+            'lr_gamma': 0.9999**8,
+
+            # Data loading
+            'num_workers': 4,
+            'batchgenerators': True,
 
         }
 
@@ -222,6 +238,7 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
                             compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
                             loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'])
         else:
+            assert False, "deprecated"
             model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
                                 output_channels=config['output_channels'], steps=config['inference_steps'],
                                 octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],

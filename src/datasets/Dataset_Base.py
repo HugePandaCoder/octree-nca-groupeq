@@ -1,6 +1,5 @@
 from torch.utils.data import Dataset
 from src.datasets.Data_Instance import Data_Container
-from src.utils.Experiment import Experiment
 
 class Dataset_Base(Dataset):
     r"""Base class for any dataset within this project
@@ -20,7 +19,7 @@ class Dataset_Base(Dataset):
         """
         self.size = tuple(size)
 
-    def set_experiment(self, experiment: Experiment) -> None:
+    def set_experiment(self, experiment) -> None:
         r"""Set experiment
             #Args
                 experiment: The experiment class

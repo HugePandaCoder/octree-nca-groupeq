@@ -124,7 +124,8 @@ class BaseAgent():
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
-        #print(outputs.shape, targets.shape)
+        print(outputs.shape, targets.shape)
+        exit()
         if len(outputs.shape) == 5:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
