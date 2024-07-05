@@ -12,7 +12,7 @@ class DiceLoss(torch.nn.Module):
         self.useSigmoid = useSigmoid
         super(DiceLoss, self).__init__()
 
-    def forward(self, input: torch.tensor, target: torch.tensor, smooth: float = 1) -> torch.Tensor:
+    def forward(self, input: torch.tensor, target: torch.tensor, smooth: float = 1, binarize=False) -> torch.Tensor:
         r"""Forward function
             #Args:
                 input: input array
@@ -20,7 +20,9 @@ class DiceLoss(torch.nn.Module):
                 smooth: Smoothing value
         """
         if self.useSigmoid:
-            input = torch.sigmoid(input)  
+            input = torch.sigmoid(input)
+        if binarize:
+            input = torch.round(input)
         input = torch.flatten(input)
         target = torch.flatten(target)
         intersection = (input * target).sum()

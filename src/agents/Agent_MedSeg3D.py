@@ -79,7 +79,18 @@ class Agent_MedSeg3D(BaseAgent):
             #print(patient_id)
 
             for m in range(patient_3d_image.shape[-1]):
-                loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item()
+                if 1 in patient_3d_label[..., m]:
+                    #class is present
+                    loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth=0, binarize=True).item()
+                else:
+                    if not 1 in patient_3d_image[..., m]:
+                        #class is not present and not segmented -> everything is fine. Just leave this class out
+                        #loss_log[m][patient_id] = None
+                        continue
+                    else:
+                        #class is not present but segmented -> dice is 0
+                        loss_log[m][patient_id] = 0
+
                 print(",",loss_log[m][patient_id])
                 # Add image to tensorboard
                 if True: 
@@ -87,7 +98,7 @@ class Agent_MedSeg3D(BaseAgent):
                         patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
                     middle_slice = int(patient_3d_real_Img.shape[3] /2)
                     #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
-                    self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
+                    self.exp.write_img(str(tag) + str(patient_id) + "_" + str(m),
                                     merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
                                     #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                     self.exp.currentStep)
