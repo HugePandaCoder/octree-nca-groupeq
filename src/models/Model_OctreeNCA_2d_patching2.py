@@ -89,8 +89,11 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.SAVE_VRAM_DURING_BATCHED_FORWARD = True
 
     def forward(self, x: torch.Tensor, y: torch.Tensor = None, batch_duplication=1):
-        #x: BHWDC
-        #y: BHWDC
+        #x: BCHW
+        #y: BCHW
+
+        x = x.permute(0, 2, 3, 1)
+        y = y.permute(0, 2, 3, 1)
 
         #if y is not None:
         #    y = y.to(self.device)
@@ -122,12 +125,12 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         if to == "BCHW":
             if x.names == ('B', 'H', 'W', 'C'):
                 self.remove_names(x)
-                x = x.permute(0, 1, 2, 3)
+                x = x.permute(0, 3, 1, 2)
                 x.names = ('B', 'C', 'H', 'W')
                 return x
             elif x.names == ('B', 'C', 'H', 'W'):
                 return x
-        elif to == "BHWDC":
+        elif to == "BHWC":
             if x.names == ('B', 'C', 'H', 'W'):
                 self.remove_names(x)
                 x = x.permute(0, 2, 3, 1)
@@ -140,11 +143,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
     def forward_train(self, x: torch.Tensor, y: torch.Tensor, batch_duplication=1):
         #x: BHWC
         #y: BHWC
-        print(x.shape)
-        print(y.shape)
-        print(y.mean())
-        return x, y
-        exit()
 
 
         if self.loss_weighted_patching and not all([p is None for p in self.patch_sizes]):
@@ -171,9 +169,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                             temp = torch.nn.functional.binary_cross_entropy_with_logits(initial_pred[..., m].squeeze(), y[..., m].squeeze(), reduction='none')
                             loss += temp
             del initial_pred
-            #x.names = ('B', 'H', 'W', 'D', 'C')
-            #y.names = ('B', 'H', 'W', 'D', 'C')
-            #loss.names = ('B', 'H', 'W', 'D')
 
         if batch_duplication != 1:
             x = torch.cat([x] * batch_duplication, dim=0)
@@ -181,19 +176,19 @@ class OctreeNCA2DPatch2(torch.nn.Module):
             if self.loss_weighted_patching and not all([p is None for p in self.patch_sizes]):
                 loss = torch.cat([loss] * batch_duplication, dim=0)
 
-        original = x.permute(0, 4, 1, 2, 3)
-        x.names = ('B', 'H', 'W', 'D', 'C')
-        y.names = ('B', 'H', 'W', 'D', 'C')
-        original.names = ('B', 'C', 'H', 'W', 'D')
+        original = x.permute(0, 3, 1, 2)
+        x.names = ('B', 'H', 'W', 'C')
+        y.names = ('B', 'H', 'W', 'C')
+        original.names = ('B', 'C', 'H', 'W')
         
 
         if self.patch_sizes[-1] is not None:
             x_new = torch.zeros(x.shape[0], *self.patch_sizes[-1], self.channel_n,
                                 dtype=torch.float, device=self.device, 
-                                names=('B', 'H', 'W', 'D', 'C'))
-            current_patch = np.zeros((x.shape[0], 2, 3), dtype=int)
+                                names=('B', 'H', 'W', 'C'))
+            current_patch = np.zeros((x.shape[0], 2, 2), dtype=int)
             x = self.downscale(x, -1)
-            x = self.align_tensor_to(x, "BHWDC")
+            x = self.align_tensor_to(x, "BHWC")
             self.remove_names(x_new)
             self.remove_names(x)
 
@@ -206,55 +201,51 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                 else:
                     h_start = self.my_rand_int(0, self.octree_res[-1][0]-self.patch_sizes[-1][0])
                     w_start = self.my_rand_int(0, self.octree_res[-1][1]-self.patch_sizes[-1][1])
-                    d_start = self.my_rand_int(0, self.octree_res[-1][2]-self.patch_sizes[-1][2])
                 current_patch[b] = np.array([[h_start, w_start, d_start], 
                                         [self.patch_sizes[-1][0] + h_start, 
-                                        self.patch_sizes[-1][1] + w_start, 
-                                        self.patch_sizes[-1][2] + d_start]
+                                        self.patch_sizes[-1][1] + w_start]
                                         ])
                 
-                x_new[b,:,:,:, :self.input_channels] = \
+                x_new[b,:,:, :self.input_channels] = \
                 x[b,    current_patch[b,0,0]:current_patch[b,1,0],
-                        current_patch[b,0,1]:current_patch[b,1,1],
-                        current_patch[b,0,2]:current_patch[b,1,2], :]
-            x_new.names = ('B', 'H', 'W', 'D', 'C')
+                        current_patch[b,0,1]:current_patch[b,1,1], :]
+            x_new.names = ('B', 'H', 'W', 'C')
             x = x_new
         else:
             x_new = torch.zeros(x.shape[0], *self.octree_res[-1], self.channel_n,
                                 dtype=torch.float, device=self.device)
-            current_patch = np.array([[[0,0,0], [*self.octree_res[-1]]]] * x.shape[0])
+            current_patch = np.array([[[0,0], [*self.octree_res[-1]]]] * x.shape[0])
             x = self.downscale(x, -1)
-            x = self.align_tensor_to(x, "BHWDC")
+            x = self.align_tensor_to(x, "BHWC")
             self.remove_names(x)
-            x_new[:,:,:,:, :self.input_channels] = x
+            x_new[:,:,:, :self.input_channels] = x
             x = x_new
-            x.names = ('B', 'H', 'W', 'D', 'C')
+            x.names = ('B', 'H', 'W', 'C')
 
-        #x: BHWDC
-
+        #x: BHWC
 
         for level in range(len(self.octree_res)-1, -1, -1):
 
-            x = self.align_tensor_to(x, "BHWDC")
+            x = self.align_tensor_to(x, "BHWC")
             self.remove_names(x)
 
             if self.separate_models:
                 x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
             else:
                 x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
-            x.names = ('B', 'H', 'W', 'D', 'C')
+            x.names = ('B', 'H', 'W', 'C')
 
 
             if level > 0:
                 #upscale states
-                x = self.align_tensor_to(x, "BCHWD")
+                x = self.align_tensor_to(x, "BCHW")
                 self.remove_names(x)
                 x = torch.nn.Upsample(scale_factor=tuple(self.computed_upsampling_scales[level-1][0]), 
                                       mode='nearest')(x)
                 current_patch *= self.computed_upsampling_scales[level-1]
             
                 original_right_resolution = self.downscale(original, level-1)
-                assert original_right_resolution.names == ('B', 'C', 'H', 'W', 'D')
+                assert original_right_resolution.names == ('B', 'C', 'H', 'W')
                 self.remove_names(original_right_resolution)
                 #cut out patch from input_channels
                 if self.patch_sizes[level-1] is not None:
@@ -267,52 +258,44 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                         if self.loss_weighted_patching:
                             temp = loss_weighted_probabilities[b,
                                                                           current_patch[b,0,0]:current_patch[b,1,0]+1-self.patch_sizes[level-1][0],
-                                                                          current_patch[b,0,1]:current_patch[b,1,1]+1-self.patch_sizes[level-1][1],
-                                                                          current_patch[b,0,2]:current_patch[b,1,2]+1-self.patch_sizes[level-1][2],
+                                                                          current_patch[b,0,1]:current_patch[b,1,1]+1-self.patch_sizes[level-1][1]
                                                                           ]
                             h_start, w_start, d_start = self.sample_index(temp)
                             h_offset = h_start #- current_patch[b,0,0]
                             w_offset = w_start #- current_patch[b,0,1]
-                            d_offset = d_start #- current_patch[b,0,2]
                             assert h_offset <= x.shape[2]-self.patch_sizes[level-1][0]
                             assert w_offset <= x.shape[3]-self.patch_sizes[level-1][1]
-                            assert d_offset <= x.shape[4]-self.patch_sizes[level-1][2]
                         else:
                             h_offset = self.my_rand_int(0, x.shape[2]-self.patch_sizes[level-1][0])
                             w_offset = self.my_rand_int(0, x.shape[3]-self.patch_sizes[level-1][1])
-                            d_offset = self.my_rand_int(0, x.shape[4]-self.patch_sizes[level-1][2])
 
                         #coordinates in current_patch are relative to the latest resolution of the whole image
-                        current_patch[b, 0] += np.array([h_offset, w_offset, d_offset])
+                        current_patch[b, 0] += np.array([h_offset, w_offset])
                         current_patch[b, 1] = current_patch[b, 0] + np.array(self.patch_sizes[level-1])
                         
                         x_new[b, :self.input_channels] = original_right_resolution[b, :,
                                         current_patch[b,0,0]:current_patch[b,1,0],
-                                        current_patch[b,0,1]:current_patch[b,1,1],
-                                        current_patch[b,0,2]:current_patch[b,1,2]]
+                                        current_patch[b,0,1]:current_patch[b,1,1]]
                         
                         x_new[b, self.input_channels:] = x[b, self.input_channels:,
                                         h_offset:h_offset + self.patch_sizes[level-1][0],
-                                        w_offset:w_offset + self.patch_sizes[level-1][1],
-                                        d_offset:d_offset + self.patch_sizes[level-1][2]]
+                                        w_offset:w_offset + self.patch_sizes[level-1][1]]
                     x = x_new
                 else:
                     for b in range(x.shape[0]):
                         x[b, :self.input_channels] = original_right_resolution[b, :,
                                         current_patch[b,0,0]:current_patch[b,1,0],
-                                        current_patch[b,0,1]:current_patch[b,1,1],
-                                        current_patch[b,0,2]:current_patch[b,1,2]]
-                x.names = ('B', 'C', 'H', 'W', 'D')
+                                        current_patch[b,0,1]:current_patch[b,1,1]]
+                x.names = ('B', 'C', 'H', 'W')
         
-        #x: BHWDC
+        #x: BHWC
 
 
-        y_new = torch.zeros(y.shape[0], x.shape[1], x.shape[2], x.shape[3],
-                             y.shape[4], device=self.device, dtype=torch.float)
+        y_new = torch.zeros(y.shape[0], x.shape[1], x.shape[2],
+                             y.shape[3], device=self.device, dtype=torch.float)
         for b in range(x.shape[0]):
             y_new[b] = y[b, current_patch[b,0,0]:current_patch[b,1,0],
-                        current_patch[b,0,1]:current_patch[b,1,1],
-                        current_patch[b,0,2]:current_patch[b,1,2], :] 
+                        current_patch[b,0,1]:current_patch[b,1,1], :] 
         y = y_new
         
         self.remove_names(x)
@@ -328,41 +311,58 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.patch_sizes = temp
         return out
     
-    def create_inference_series(self, x: torch.Tensor, steps=None):
-        assert False, "Not implemented yet"
-        #x: BCHWD
-        x = x.permute(0, 2,3,4, 1)
-        #x: BHWDC
-        x = self.make_seed(x)
-        x = x.permute(0, 4, 1, 2, 3)
-        # x: BCHWD
-        x = x.to(self.device)
-        lod = Octree3DNoStates(x, self.octree_res)
+    def create_inference_series(self, x: torch.Tensor):
+        inference_series = [] #list of BHWC tensors
+        #x: BCHW
+        original = x
+        x = x.permute(0, 2, 3, 1)
+        x.names = ('B', 'H', 'W', 'C')
+        original.names = ('B', 'C', 'H', 'W')
         
-        inference_series = [] #list of BHWDC tensors
+        x_new = torch.zeros(x.shape[0], *self.octree_res[-1], self.channel_n,
+                                dtype=torch.float, device=self.device)
+        current_patch = np.array([[[0,0], [*self.octree_res[-1]]]] * x.shape[0])
+        x = self.downscale(x, -1)
+        x = self.align_tensor_to(x, "BHWC")
+        self.remove_names(x)
+        x_new[:,:,:, :self.input_channels] = x
+        x = x_new
+        x.names = ('B', 'H', 'W', 'C')
 
-        for level in list(range(len(lod.levels_of_detail)))[::-1]:
-            x = lod.levels_of_detail[level]
-            #x: BCHWD
-            x = x.permute(0, 2,3,4, 1)
-            #x: BHWDC
+        for level in range(len(self.octree_res)-1, -1, -1):
+
+            x = self.align_tensor_to(x, "BHWC")
+            self.remove_names(x)
+
             inference_series.append(x)
-            
+
             if self.separate_models:
                 x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
             else:
                 x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+            x.names = ('B', 'H', 'W', 'C')
 
             inference_series.append(x)
-            #x: BHWDC
-            x = x.permute(0, 4, 1, 2, 3)
-            # x: BCHWD
 
-            lod.levels_of_detail[level] = x
+
             if level > 0:
-                lod.upscale_states(level)
+                #upscale states
+                x = self.align_tensor_to(x, "BCHW")
+                self.remove_names(x)
+                x = torch.nn.Upsample(scale_factor=tuple(self.computed_upsampling_scales[level-1][0]), 
+                                      mode='nearest')(x)
+                current_patch *= self.computed_upsampling_scales[level-1]
+            
+                original_right_resolution = self.downscale(original, level-1)
+                assert original_right_resolution.names == ('B', 'C', 'H', 'W')
+                self.remove_names(original_right_resolution)
 
-        outputs = lod.levels_of_detail[0]
+                for b in range(x.shape[0]):
+                        x[b, :self.input_channels] = original_right_resolution[b, :,
+                                        current_patch[b,0,0]:current_patch[b,1,0],
+                                        current_patch[b,0,1]:current_patch[b,1,1]]
+                x.names = ('B', 'C', 'H', 'W')
+        
         return inference_series
     
     def my_rand_int(self, low, high):
@@ -380,6 +380,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
 
     @torch.no_grad()
     def compute_probabilities_matrix(self, loss: torch.Tensor, level: int) -> torch.Tensor:
+        assert False, "Not implemented yet"
         patch_size = self.patch_sizes[level]
         loss = loss.unsqueeze(1)
         loss = F.interpolate(loss, size=self.octree_res[level])

@@ -59,5 +59,23 @@ class StepsPerEpochGenerator(SlimDataLoaderBase):
         self.counter = self.thread_id
         self.was_initialized = True
 
-    def __len(self):
+    def __len__(self):
         return self.num_steps_per_epoch
+    
+    def generate_train_batch(self):
+        if not self.was_initialized:
+            self.reset()
+        if self.counter >= self.num_steps_per_epoch:
+            self.reset()
+            raise StopIteration
+        self.counter += self.number_of_threads_in_multithreaded
+        if self.difficulty_weighted_sampling:
+            ids = [self._data.getPublicIdByIndex(i) for i, _ in enumerate(self._data.images_list)]
+            weights = np.array([self._data.difficulties[id] for id in ids])
+            indices = np.random.choice(np.arange(0, len(self._data)), self.batch_size, p=weights/weights.sum())
+            batch = [self._data[img_id] for img_id in indices]
+        else:
+            indices = np.random.choice(np.arange(len(self._data)), self.batch_size)
+            batch = [self._data[i] for i in indices]
+        batch = my_default_collate(batch)
+        return batch

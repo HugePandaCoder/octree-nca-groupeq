@@ -55,6 +55,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         #    y = y.to(self.device)
 
         if self.training:
+            assert x.shape[1:3] == self.octree_res[0], f"Expected shape {self.octree_res[0]}, got shape {x.shape[1:2]}"
             x, y = self.forward_train(x, y, batch_duplication)
             return x, y
             
@@ -273,11 +274,44 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
 
         return x, y
     
+
+    def compute_octree_res(self, x: torch.Tensor) -> list[tuple[int]]:
+        new_octree_res = [list(x.shape[1:4])]
+        for i in range(1, len(self.octree_res)):
+            downsample_factor = np.array(self.octree_res[i-1]) / np.array(self.octree_res[i])
+            new_octree_res.append([math.ceil(new_octree_res[i-1][0] / downsample_factor[0]), 
+                                    math.ceil(new_octree_res[i-1][1] / downsample_factor[1]),
+                                    math.ceil(new_octree_res[i-1][2] / downsample_factor[2])])
+        return new_octree_res
+
     @torch.no_grad()
     def forward_eval(self, x: torch.Tensor):
+        #x: BHWDC
+        #y: BHWDC
         temp = self.patch_sizes
         self.patch_sizes = [None] * len(self.patch_sizes)
+
+
+
+        if x.shape[1:4] != self.octree_res[0]:
+            temp_octree_res = self.octree_res
+            new_octree_res = [list(x.shape[1:4])]
+            for i in range(1, len(self.octree_res)):
+                downsample_factor = np.array(self.octree_res[i-1]) / np.array(self.octree_res[i])
+                new_octree_res.append([math.ceil(new_octree_res[i-1][0] / downsample_factor[0]), 
+                                        math.ceil(new_octree_res[i-1][1] / downsample_factor[1]),
+                                        math.ceil(new_octree_res[i-1][2] / downsample_factor[2])])
+            self.octree_res = new_octree_res
+            print("running inference on different resolution, this is the new resolution:", self.octree_res)
+
+
+
         out, _ = self.forward_train(x, x)
+
+        
+        if x.shape[1:4] != self.octree_res[0]:
+            self.octree_res = temp_octree_res
+
         self.patch_sizes = temp
         return out
     

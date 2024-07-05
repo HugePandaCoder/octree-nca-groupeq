@@ -7,12 +7,14 @@ import torch
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 from src.agents.Agent_MedNCA_Simple import MedNCAAgent
 from src.models.Model_OctreeNCA import OctreeNCA
+from src.models.Model_OctreeNCA_2d_patching2 import OctreeNCA2DPatch2
 from src.models.Model_OctreeNCA_3D import OctreeNCA3D
 from src.utils.Experiment import Experiment
-from torch.utils.data import DataLoader
+import torch.utils.data
 
 
 def find_sample_by_id(experiment, dataset: Dataset_Base, id:str):
+    assert False, "not implemented yet"
     for split in ['train', 'val', 'test']:
         if len(experiment.data_split.get_images(split)) == 0:
             continue
@@ -34,34 +36,31 @@ def visualize(experiment: Experiment, dataset: Dataset_Base = None, split: str='
     
     if dataset is None:
         if sample_id is None:
-            experiment.dataset.setPaths(experiment.config['img_path'], experiment.data_split.get_images(split), 
-                                        experiment.config['label_path'], experiment.data_split.get_labels(split))
-            experiment.dataset.setState(split)
-            data = next(iter(experiment.data_loader))
+            loader = torch.utils.data.DataLoader(experiment.datasets[split])
+            data = next(iter(loader))
         else:
-            data = find_sample_by_id(experiment, experiment.dataset, sample_id)
+            data = find_sample_by_id(experiment, experiment.datasets[split], sample_id)
     else:
         if sample_id is None:
-            loader = DataLoader(dataset)
+            loader = torch.utils.data.DataLoader(dataset)
             data = next(iter(loader))
         else:
             data = find_sample_by_id(experiment, dataset, sample_id)
 
 
-    if isinstance(experiment.model, OctreeNCA):
+    if isinstance(experiment.model, OctreeNCA2DPatch2):
         return visualize2d(experiment, data)
     else:
         return visualize3d(experiment, data)
 
 
 @torch.no_grad()
-def visualize2d(experiment: Experiment, data) -> plt.Figure:
-    assert False, "not implemented yet"
+def visualize2d(experiment: Experiment, data: dict) -> plt.Figure:
     assert isinstance(experiment.agent, MedNCAAgent)
-    assert isinstance(experiment.model, OctreeNCA)
+    assert isinstance(experiment.model, OctreeNCA2DPatch2)
 
-    data = next(iter(experiment.data_loader))
-    experiment.agent.prepare_data(data)
+    data = experiment.agent.prepare_data(data)
+
     inputs, targets = data['image'], data['label']
     gallery = experiment.model.create_inference_series(inputs)
 
@@ -72,7 +71,7 @@ def visualize2d(experiment: Experiment, data) -> plt.Figure:
     #plot all figures in gallery
     for i, img in enumerate(gallery):
         plt.subplot(1, len(gallery)+1, i+1)
-        plt.imshow(img[0, :, :, 1].cpu().numpy())
+        plt.imshow(img[0, :, :, 3].cpu().numpy())
         plt.title(f"{img.shape[1]}x{img.shape[2]}", fontsize=8)
         plt.axis('off')
         

@@ -24,7 +24,7 @@ def setup_cholecSeg():
     study_config = {
         'img_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed_2/",
         'label_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed_2/",
-        'name': r'cholec_seg_test',
+        'name': r'cholec_seg_octree_2',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -96,26 +96,12 @@ def setup_cholecSeg():
         'apply_ema': True, #default: False
         #TODO change the dataset implementations stuff to be more robust/faster
     }
-    if study_config['difficulty_weighted_sampling']:
-        assert study_config['batchgenerators']
-        assert study_config['also_eval_on_train']
-        assert study_config['num_steps_per_epoch'] is not None
-    #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']
     study = Study(study_config)
 
-    if study_config['batchgenerators']:
-        #dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
-        #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
-        #                                                 study_config['num_workers'])()
-        dataset = get_batchgenerators_dataset(Dataset_CholecSeg_preprocessed, study_config['num_workers'], 
-                                              study_config['num_steps_per_epoch'], study_config['batch_size'],
-                                              study_config['difficulty_weighted_sampling'])()
-    else:
-        if study_config['train_data_augmentations']:
-            dataset = get_augmentation_dataset(Dataset_CholecSeg_preprocessed)()
-        else:
-            dataset = Dataset_CholecSeg_preprocessed()
-    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
+    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, 
+                                             dataset_class=Dataset_CholecSeg_preprocessed, dataset_args = {
+                                                 'use_max_sequence_length_in_eval': False
+                                             })
     study.add_experiment(exp)
 
 

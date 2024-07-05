@@ -124,9 +124,8 @@ class BaseAgent():
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
-        print(outputs.shape, targets.shape)
+        #print(outputs.shape, targets.shape)
         #2D: outputs: BHWC, targets: BHWC
-        exit()
         if len(outputs.shape) == 5:
             for m in range(targets.shape[-1]):
                 loss_loc = loss_f(outputs[..., m], targets[...])
@@ -274,7 +273,7 @@ class BaseAgent():
             self.load_state(os.path.join(self.exp.config['model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
 
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
-        loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble, dataset = dataset)
+        loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble)
 
         return loss_log
 
@@ -451,8 +450,11 @@ class BaseAgent():
         stdd = stdd / len(loss_log)
         stdd = math.sqrt(stdd)
         return stdd
-
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, **kwargs):
+    
+    
+    @torch.no_grad()
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
+             pseudo_ensemble: bool = False, split='test'):
         raise NotImplementedError
     
         r"""Evaluate model on testdata by merging it into 3d volumes first

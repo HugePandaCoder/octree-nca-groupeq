@@ -241,6 +241,7 @@ class Experiment():
 
             transforms.append(NumpyToTensor(keys=['image', 'label']))
 
+            assert self.config['num_workers'] > 0, "Batchgenerators need more than 0 workers"
             self.data_loaders["train"] = MyMultiThreadedAugmenter(data_generator, Compose(transforms), num_processes=self.config['num_workers'])
 
 

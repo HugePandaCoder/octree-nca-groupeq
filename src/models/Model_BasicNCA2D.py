@@ -72,9 +72,9 @@ class BasicNCA2D(nn.Module):
         stochastic = stochastic.float().to(self.device)
         dx = dx * stochastic
 
-        x = x+dx.transpose(1,4)
+        x = x+dx.transpose(1,3)
 
-        x = x.transpose(1,4)
+        x = x.transpose(1,3)
 
         return x
 

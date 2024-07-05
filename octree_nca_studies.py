@@ -227,7 +227,7 @@ def setup_prostate5():
     study_config = {
         'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
         'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-        'name': r'Prostate49_octree_24_6',
+        'name': r'Prostate49_octree_24_7',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -261,7 +261,7 @@ def setup_prostate5():
         'gradient_accumulation': False,
         'train_quality_control': False, #or "NQM" or "MSE"
 
-        'compile': True,
+        'compile': False,
         'data_parallel': False,
         'batch_size': 3,
         'batch_duplication': 1,
@@ -293,26 +293,10 @@ def setup_prostate5():
         'find_best_model_on': 'train', # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
         'always_eval_in_last_epochs': 300, #default is None
     }
-    if study_config['difficulty_weighted_sampling']:
-        assert study_config['batchgenerators']
-        assert study_config['also_eval_on_train']
-        assert study_config['num_steps_per_epoch'] is not None
-    #assert (study_config['num_steps_per_epoch'] is not None) == study_config['batchgenerators']
     study = Study(study_config)
 
-    if study_config['batchgenerators']:
-        #dataset = get_batchgenerators_dataloader_dataset(Dataset_NiiGz_3D, study_config['train_data_augmentations'], 
-        #                                                 study_config['num_steps_per_epoch'], study_config['batch_size'],
-        #                                                 study_config['num_workers'])()
-        dataset = get_batchgenerators_dataset(Dataset_NiiGz_3D, study_config['num_workers'], 
-                                              study_config['num_steps_per_epoch'], study_config['batch_size'],
-                                              study_config['difficulty_weighted_sampling'])()
-    else:
-        if study_config['train_data_augmentations']:
-            dataset = get_augmentation_dataset(Dataset_NiiGz_3D)()
-        else:
-            dataset = Dataset_NiiGz_3D()
-    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset=dataset)
+
+    exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
     study.add_experiment(exp)
 
 
@@ -968,7 +952,7 @@ def train_prostate_baseline():
 if __name__ == "__main__":
     #study = setup_cholec_preprocessed()
     #study = setup_davis()
-    study = setup_prostate6()
+    study = setup_prostate5()
     #study = setup_prostate4()
     #study = setup_hippocampus2()
     #figure = octree_vis.visualize(study.experiments[0], sample_id="prostate_13.nii.gz")

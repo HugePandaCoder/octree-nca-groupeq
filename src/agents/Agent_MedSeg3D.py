@@ -9,7 +9,8 @@ import torch.utils.data
 class Agent_MedSeg3D(BaseAgent):
 
     @torch.no_grad()
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, 
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
+             pseudo_ensemble: bool = False, 
              split='test'):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.

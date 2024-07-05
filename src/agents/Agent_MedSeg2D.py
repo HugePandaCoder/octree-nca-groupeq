@@ -10,7 +10,8 @@ from src.losses.LossFunctions import DiceLoss
 
 class Agent_MedSeg2D(BaseAgent):
     @torch.no_grad()
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', pseudo_ensemble: bool = False, dataset=None, **kwargs):
+    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
+             pseudo_ensemble: bool = False, split='test'):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -18,12 +19,11 @@ class Agent_MedSeg2D(BaseAgent):
                 loss_f (torch.nn.Module)
                 steps (int): Number of steps to do for inference
         """
-        loss_f = DiceLoss()
         # Prepare dataset for testing
-        if dataset is None:
-            dataset = self.exp.dataset
-        self.exp.set_model_state('test')
+        dataset = self.exp.datasets[split]
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        self.exp.set_model_state('test')
+
         # Prepare arrays
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         patient_real_Img = None
@@ -146,12 +146,6 @@ class Agent_MedSeg2D(BaseAgent):
                     if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
 
 
-                        if "4993" in name: 
-                            plt.imshow(np.squeeze(torch.sigmoid(patient_3d_image[0, :, :, m]).detach().cpu().numpy()))
-                            plt.show()
-                            plt.imshow(np.squeeze(patient_3d_label[0, :, :, m].detach().cpu().numpy()), alpha=0.5)
-                            plt.show()
-                            exit()
                         loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
 
                         if False:
@@ -171,7 +165,7 @@ class Agent_MedSeg2D(BaseAgent):
                         out = out + str(loss_log[m][patient_id]) + ", "
                     else:
                         out = out + " , "
-                print("PATIENT ID", name, out)
+                print("PATIENT ID", patient_id, out)
                 patient_id, patient_3d_image, patient_3d_label = id, None, None
             # If first slice of volume
             if patient_3d_image == None:

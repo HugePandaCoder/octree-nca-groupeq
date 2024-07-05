@@ -8,11 +8,12 @@ import cv2
 import torch, math
 
 class Dataset_CholecSeg_preprocessed(Dataset_Base):
-    def __init__(self):
+    def __init__(self, use_max_sequence_length_in_eval: bool):
         super().__init__()
         self.slice = None
         self.delivers_channel_axis = True
         self.is_rgb = True
+        self.use_max_sequence_length_in_eval = use_max_sequence_length_in_eval
 
 
     
@@ -34,11 +35,9 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
                 dic[id][i] = f
         return dic
     
-    def __getitem__(self, idx: str):
-        # images have a resolution of 854x480 with 80 frames
-        patient_name = self.images_list[idx][:len("videoXX")]
-        path = os.path.join(self.images_path, patient_name, self.images_list[idx])
 
+
+    def load_item_internal(self, path):
         imgs = np.load(os.path.join(path, "video.npy"))#CHWD
         lbls = np.load(os.path.join(path, "segmentation.npy"))#HWDC
 
@@ -66,9 +65,61 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
         lbls = lbls.transpose(1, 2, 0, 3)#DHWC -> HWDC
 
         data_dict = {}
-        data_dict['id'] = self.images_list[idx]
         data_dict['image'] = imgs
         data_dict['label'] = lbls
+        return data_dict
+
+    def setState(self, state: str) -> None:
+        super().setState(state)
+
+    def __getitem__(self, idx: str):
+        # images have a resolution of 854x480 with 80 frames
+
+        if self.state == "train" or not self.use_max_sequence_length_in_eval:
+            patient_name = self.images_list[idx][:len("videoXX")]
+            path = os.path.join(self.images_path, patient_name, self.images_list[idx])
+
+            data_dict = self.load_item_internal(path)
+
+
+            data_dict['id'] = self.images_list[idx]
+        else:
+            assert self.state in ["val", "test"]
+            patient_name = self.images_list[idx][:len("videoXX")]
+            frame_end = int(self.images_list[idx][len("videoXX") + 1:])
+            all_folders = []
+
+            iterator = 0
+            while True:
+                path_at_question = os.path.join(self.images_path, patient_name, f"{patient_name}_{str(frame_end + iterator).zfill(5)}")
+                if os.path.exists(path_at_question):
+                    all_folders.append(path_at_question)
+                    iterator += 80
+                else:
+                    break
+            iterator = 80
+            while True:
+                path_at_question = os.path.join(self.images_path, patient_name, f"{patient_name}_{str(frame_end - iterator).zfill(5)}")
+                if os.path.exists(path_at_question):
+                    all_folders.append(path_at_question)
+                    iterator += 80
+                else:
+                    break
+
+
+            all_folders.sort()
+            all_segmentations = []
+            all_videos = []
+            for folder in all_folders:
+                temp_dict = self.load_item_internal(folder)
+                all_videos.append(temp_dict['image'])
+                all_segmentations.append(temp_dict['label'])
+
+            data_dict = {}
+            data_dict['id'] = self.images_list[idx]
+            data_dict['image'] = np.concatenate(all_videos, axis=3)
+            data_dict['label'] = np.concatenate(all_segmentations, axis=2)
+
         return data_dict
     
     def setPaths(self, images_path: str, images_list: str, labels_path: str, labels_list: str) -> None:
