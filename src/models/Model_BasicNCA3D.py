@@ -4,7 +4,7 @@ import torch.nn.functional as F
  
 class BasicNCA3D(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
-                 track_running_stats=False):
+                 track_running_stats=False, inplace_relu=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -21,6 +21,8 @@ class BasicNCA3D(nn.Module):
         self.device = device
         self.channel_n = channel_n
         self.input_channels = input_channels
+
+        self.inplace_relu = inplace_relu
 
         # One Input
         self.fc0 = nn.Linear(channel_n*2, hidden_size)
@@ -62,7 +64,7 @@ class BasicNCA3D(nn.Module):
         dx = dx.transpose(1,4)
         dx = self.bn(dx)
         dx = dx.transpose(1,4)
-        dx = F.relu(dx)
+        dx = F.relu(dx, inplace=self.inplace_relu)
         dx = self.fc1(dx)
 
         if fire_rate is None:

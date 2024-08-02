@@ -1,3 +1,4 @@
+import einops
 import torch
 from src.agents.Agent import BaseAgent
 from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
@@ -142,11 +143,15 @@ class Agent_MedSeg2D(BaseAgent):
             # If next patient
             if (id != patient_id or dataset.slice == -1) and patient_id != None:
                 out = str(patient_id) + ", "
+
+
                 for m in range(patient_3d_label.shape[3]):
-                    if(1 in np.unique(patient_3d_label[...,m].detach().cpu().numpy())):
+                    if 1 in patient_3d_label[...,m]:
+                        #class is present
 
 
-                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth = 0).item() #,, mask = patient_3d_label[...,4].bool()
+                        loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], 
+                                                             smooth = 0, binarize=True).item() #,, mask = patient_3d_label[...,4].bool()
 
                         if False:
                             print("SAVE IMAGE AS NIFTI")
@@ -179,9 +184,11 @@ class Agent_MedSeg2D(BaseAgent):
                 patient_real_Img = torch.vstack((patient_real_Img, inputs.detach().cpu()))
             # Add image to tensorboard
             
+            patient_real_Img = einops.rearrange(patient_real_Img, "b c h w -> b h w c")
+
             if i in save_img: 
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                merge_img_label_gt_simplified(patient_real_Img[0:1, ...].transpose(1,3), torch.sigmoid(patient_3d_image[0:1, ...]), patient_3d_label[0:1, ...]),
+                                merge_img_label_gt_simplified(patient_real_Img[0:1, ...], torch.sigmoid(patient_3d_image[0:1, ...]), patient_3d_label[0:1, ...], dataset.is_rgb),
                                 #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
                                 self.exp.currentStep)
                 #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),

@@ -12,7 +12,7 @@ print(ProjectConfiguration.STUDY_PATH)
 study_config = {
     'img_path': r"/local/scratch/AGGC/AGGC2022_train/Subset1_Train_image/",
     'label_path': r"/local/scratch/clmn1/data/AGGC3/AGGC2022_train/Subset1_Train_annotations/",
-        'name': r'aggc_18',
+        'name': r'aggc_23',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -33,7 +33,7 @@ study_config = {
         # Data
         'input_size': [(320, 320)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
         
-        'data_split': [0.99, 0, 0.01],
+        'data_split': [0.98, 0, 0.02],
         'keep_original_scale': True,
         'rescale': True,
         # Octree - specific
@@ -55,7 +55,7 @@ study_config = {
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
         'also_eval_on_train': True,
-        'num_steps_per_epoch': 1, #default is None
+        'num_steps_per_epoch': 20, #default is None
         'train_data_augmentations': False,
         'track_gradient_norm': True,
         'batchgenerators': True, 

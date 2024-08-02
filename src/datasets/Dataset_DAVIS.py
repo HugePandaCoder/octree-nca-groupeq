@@ -32,13 +32,18 @@ class Dataset_DAVIS(Dataset_Base):
         #low res images have a resolution of 854x480 with at least 25 and at most 104 frames
         path = os.path.join(self.images_path, self.images_list[idx])
     
-        num_frames = len(os.listdir(path))
-        start_frame = np.random.randint(0, num_frames - self.size[2])
+        if self.state == "train":
+            num_frames = len(os.listdir(path))
+            frames_to_use = self.size[2]
+            start_frame = np.random.randint(0, num_frames - self.size[2])
+        else:
+            frames_to_use = len(os.listdir(path))
+            start_frame = 0
         
 
         imgs = []
         lbls = []
-        for frame in range(start_frame, start_frame + self.size[2]):
+        for frame in range(start_frame, start_frame + frames_to_use):
             label = cv2.imread(os.path.join(self.labels_path, self.images_list[idx], f"{frame:05d}.png"))
             label = label[:,:,0:1]
             lbls.append(label)

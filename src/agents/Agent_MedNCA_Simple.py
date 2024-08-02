@@ -19,7 +19,7 @@ class MedNCAAgent(UNetAgent):
 
         inputs, targets = self.model(inputs, targets, self.exp.get_from_config('batch_duplication'))
         #2D: inputs: BHWC, targets: BHWC
-        
+
         return inputs, targets
         #if len(inputs.shape) == 4:
         #    return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)

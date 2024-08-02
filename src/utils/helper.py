@@ -130,13 +130,15 @@ def merge_img_label_gt_simplified(img, label, gt, rgb=False):
         gt = gt[..., 0]
         warnings.warn("WARNING: Currently image output supports one label only")
 
+    #print(rgb, img.shape, label.shape, gt.shape)
 
     if rgb:
-        img = img.permute(0,4,1,2,3) # BCHWD -> BDCHW
-        img = torchvision.transforms.functional.rgb_to_grayscale(img)
-        img = img.permute(0,2,3,4,1) # BDCHW -> BCHWD
+        if len(img.shape) == 5:
+            img = img.permute(0,4,1,2,3) # BCHWD -> BDCHW
+            img = torchvision.transforms.functional.rgb_to_grayscale(img)
+            img = img.permute(0,2,3,4,1) # BDCHW -> BCHWD
 
-    print(img.shape, label.shape, gt.shape)
+    #print(img.shape, label.shape, gt.shape)
     img = torch.squeeze(img)
     label = torch.squeeze(label)
     gt = torch.squeeze(gt)

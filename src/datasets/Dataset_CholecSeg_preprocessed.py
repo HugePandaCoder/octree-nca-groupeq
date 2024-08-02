@@ -8,13 +8,14 @@ import cv2
 import torch, math
 
 class Dataset_CholecSeg_preprocessed(Dataset_Base):
-    def __init__(self, use_max_sequence_length_in_eval: bool):
+    def __init__(self, use_max_sequence_length_in_eval: bool, patch_size: tuple=None):
         super().__init__()
         self.slice = None
         self.delivers_channel_axis = True
         self.is_rgb = True
         self.use_max_sequence_length_in_eval = use_max_sequence_length_in_eval
 
+        self.patch_size = patch_size
 
     
     def getFilesInPath(self, path: str):
@@ -106,7 +107,6 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
                 else:
                     break
 
-
             all_folders.sort()
             all_segmentations = []
             all_videos = []
@@ -119,6 +119,32 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
             data_dict['id'] = self.images_list[idx]
             data_dict['image'] = np.concatenate(all_videos, axis=3)
             data_dict['label'] = np.concatenate(all_segmentations, axis=2)
+
+
+        
+        if self.patch_size is not None and self.state == "train":
+            img = data_dict['image']
+            lbl = data_dict['label']
+            if img.shape[1] == self.patch_size[0]:
+                x = 0
+            else:
+                x = np.random.randint(0, img.shape[1] - self.patch_size[0])
+            
+            if img.shape[2] == self.patch_size[1]:
+                y = 0
+            else:
+                y = np.random.randint(0, img.shape[2] - self.patch_size[1])
+
+            if img.shape[3] == self.patch_size[2]:
+                z = 0
+            else:
+                z = np.random.randint(0, img.shape[3] - self.patch_size[2])
+            
+            img = img[:, x:x+self.patch_size[0], y:y+self.patch_size[1], z:z+self.patch_size[2]]
+            lbl = lbl[x:x+self.patch_size[0], y:y+self.patch_size[1], z:z+self.patch_size[2]] 
+            data_dict['image'] = img
+            data_dict['label'] = lbl
+
 
         return data_dict
     

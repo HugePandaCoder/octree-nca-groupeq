@@ -16,7 +16,8 @@ class OctreeNCA3D(nn.Module):
                  scale_factor=None, levels=None, kernel_size=None,
                  octree_res_and_steps: list=None, separate_models: bool=False,
                  compile: bool=False,
-                 track_running_stats: bool=False):
+                 track_running_stats: bool=False,
+                 inplace_relu: bool=False):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -59,14 +60,14 @@ class OctreeNCA3D(nn.Module):
         if separate_models:
             self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
                                                            hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
-                                                           track_running_stats=track_running_stats) 
+                                                           track_running_stats=track_running_stats, inplace_relu=inplace_relu) 
                                                            for l in range(len(octree_res_and_steps))])
             if compile:
                 for i, model in enumerate(self.backbone_ncas):
                     self.backbone_ncas[i] = torch.compile(model)
         else:
             self.backbone_nca = BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
-                                           input_channels=input_channels, kernel_size=kernel_size)
+                                           input_channels=input_channels, kernel_size=kernel_size, inplace_relu=inplace_relu)
             if compile:
                 self.backbone_nca = torch.compile(self.backbone_nca)
 

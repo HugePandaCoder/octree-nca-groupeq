@@ -24,7 +24,7 @@ def setup_cholecSeg():
     study_config = {
         'img_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed_2/",
         'label_path': r"/local/scratch/clmn1/data/cholecseg8k_preprocessed_2/",
-        'name': r'cholec_seg_octree_2',
+        'name': r'cholec_seg_octree_14',
         'device':"cuda:0",
         'unlock_CPU': True,
         # Optimizer
@@ -33,26 +33,26 @@ def setup_cholecSeg():
         'betas': (0.9, 0.99),
         # Training
         'save_interval': 50,
-        'evaluate_interval': 2001,
-        'n_epoch': 2,
+        'evaluate_interval': 50,
+        'n_epoch': 2000,
         # Model
         'input_channels': 3,
         'output_channels': 5,
-        'hidden_size': 64,
+        'hidden_size': 100,
         'train_model':1,
-        'channel_n': 16,
-        'kernel_size': [3, 3, 3, 7],
+        'channel_n': 25,
+        'kernel_size': [3, 3, 3, 3, 7],
         # Data
-        'input_size': [(240, 424, 80)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
+        'input_size': [(240, 432, 80)], # original size is (480, 840, 80)
         
         'data_split': [0.7, 0, 0.3],
         'keep_original_scale': True,
         'rescale': True,
         # Octree - specific
-        'octree_res_and_steps': [((240, 424, 80), 20), ((120, 212, 40), 20), ((60,106,20), 20), ((30,53,10), 40)],
+        'octree_res_and_steps': [((240, 432, 80), 15), ((120, 216, 40), 15), ((60,108,20), 15), ((30,54,10), 20), ((15,27,5), 40)],
         'separate_models': True,
         # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
-        'patch_sizes':[(60, 106, 20), (60, 106, 20), None, None],
+        'patch_sizes':[(60, 106, 20), (60, 106, 20), None, None, None],
         #'patch_sizes': [None] *5,
         ### TEMP
         'gradient_accumulation': False,
@@ -66,12 +66,12 @@ def setup_cholecSeg():
         'update_lr_per_epoch': True, # is false by default
          # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
          # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
-        'also_eval_on_train': True,
+        'also_eval_on_train': False,
         'num_steps_per_epoch': None, #default is None
         'train_data_augmentations': True,
         'track_gradient_norm': True,
         'batchgenerators': True, 
-        'loss_weighted_patching': False,# default false, train on the patch that has the highest loss in the previous epoch
+        'loss_weighted_patching': False,# default false, train on the patch that has the highest loss
         # TODO 'lambda_dice_loss'
         # TODO maybe diffulty weighted sampling
         # TODO more data augmentations
@@ -94,7 +94,8 @@ def setup_cholecSeg():
         'ema_decay': 0.99,
         'ema_update_per': 'epoch', #can be 'batch' or 'epoch'
         'apply_ema': True, #default: False
-        #TODO change the dataset implementations stuff to be more robust/faster
+
+        'inplace_relu': True,
     }
     study = Study(study_config)
 

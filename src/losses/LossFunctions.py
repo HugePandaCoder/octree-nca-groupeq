@@ -80,7 +80,8 @@ class DiceBCELoss(torch.nn.Module):
                 target: target array
                 smooth: Smoothing value
         """
-        input = torch.sigmoid(input)       
+        if self.useSigmoid:
+            input = torch.sigmoid(input)
         input = torch.flatten(input) 
         target = torch.flatten(target)
         

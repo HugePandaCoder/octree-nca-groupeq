@@ -57,7 +57,7 @@ class Dataset_AGGC(Dataset_Base):
                     if not os.path.exists(label_path):
                         mmapped_lbls.append(None)
                         continue
-                    mmapped_lbl = zarr.open(label_path, shape=(width, height), mode='r')
+                    mmapped_lbl = zarr.open(label_path, mode='r')
                     assert mmapped_lbl.shape == (width, height), f"{mmapped_lbl.shape} != {(width, height)}"
                     mmapped_lbls.append(mmapped_lbl)
 
@@ -84,6 +84,7 @@ class Dataset_AGGC(Dataset_Base):
             os.makedirs(self.patches_path, exist_ok=True)
             pkl.dump(self.patches, open(os.path.join(self.patches_path, f"patches_{patch_size[0]}_{patch_size[1]}.pkl"), "wb"))
             print(num_skipped_patches)
+            print({k: len(v) for k,v in self.patches.items()})
             exit()
 
 
@@ -94,6 +95,8 @@ class Dataset_AGGC(Dataset_Base):
         for f in files:
             if not f.endswith(".tiff"):
                 f = f + ".tiff"
+            if len(self.patches[f]) == 0:
+                continue
             dic[f]={}
             for x,y in self.patches[f]:
                 dic[f][f"{x}_{y}"] = (f,x,y)
@@ -120,10 +123,13 @@ class Dataset_AGGC(Dataset_Base):
                 continue
 
             mmapped_lbl = zarr.open(label_path, mode='r')
-            assert mmapped_lbl.shape[0] == height, f"{mmapped_lbl.shape[0]} != {openslide_image.level_dimensions[0][0]}"
-            assert mmapped_lbl.shape[1] == width, f"{mmapped_lbl.shape[1]} != {openslide_image.level_dimensions[0][1]}"
+            #print(file_path, label_path)
+            assert mmapped_lbl.shape[0] == width, f"{mmapped_lbl.shape[0]} != {openslide_image.level_dimensions[0][0]}"
+            assert mmapped_lbl.shape[1] == height, f"{mmapped_lbl.shape[1]} != {openslide_image.level_dimensions[0][1]}"
+            #print(mmapped_lbl.shape, openslide_image.level_dimensions[0])
+            #exit()
 
-            mmapped_lbl = mmapped_lbl[pos_y:pos_y+self.size[0], pos_x:pos_x+self.size[1]]
+            mmapped_lbl = mmapped_lbl[pos_x:pos_x+self.size[0], pos_y:pos_y+self.size[1]]
 
             label[:,:,i] = mmapped_lbl
 
