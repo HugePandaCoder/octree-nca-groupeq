@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from src.models.Model_BasicNCA2D import BasicNCA2D
+from src.models.Model_ViTCA import ViTCA
 import torchio as tio
 import random
 import math
@@ -21,7 +22,8 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                  compile: bool=False,
                  patch_sizes=None,
                  loss_weighted_patching=False,
-                 track_running_stats: bool=False):
+                 track_running_stats: bool=False,
+                 config: dict=None):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -31,6 +33,27 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                 input_channels: number of input channels
         """
         super(OctreeNCA2DPatch2, self).__init__()
+
+        if config is not None:
+            channel_n = config['channel_n']
+            fire_rate = config['cell_fire_rate']
+            device = config['device']
+            steps = config['inference_steps']
+            hidden_size = config['hidden_size']
+            input_channels = config['input_channels']
+            output_channels = config['output_channels']
+            scale_factor = config['scale_factor']
+            levels = config['levels']
+            kernel_size = config['kernel_size']
+            octree_res_and_steps = config['octree_res_and_steps']
+            separate_models = config['separate_models']
+            compile = config.get('compile', False)
+            patch_sizes = config['patch_sizes']
+            loss_weighted_patching = config.get('loss_weighted_patching', False)
+            track_running_stats = config.get('track_running_stats', False)
+
+
+
 
         self.channel_n = channel_n
         self.input_channels = input_channels
@@ -42,6 +65,9 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.levels = levels
         self.fast_inf = False
         self.margin = 20
+
+        self.patch_sizes = patch_sizes
+        self.loss_weighted_patching = loss_weighted_patching
 
 
         self.octree_res = [r_s[0] for r_s in octree_res_and_steps]
@@ -62,18 +88,46 @@ class OctreeNCA2DPatch2(torch.nn.Module):
 
 
         if separate_models:
-            self.backbone_ncas = nn.ModuleList([BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
-                                                           hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
-                                                           track_running_stats=track_running_stats) 
-                                                           for l in range(len(octree_res_and_steps))])
+            if config.get("model.vitca", False):
+                self.backbone_ncas = []
+                for l in range(len(octree_res_and_steps)):
+                    conv_size = kernel_size[l]
+                    self.backbone_ncas.append(ViTCA(patch_size=1, depth=config["model.vitca.depth"], heads=config["model.vitca.heads"],
+                                           mlp_dim=config["model.vitca.mlp_dim"], dropout=config["model.vitca.dropout"], 
+                                           cell_in_chns=input_channels, cell_out_chns=output_channels, 
+                                           cell_hidden_chns=channel_n - input_channels - output_channels, 
+                                           embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
+                                           embed_dropout=config["model.vitca.embed_dropout"], 
+                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], device=config["device"]
+                                           ))
+                self.backbone_ncas = nn.ModuleList(self.backbone_ncas)
+            else:
+                self.backbone_ncas = nn.ModuleList([BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
+                                                            hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
+                                                            track_running_stats=track_running_stats) 
+                                                            for l in range(len(octree_res_and_steps))])
             if compile:
                 for i, model in enumerate(self.backbone_ncas):
                     self.backbone_ncas[i] = torch.compile(model)
         else:
-            self.backbone_nca = BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
-                                           input_channels=input_channels, kernel_size=kernel_size)
+            if config.get("model.vitca", False):
+                conv_size = config["kernel_size"]
+                self.backbone_nca = ViTCA(patch_size=1, depth=config["model.vitca.depth"], heads=config["model.vitca.heads"],
+                                           mlp_dim=config["model.vitca.mlp_dim"], dropout=config["model.vitca.dropout"], 
+                                           cell_in_chns=input_channels, cell_out_chns=output_channels, cell_hidden_chns=channel_n,
+                                           embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
+                                           embed_dropout=config["model.vitca.embed_dropout"], 
+                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], device=config["device"]
+                                           )
+            else:
+                self.backbone_nca = BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
+                                            input_channels=input_channels, kernel_size=kernel_size)
+                
             if compile:
                 self.backbone_nca = torch.compile(self.backbone_nca)
+
+
+
 
 
         self.computed_upsampling_scales = []
@@ -83,8 +137,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                 t.append(self.octree_res[i][c]//self.octree_res[i+1][c])
             self.computed_upsampling_scales.append(np.array(t).reshape(1, 2))
 
-        self.patch_sizes = patch_sizes
-        self.loss_weighted_patching = loss_weighted_patching
 
         self.SAVE_VRAM_DURING_BATCHED_FORWARD = True
 
