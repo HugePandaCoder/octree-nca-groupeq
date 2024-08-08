@@ -11,7 +11,7 @@ class M3DNCAAgent(UNetAgent):
     def initialize(self):
         super().initialize()
 
-        if self.exp.get_from_config('data_parallel'):
+        if self.exp.get_from_config('performance.data_parallel'):
             self.model = MyDataParallel(self.model)
 
         self.model.to(self.device)
@@ -29,12 +29,8 @@ class M3DNCAAgent(UNetAgent):
         
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('batch_duplication'))
+        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         return inputs, targets 
-        #if len(inputs.shape) == 4:
-        #    return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)
-        #else:
-        #    return (self.model(inputs)).permute(0, 2, 3, 4, 1), targets #.permute(0, 2, 3, 4, 1)
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step
@@ -50,7 +46,7 @@ class M3DNCAAgent(UNetAgent):
         random.seed(rnd)
         outputs, targets = self.get_outputs(data)
         #print("______________________")
-        if self.exp.get_from_config('train_quality_control') in ["NQM", "MSE"]:
+        if self.exp.get_from_config('trainer.train_quality_control') in ["NQM", "MSE"]:
             random.seed(rnd)
             outputs2, targets2 = self.get_outputs(data)
         loss = 0
@@ -70,15 +66,8 @@ class M3DNCAAgent(UNetAgent):
                     loss = loss + loss_loc
                     loss_ret[m] = loss_loc.item()
 
-        # loss variance
-        #if len(outputs.shape) == 5:
-        #    for m in range(targets.shape[-1]):
-        #        loss_loc = loss_f(outputs2[..., m], targets2[...])
-        #        loss = loss + loss_loc
-        #        loss_ret[m] = loss_loc.item()
-
         # CALC NQM
-        if self.exp.get_from_config('train_quality_control') == "NQM":
+        if self.exp.get_from_config('trainer.train_quality_control') == "NQM":
             stack = torch.stack([outputs, outputs2], dim=0)
             outputs = torch.sigmoid(torch.mean(stack, dim=0))
             stack = torch.sigmoid(stack)
@@ -100,7 +89,7 @@ class M3DNCAAgent(UNetAgent):
                     if nqm > 0:
                         print("NQM: ", nqm)
                         loss = loss + nqm #
-        elif self.exp.get_from_config('train_quality_control') == "MSE":
+        elif self.exp.get_from_config('trainer.train_quality_control') == "MSE":
             loss += F.mse_loss(outputs, outputs2)
 
             #print(nqm)
@@ -108,7 +97,7 @@ class M3DNCAAgent(UNetAgent):
         if loss != 0:
             loss.backward()
 
-            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
+            if gradient_norm or self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 total_norm = 0
                 for p in self.model.parameters():
                     if p.grad is not None:
@@ -128,13 +117,13 @@ class M3DNCAAgent(UNetAgent):
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
             
-            if self.exp.get_from_config('track_gradient_norm'):
+            if self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 if not hasattr(self, 'epoch_grad_norm'):
                     self.epoch_grad_norm = []
                 self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
-            if not self.exp.get_from_config('update_lr_per_epoch'):
+            if not self.exp.get_from_config('trainer.update_lr_per_epoch'):
                 self.update_lr()
         return loss_ret
 

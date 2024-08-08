@@ -27,23 +27,22 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         """
         super(OctreeNCA2DPatch2, self).__init__()
 
-        if config is not None:
-            channel_n = config['model.channel_n']
-            fire_rate = config['model.fire_rate']
-            hidden_size = config['model.hidden_size']
-            input_channels = config['model.input_channels']
-            output_channels = config['model.output_channels']
-            kernel_size = config['model.kernel_size']
-            track_running_stats = config.get('model.track_running_stats', False)
+        channel_n = config['model.channel_n']
+        fire_rate = config['model.fire_rate']
+        hidden_size = config['model.hidden_size']
+        input_channels = config['model.input_channels']
+        output_channels = config['model.output_channels']
+        kernel_size = config['model.kernel_size']
+        track_running_stats = config['model.track_running_stats']
 
-            octree_res_and_steps = config['model.octree.res_and_steps']
-            separate_models = config['model.octree.separate_models']
+        octree_res_and_steps = config['model.octree.res_and_steps']
+        separate_models = config['model.octree.separate_models']
 
-            device = config['experiment.device']
-            patch_sizes = config['model.train.patch_sizes']
-            loss_weighted_patching = config['model.train.loss_weighted_patching']
+        device = config['experiment.device']
+        patch_sizes = config['model.train.patch_sizes']
+        loss_weighted_patching = config['model.train.loss_weighted_patching']
 
-            compile = config.get('performance.compile', False)
+        compile = config['performance.compile']
 
 
 

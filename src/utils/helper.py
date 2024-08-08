@@ -127,8 +127,15 @@ def normalize_image(image):
 
 def merge_img_label_gt_simplified(img, label, gt, rgb=False, segmentation=True):
     #2D: img: BHWC, label: BHWC, gt: BHWC
+    #3D: img: BCHWD, label: BHWDC, gt: BHWDC
 
-    assert len(img.shape) == 4, "Image must be 4D"
+    if len(img.shape) == 5:
+        img = einops.rearrange(img, 'b c h w d -> b h w d c')
+        assert img.shape[3] == label.shape[3] == gt.shape[3]
+        d = img.shape[3]
+        img = img[:,:,:, d//2]
+        label = label[:,:,:, d//2]
+        gt = gt[:,:,:, d//2]
 
     img, label, gt = normalize_image(img), normalize_image(label), normalize_image(gt)
 

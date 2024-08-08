@@ -222,7 +222,7 @@ class Experiment():
             else:
                 data_generator = DatasetPerEpochGenerator(self.datasets["train"], 
                                                           num_threads_in_mt=self.config['performance.num_workers'], 
-                                                          batch_size=self.config['batch_size']) 
+                                                          batch_size=self.config['trainer.batch_size']) 
 
             if self.get_from_config('trainer.datagen.augmentations'):
                 transforms = get_transform_arr()

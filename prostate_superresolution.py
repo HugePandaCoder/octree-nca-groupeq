@@ -28,85 +28,90 @@ PROSTATE_49_SPLIT_FILE = r"/local/scratch/clmn1/octree_study/Experiments/Prostat
 PROSTATE_49_SPLIT = pkl.load(open(PROSTATE_49_SPLIT_FILE, "rb"))
 
 
-#os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 study_config = {
-    'img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
-    'label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
-    'name': r'Prostate49_superres_2_residual',
-    'device':"cuda:0",
-    'unlock_CPU': True,
-    # Optimizer
-    'lr_gamma': 0.9999**8,
-    'lr': 0.0016,
-    'betas': (0.9, 0.99),
-    # Training
-    'save_interval': 50,
-    'evaluate_interval': 200,
-    'n_epoch': 2000,
-    # Model
-    'input_channels': 1,
-    'output_channels': 1,
-    'hidden_size': 64,
-    'train_model':1,
-    'channel_n': 16,
-    'kernel_size': [3, 3, 3, 3, 3],
-    # Data
-    'input_size': [(320, 320, 24)], # (320, 320, 24) -> (160, 160, 12) -> (80, 80, 12) -> (40, 40, 12) -> (20, 20, 12)
-    
-    'data_split': [0.7, 0, 0.3],
-    'keep_original_scale': True,
-    'rescale': True,
-    # Octree - specific
-    'octree_res_and_steps': [((320,320,24), 5), ((160,160,12), 5), ((80,80,6), 5), ((40,40,6), 5), ((20,20,6), 20)],
-    'separate_models': True,
-    # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
-    'patch_sizes':[(80, 80, 6), (80, 80, 6), None, None, None],
-    #'patch_sizes': [None] *5,
-    ### TEMP
-    'gradient_accumulation': False,
-    'train_quality_control': False, #or "NQM" or "MSE"
+    'experiment.name': r'prostate_superres_2_test',
+    'experiment.description': "OctreeNCASuperresolution",
+    'experiment.data_split': [0.7, 0, 0.3],
+    'experiment.save_interval': 50,
+    'experiment.device': "cuda:0",
 
-    'compile': False,
-    'data_parallel': False,
-    'batch_size': 3,
-    'batch_duplication': 1,
-    'num_workers': 8,
-    'update_lr_per_epoch': True, # is false by default
-        # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
-        # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
-    'also_eval_on_train': True,
-    'num_steps_per_epoch': None, #default is None
-    'train_data_augmentations': True,
-    'track_gradient_norm': True,
-    'batchgenerators': True, 
-    'loss_weighted_patching': True,# default false, train on the patch that has the highest loss in the previous epoch
-    # TODO 'lambda_dice_loss'
-    # TODO maybe diffulty weighted sampling
-    # TODO more data augmentations
-    # TODO different weight initializations
-    # TODO maybe mask CE loss on correctly segmented areas
-    # TODO try adam params (0.5, 0.5)
-    'difficulty_weighted_sampling': False, #default is False. Difficulty is evaluated at every 'evaluate_interval' epoch. Also, 'also_eval_on_train' _must_ be True
+    'experiment.logging.also_eval_on_train': True,
+    'experiment.logging.track_gradient_norm': True,
+    'experiment.logging.evaluate_interval': 1,
 
-    'optimizer': "Adam",# default is "Adam"
-    'sgd_momentum': 0.99,
-    'sgd_nesterov': True,
+    'experiment.dataset.img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+    'experiment.dataset.label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
+    'experiment.dataset.keep_original_scale': True,
+    'experiment.dataset.rescale': True,
+    'experiment.dataset.input_size': [320, 320, 24],
+    'experiment.dataset.patchify': False,
 
-    'scheduler': "exponential",#default is exponential
-    'polynomial_scheduler_power': 1.8,
 
-    'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
-    'always_eval_in_last_epochs': None, #default is None
+    'experiment.task': "super_resolution",
+    'experiment.task.factor': 4,
+    'experiment.task.train_on_residual': True,
 
-    
-    'apply_ema': True,
-    'ema_decay': 0.99,
-    'ema_update_per': "epoch",
 
-    'superres_factor': 4,
+    'performance.compile': False,
+    'performance.data_parallel': False,
+    'performance.num_workers': 8,
+    'performance.unlock_CPU': True,
+    'performance.inplace_operations': True,
+
+
+    'trainer.optimizer': "torch.optim.AdamW",
+    'trainer.optimizer.lr': 1e-3,
+    'trainer.lr_scheduler': "torch.optim.lr_scheduler.CosineAnnealingLR",
+    'trainer.lr_scheduler.T_max': 2000,
+    'trainer.update_lr_per_epoch': True,
+    'trainer.losses': ["torch.nn.L1Loss"],
+    'trainer.loss_weights': [1e2],
+    'trainer.normalize_gradients': "layerwise", # all, layerwise, none
+
+    'trainer.n_epochs': 2000,
+    'trainer.num_steps_per_epoch': None,
+    'trainer.batch_size': 3,
+    'trainer.batch_duplication': 1,
+
+    'trainer.find_best_model_on': None,
+    'trainer.always_eval_in_last_epochs': None,
+
+    'trainer.ema': True,
+    'trainer.ema.decay': 0.99,
+    'trainer.ema.update_per': "epoch",
+
+    'trainer.datagen.batchgenerators': True,
+    'trainer.datagen.augmentations': True,
+    'trainer.datagen.difficulty_weighted_sampling': False,
+
+    'trainer.gradient_accumulation': False,
+    'trainer.train_quality_control': False, #or "NQM" or "MSE"
 
 
 
+    'model.channel_n': 16,
+    'model.fire_rate': 0.5,
+    'model.input_channels': 1,
+    'model.output_channels': 1,
+    'model.kernel_size': [3, 3, 3, 3, 3],
+    'model.hidden_size': 64,
+    'model.batchnorm_track_running_stats': False,
+
+    'model.train.patch_sizes': [[80, 80, 6], [80, 80, 6], None, None, None],
+    'model.train.loss_weighted_patching': False,
+
+    'model.octree.res_and_steps': [[[320,320,24], 5], [[160,160,12], 5], [[80,80,6], 5], [[40,40,6], 5], [[20,20,6], 20]],
+    'model.octree.separate_models': True,
+
+    'model.vitca': False, # TODO 3D ViTCA is not implemented yet!
+    'model.vitca.depth': 1,
+    'model.vitca.heads': 4,
+    'model.vitca.mlp_dim': 64,
+    'model.vitca.dropout': 0.0,
+    'model.vitca.positional_embedding': 'vit_handcrafted', #'vit_handcrafted', 'nerf_handcrafted', 'learned', or None for no positional encoding
+    'model.vitca.embed_cells': True,
+    'model.vitca.embed_dim': 128,
+    'model.vitca.embed_dropout': 0.0,
 }
 study = Study(study_config)
 
@@ -118,8 +123,8 @@ study.add_experiment(exp)
 for split in "train", "val", "test":
     if not exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split):
         print("SPLIT MISMATCH")
-        os.remove(f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
-        os.symlink(PROSTATE_49_SPLIT_FILE, f"/local/scratch/clmn1/octree_study/Experiments/{study_config['name']}_OctreeNCA3D/data_split.dt")
+        os.remove(f"/local/scratch/clmn1/octree_study/Experiments/{study_config['experiment.name']}_{study_config['experiment.description']}/data_split.pkl")
+        os.symlink(PROSTATE_49_SPLIT_FILE, f"/local/scratch/clmn1/octree_study/Experiments/{study_config['experiment.name']}_{study_config['experiment.description']}/data_split.pkl")
         print("restart experiment!")
         exit()
         

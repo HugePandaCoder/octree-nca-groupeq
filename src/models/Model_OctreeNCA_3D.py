@@ -12,12 +12,7 @@ import subprocess as sp
 class OctreeNCA3D(nn.Module):
     r"""Implementation of M3D-NCA
     """
-    def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
-                 scale_factor=None, levels=None, kernel_size=None,
-                 octree_res_and_steps: list=None, separate_models: bool=False,
-                 compile: bool=False,
-                 track_running_stats: bool=False,
-                 inplace_relu: bool=False):
+    def __init__(self, config: dict):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -27,25 +22,25 @@ class OctreeNCA3D(nn.Module):
                 input_channels: number of input channels
         """
         super(OctreeNCA3D, self).__init__()
+        assert config['model.batchnorm_track_running_stats'] is False, "batchnorm_track_running_stats must be False"
 
-        self.channel_n = channel_n
-        self.input_channels = input_channels
-        self.output_channels = output_channels
-        self.device = device
-        self.fire_rate = fire_rate
-        self.steps = steps
-        self.scale_factor = scale_factor
-        self.levels = levels
-        self.fast_inf = False
-        self.margin = 20
+        self.channel_n = config['model.channel_n']
+        self.input_channels = config['model.input_channels']
+        self.output_channels = config['model.output_channels']
+        self.device = config['experiment.device']
+        self.fire_rate = config['model.fire_rate']
 
+        
+        octree_res_and_steps = config['model.octree.res_and_steps']
+        separate_models = config['model.octree.separate_models']
+        kernel_size = config['model.kernel_size']
 
-        self.octree_res = [r_s[0] for r_s in octree_res_and_steps]
+        self.octree_res = [tuple(r_s[0]) for r_s in octree_res_and_steps]
         self.inference_steps = [r_s[1] for r_s in octree_res_and_steps]
 
         self.separate_models = separate_models
 
-        if compile:
+        if config['performance.compile']:
             torch.set_float32_matmul_precision('high')
         
         if separate_models:
@@ -58,17 +53,17 @@ class OctreeNCA3D(nn.Module):
 
 
         if separate_models:
-            self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
-                                                           hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
-                                                           track_running_stats=track_running_stats, inplace_relu=inplace_relu) 
+            self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, 
+                                                           hidden_size=config['model.hidden_size'], input_channels=self.input_channels, kernel_size=kernel_size[l],
+                                                           track_running_stats=False, inplace_relu=config['performance.inplace_operations']) 
                                                            for l in range(len(octree_res_and_steps))])
-            if compile:
+            if config['performance.compile']:
                 for i, model in enumerate(self.backbone_ncas):
                     self.backbone_ncas[i] = torch.compile(model)
         else:
-            self.backbone_nca = BasicNCA3D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
-                                           input_channels=input_channels, kernel_size=kernel_size, inplace_relu=inplace_relu)
-            if compile:
+            self.backbone_nca = BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, hidden_size=config['model.hidden_size'], 
+                                           input_channels=self.input_channels, kernel_size=kernel_size, inplace_relu=config['performance.inplace_operations'])
+            if config['performance.compile']:
                 self.backbone_nca = torch.compile(self.backbone_nca)
 
     def make_seed(self, x):

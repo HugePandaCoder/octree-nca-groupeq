@@ -15,14 +15,7 @@ import matplotlib.pyplot as plt
 class OctreeNCA3DPatch2(OctreeNCA3D):
     r"""Implementation of M3D-NCA
     """
-    def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
-                 scale_factor=None, levels=None, kernel_size=None,
-                 octree_res_and_steps: list=None, separate_models: bool=False,
-                 compile: bool=False,
-                 patch_sizes=None,
-                 loss_weighted_patching=False,
-                 track_running_stats: bool=False,
-                 inplace_relu: bool=False):
+    def __init__(self, config):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -31,9 +24,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 hidden_size: hidden size of model
                 input_channels: number of input channels
         """
-        super(OctreeNCA3DPatch2, self).__init__(channel_n, fire_rate, device, steps, hidden_size, input_channels, 
-                                                output_channels, scale_factor, levels, kernel_size, octree_res_and_steps, separate_models, 
-                                                compile, track_running_stats, inplace_relu)
+        super(OctreeNCA3DPatch2, self).__init__(config)
 
 
         self.computed_upsampling_scales = []
@@ -43,8 +34,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 t.append(self.octree_res[i][c]//self.octree_res[i+1][c])
             self.computed_upsampling_scales.append(np.array(t).reshape(1, 3))
 
-        self.patch_sizes = patch_sizes
-        self.loss_weighted_patching = loss_weighted_patching
+        self.patch_sizes = config['model.train.patch_sizes']
+        self.loss_weighted_patching = config['model.train.loss_weighted_patching']
 
         self.SAVE_VRAM_DURING_BATCHED_FORWARD = True
 
@@ -310,7 +301,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         out, _ = self.forward_train(x, x)
 
         
-        if x.shape[1:4] != self.octree_res[0]:
+        if x.shape[1:4] != tuple(self.octree_res[0]):
             self.octree_res = temp_octree_res
 
         self.patch_sizes = temp

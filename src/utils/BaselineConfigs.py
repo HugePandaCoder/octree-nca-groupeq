@@ -271,84 +271,20 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
 
 class EXP_OctreeNCA3D_superres(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
-        config = {
-            'description': 'OctreeNCA3D',#OctreeNCA
-            'batch_duplication': 1,
-            # Model
-            'channel_n': 32,        # Number of CA state channels
-            'inference_steps': 64,
-            'cell_fire_rate': 0.5,
-            'batch_size': 12,
-            'hidden_size': 128,
-            'train_model':1,
-            'kernel_size': 3,
-            # Data
-            'scale_factor': 4,
-            'kernel_size': 3,
-            'levels': 2,
-            'input_size': (320,320),
+        config = study_config
 
-            #miscellaneous
-            'batchnorm_track_running_stats': False,
-            'gradient_accumulation': False, #this does not work currently!
-            'track_gradient_norm': True, #default is False, but this is just tracking
-            'train_quality_control': False, #False or "NQM" or "MSE"
-            'inplace_relu': False,
-
-            #EMA
-            'apply_ema': False,
-            'ema_decay': 0.999,
-            'ema_update_per': 'epoch', # 'epoch' or 'batch'
-
-            #instead of EMA, you could find the best model and save it
-            'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
-            'always_eval_in_last_epochs': None,
-            
-
-            # Optimizer
-            'optimizer': "Adam",# default is "Adam"
-            'sgd_momentum': 0.99,
-            'sgd_nesterov': True,
-            'betas': (0.9, 0.99),
-
-            # LR - Scheduler
-            'scheduler': "exponential",#default is exponential
-            'lr': 16e-4,
-            'polynomial_scheduler_power': 1.8,
-            'lr_gamma': 0.9999**8,
-
-            # Data loading
-            'num_workers': 4,
-            'batchgenerators': True,
-
-        }
-
-        config = merge_config(merge_config(study_config, config), detail_config)
-        print("CONFIG", config)
         if dataset_class is None:
             assert False, "Dataset is None"
 
-        if 'patch_sizes' in config:
-            model = OctreeNCA3DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
-                                      output_channels=config['output_channels'], steps=config['inference_steps'],
-                            octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
-                            compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
-                            loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'],
-                            inplace_relu=config['inplace_relu'])
-        else:
-            assert False, "deprecated"
-            model = OctreeNCA3D(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
-                                output_channels=config['output_channels'], steps=config['inference_steps'],
-                                octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
-                                compile=config['compile'], kernel_size=config['kernel_size'])
+
+        model = OctreeNCA3DPatch2(config)
             
         if 'gradient_accumulation' in config and config['gradient_accumulation']:
             assert False, "not implemented"
             agent = M3DNCAAgentGradientAccum(model)
         else:
             agent = M3DNCAAgent_superres(model)
-            #agent = Agent_M3D_NCA(model)
-        loss_function = torch.nn.MSELoss()
+        loss_function = WeightedLosses(config)
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 

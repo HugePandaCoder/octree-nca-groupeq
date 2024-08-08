@@ -37,6 +37,7 @@ study_config = {
         'performance.data_parallel': False,
         'performance.num_workers': 8,
         'performance.unlock_CPU': True,
+        #'performance.inplace_operations': True,
 
 
         'trainer.optimizer': "torch.optim.AdamW",

@@ -24,7 +24,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         #targets: BHWDC
         targets = inputs.clone()
 
-        inputs = F.interpolate(inputs, scale_factor=1/self.exp.get_from_config('superres_factor'), 
+        inputs = F.interpolate(inputs, scale_factor=1/self.exp.get_from_config('experiment.task.factor'), 
                                mode='trilinear')
         
         
@@ -34,8 +34,8 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         inputs = einops.rearrange(inputs, 'b c h w d -> b h w d c')
         targets = einops.rearrange(targets, 'b c h w d -> b h w d c')
 
-        #TODO maybe train on the residual
-        targets = targets - inputs
+        if self.exp.config['experiment.task.train_on_residual']:
+            targets = targets - inputs
 
         visualize = False
 
@@ -47,7 +47,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             plt.imshow(targets[0, :, :, 12, 0].detach().cpu().numpy())
             print(F.mse_loss(inputs, targets))
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('batch_duplication'))
+        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         
         if visualize:
             fig.add_subplot(1, 3, 3)
@@ -73,7 +73,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         random.seed(rnd)
         outputs, targets = self.get_outputs(data)
         #print("______________________")
-        if self.exp.get_from_config('train_quality_control') in ["NQM", "MSE"]:
+        if self.exp.get_from_config('trainer.train_quality_control') in ["NQM", "MSE"]:
             random.seed(rnd)
             outputs2, targets2 = self.get_outputs(data)
         loss = 0
@@ -82,7 +82,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         loss_ret[0] = loss.item()
 
 
-        if self.exp.get_from_config('train_quality_control') == "NQM":
+        if self.exp.get_from_config('trainer.train_quality_control') == "NQM":
             stack = torch.stack([outputs, outputs2], dim=0)
             outputs = torch.sigmoid(torch.mean(stack, dim=0))
             stack = torch.sigmoid(stack)
@@ -104,7 +104,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
                     if nqm > 0:
                         print("NQM: ", nqm)
                         loss = loss + nqm #
-        elif self.exp.get_from_config('train_quality_control') == "MSE":
+        elif self.exp.get_from_config('trainer.train_quality_control') == "MSE":
             loss += F.mse_loss(outputs, outputs2)
 
             #print(nqm)
@@ -112,7 +112,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         if loss != 0:
             loss.backward()
 
-            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
+            if gradient_norm or self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 total_norm = 0
                 for p in self.model.parameters():
                     if p.grad is not None:
@@ -132,13 +132,13 @@ class M3DNCAAgent_superres(M3DNCAAgent):
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
             
-            if self.exp.get_from_config('track_gradient_norm'):
+            if self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 if not hasattr(self, 'epoch_grad_norm'):
                     self.epoch_grad_norm = []
                 self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
-            if not self.exp.get_from_config('update_lr_per_epoch'):
+            if not self.exp.get_from_config('trainer.update_lr_per_epoch'):
                 self.update_lr()
         return loss_ret
     
@@ -164,7 +164,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         patient_real_Img = None
         loss_log = {}
-        for m in range(self.output_channels):
+        for m in range(self.exp.config['model.output_channels']):
             loss_log[m] = {}
         if save_img == None:
             save_img = []#1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
@@ -207,14 +207,8 @@ class M3DNCAAgent_superres(M3DNCAAgent):
                 middle_slice = int(patient_3d_real_Img.shape[3] /2)
                 #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(m),
-                                merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
-                                #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, dataset.is_rgb, False), 
                                 self.exp.currentStep)
-                #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
-                #convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                #self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                #self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                #encode_image=False), self.exp.currentStep)
 
                     
         # Print dice score per label

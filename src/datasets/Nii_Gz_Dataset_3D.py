@@ -292,9 +292,9 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 my_print("Dataset_NiiGz_3D line 276")
                 img = np.squeeze(img)
                 my_print("Dataset_NiiGz_3D line 278")
-                if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
+                if self.exp.get_from_config('experiment.dataset.rescale') is not None and self.exp.get_from_config('experiment.dataset.rescale') is True:
                     img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
-                if self.exp.get_from_config('keep_original_scale') is not None and self.exp.get_from_config('keep_original_scale'):
+                if self.exp.get_from_config('experiment.dataset.keep_original_scale') is not None and self.exp.get_from_config('experiment.dataset.keep_original_scale'):
                     img, label = self.preprocessing3d(img), self.preprocessing3d(label, isLabel=True)  
                 # Add dim to label
                 my_print("Dataset_NiiGz_3D line 282")
@@ -317,7 +317,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
         size = self.size 
         
         # Create patches from full resolution
-        if self.exp.get_from_config('patchify') is not None and self.exp.get_from_config('patchify') is True and self.state == "train": 
+        if self.exp.get_from_config('experiment.dataset.patchify') is not None and self.exp.get_from_config('experiment.dataset.patchify') is True and self.state == "train": 
             img, label = self.patchify(img, label) 
 
         if len(size) > 2:
@@ -331,8 +331,8 @@ class Dataset_NiiGz_3D(Dataset_3D):
         img = img[0]
 
 
-        if self.exp.get_from_config('output_channels') > 1:
-            label = np.eye(self.exp.get_from_config('output_channels')+1)[label.astype(np.int32)].squeeze()
+        if self.exp.get_from_config('model.output_channels') > 1:
+            label = np.eye(self.exp.get_from_config('model.output_channels')+1)[label.astype(np.int32)].squeeze()
             label = label[..., 1:label.shape[-1]]
         else:
             # Merge labels -> For now single label
@@ -341,8 +341,8 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         # Number of defined channels
         if len(self.size) == 2:
-            img = img[..., :self.exp.get_from_config('input_channels')]
-            label = label[..., :self.exp.get_from_config('output_channels')]
+            img = img[..., :self.exp.get_from_config('model.input_channels')]
+            label = label[..., :self.exp.get_from_config('model.output_channels')]
 
         data_dict = {}
         data_dict['id'] = id
