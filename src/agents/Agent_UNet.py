@@ -1,4 +1,4 @@
-import torch
+import torch, einops
 from src.agents.Agent import BaseAgent
 from src.agents.Agent_MedSeg2D import Agent_MedSeg2D
 from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
@@ -7,10 +7,6 @@ from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
     """Base agent for training UNet models
     """
-    def initialize(self):
-        super().initialize()
-        self.input_channels = self.exp.get_from_config('input_channels')
-        self.output_channels = self.exp.get_from_config('output_channels')
 
     def prepare_data(self, data: tuple, eval: bool = False) -> tuple:
         r"""Prepare the data to be used with the model

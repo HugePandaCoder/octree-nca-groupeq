@@ -8,96 +8,80 @@ import octree_vis
 
 
 ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
-print(ProjectConfiguration.STUDY_PATH)
+print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'img_path': r"/local/scratch/PESO/peso_training",
-    'label_path': r"/local/scratch/PESO/peso_training",
-        'name': r'peso_extrapolation_vitca_1_test',
-        'device':"cuda:0",
-        'unlock_CPU': True,
-        # Optimizer
-        'lr_gamma': 0.9999**8,
-        'lr': 1e-3,
-        'betas': (0.9, 0.99),
-        # Training
-        'save_interval': 50,
-        'evaluate_interval': 2001,
-        'n_epoch': 2000,
-        # Model
-        'input_channels': 3,
-        'output_channels': 3,
-        'hidden_size': 64,
-        'train_model':1,
-        'channel_n': 16,
-        'kernel_size': [3, 3, 3, 3, 7],
-        # Data
-        'input_size': [(320, 320)],
+        'experiment.name': r'peso_extrapolation_vitca_3',
+        'experiment.description': "OctreeNCAExtrapolation",
+        'experiment.data_split': [0.7, 0, 0.3],
+        'experiment.save_interval': 50,
+        'experiment.device': "cuda:0",
+
+        'experiment.logging.also_eval_on_train': False,
+        'experiment.logging.track_gradient_norm': True,
+        'experiment.logging.evaluate_interval': 2001,
+
+        'experiment.dataset.img_path': r"/local/scratch/PESO/peso_training",
+        'experiment.dataset.label_path': r"/local/scratch/PESO/peso_training",
+        'experiment.dataset.keep_original_scale': True,
+        'experiment.dataset.rescale': True,
+        'experiment.dataset.input_size': [320, 320],
+        'experiment.dataset.img_level': 1,
         
-        'data_split': [0.7, 0, 0.3],
-        'keep_original_scale': True,
-        'rescale': True,
-        # Octree - specific
-        'octree_res_and_steps': [((320, 320), 20), ((160, 160), 20), ((80, 80), 20), ((40, 40), 20), ((20,20), 40)],
-        'separate_models': True,
-        # (160, 160, 12) <- (160, 160, 12) <- (80, 80, 12) <- (40, 40, 12) <- (20, 20, 12)
-        'patch_sizes':[None] * 5,
-        #'patch_sizes': [None] *5,
-        ### TEMP
-        'gradient_accumulation': False,
-        'train_quality_control': False, #or "NQM" or "MSE"
 
-        'compile': False,
-        'data_parallel': False,
-        'batch_size': 3,
-        'batch_duplication': 1,
-        'num_workers': 8,
-        'update_lr_per_epoch': True, # is false by default
-         # TODO batch duplication per level could be helpful as the levels with a patchsize are much more stochastic than others.
-         # Alternativly, train for more epochs and slower weight decay or iterate through all epochs (deterministically, no random sampling of patches)
-        'also_eval_on_train': False,
-        'num_steps_per_epoch': 200, #default is None
-        'train_data_augmentations': False,
-        'track_gradient_norm': True,
-        'batchgenerators': True, 
-        'loss_weighted_patching': False,# default false, train on the patch that has the highest loss in the previous epoch
-        # TODO 'lambda_dice_loss'
-        # TODO maybe diffulty weighted sampling
-        # TODO more data augmentations
-        # TODO different weight initializations
-        # TODO maybe mask CE loss on correctly segmented areas
-        # TODO try adam params (0.5, 0.5)
-        'difficulty_weighted_sampling': False, #default is False. Difficulty is evaluated at every 'evaluate_interval' epoch. Also, 'also_eval_on_train' _must_ be True
+        'experiment.task': "extrapolation",
+        'experiment.task.margin': 10, #remove 10 pixels from each border
 
-        #'optimizer': "AdamW",# default is "Adam"
-        #'sgd_momentum': 0.99,
-        #'sgd_nesterov': True,
 
-        #'scheduler': "CosineAnnealing",#default is exponential
-        'polynomial_scheduler_power': 1.8,
+        'performance.compile': False,
+        'performance.data_parallel': False,
+        'performance.num_workers': 8,
+        'performance.unlock_CPU': True,
 
-        'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
-        'always_eval_in_last_epochs': None, #default is None
 
-        'batchnorm_track_running_stats': False, #default is False
-
-        'apply_ema': True,
-        'ema_decay': 0.999,
-        'ema_update_per': "epoch",
-
-        'extrapolation_margin': 10, #remove 10 pixels from each border
-
-        #smaller initial learning rate
-        #other implementation
-        #larger patch size (maybe resize)
-
-        'trainer.optimizer': "AdamW",
+        'trainer.optimizer': "torch.optim.AdamW",
         'trainer.optimizer.lr': 1e-3,
-        'trainer.lr_scheduler': "CosineAnnealing",
+        'trainer.lr_scheduler': "torch.optim.lr_scheduler.CosineAnnealingLR",
         'trainer.lr_scheduler.T_max': 2000,
+        'trainer.update_lr_per_epoch': True,
         'trainer.losses': ["torch.nn.L1Loss"],
         'trainer.loss_weights': [1e2],
+        'trainer.normalize_gradients': "layerwise", # all, layerwise, none
 
+        'trainer.n_epochs': 2000,
+        'trainer.num_steps_per_epoch': 200,
+        'trainer.batch_size': 3,
+        'trainer.batch_duplication': 1,
+
+        'trainer.find_best_model_on': None,
+        'trainer.always_eval_in_last_epochs': None,
+
+        'trainer.ema': True,
+        'trainer.ema.decay': 0.999,
+        'trainer.ema.update_per': "epoch",
+
+        'trainer.datagen.batchgenerators': True,
+        'trainer.datagen.augmentations': True,
+        'trainer.datagen.difficulty_weighted_sampling': False,
+
+        'trainer.gradient_accumulation': False,
+        'trainer.train_quality_control': False, #or "NQM" or "MSE"
+
+
+
+        'model.channel_n': 16,
+        'model.fire_rate': 0.5,
+        'model.input_channels': 3,
+        'model.output_channels': 3,
+        'model.kernel_size': [3, 3, 3, 3, 3],
+        'model.hidden_size': 64,
+        'model.batchnorm_track_running_stats': False,
+
+        'model.train.patch_sizes': [None] * 5,
+        'model.train.loss_weighted_patching': False,
+
+        'model.octree.res_and_steps': [[[320, 320], 20], [[160, 160], 20], [[80, 80], 20], [[40, 40], 20], [[20,20], 40]],
+        'model.octree.separate_models': True,
         
         'model.vitca': True,
         'model.vitca.depth': 1,
@@ -117,9 +101,9 @@ study = Study(study_config)
 study.add_experiment(EXP_OctreeNCA2D_extrapolation().createExperiment(study_config, detail_config={}, 
                                                       dataset_class=Dataset_PESO, dataset_args={
                                                             'patches_path': r"/local/scratch/clmn1/data/PESO_patches/",
-                                                            'patch_size': study_config['input_size'][0],
-                                                            'path': study_config['img_path'],
-                                                            'img_level': 1
+                                                            'patch_size': study_config['experiment.dataset.input_size'],
+                                                            'path': study_config['experiment.dataset.img_path'],
+                                                            'img_level': study_config['experiment.dataset.img_level']
                                                       }))
 
 

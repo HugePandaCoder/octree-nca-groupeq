@@ -16,14 +16,7 @@ import matplotlib.pyplot as plt
 class OctreeNCA2DPatch2(torch.nn.Module):
     r"""Implementation of M3D-NCA
     """
-    def __init__(self, channel_n, fire_rate, device, steps=64, hidden_size=128, input_channels=1, output_channels=1, 
-                 scale_factor=None, levels=None, kernel_size=None,
-                 octree_res_and_steps: list=None, separate_models: bool=False,
-                 compile: bool=False,
-                 patch_sizes=None,
-                 loss_weighted_patching=False,
-                 track_running_stats: bool=False,
-                 config: dict=None):
+    def __init__(self, config: dict):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -35,23 +28,22 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         super(OctreeNCA2DPatch2, self).__init__()
 
         if config is not None:
-            channel_n = config['channel_n']
-            fire_rate = config['cell_fire_rate']
-            device = config['device']
-            steps = config['inference_steps']
-            hidden_size = config['hidden_size']
-            input_channels = config['input_channels']
-            output_channels = config['output_channels']
-            scale_factor = config['scale_factor']
-            levels = config['levels']
-            kernel_size = config['kernel_size']
-            octree_res_and_steps = config['octree_res_and_steps']
-            separate_models = config['separate_models']
-            compile = config.get('compile', False)
-            patch_sizes = config['patch_sizes']
-            loss_weighted_patching = config.get('loss_weighted_patching', False)
-            track_running_stats = config.get('track_running_stats', False)
+            channel_n = config['model.channel_n']
+            fire_rate = config['model.fire_rate']
+            hidden_size = config['model.hidden_size']
+            input_channels = config['model.input_channels']
+            output_channels = config['model.output_channels']
+            kernel_size = config['model.kernel_size']
+            track_running_stats = config.get('model.track_running_stats', False)
 
+            octree_res_and_steps = config['model.octree.res_and_steps']
+            separate_models = config['model.octree.separate_models']
+
+            device = config['experiment.device']
+            patch_sizes = config['model.train.patch_sizes']
+            loss_weighted_patching = config['model.train.loss_weighted_patching']
+
+            compile = config.get('performance.compile', False)
 
 
 
@@ -60,11 +52,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.output_channels = output_channels
         self.device = device
         self.fire_rate = fire_rate
-        self.steps = steps
-        self.scale_factor = scale_factor
-        self.levels = levels
-        self.fast_inf = False
-        self.margin = 20
 
         self.patch_sizes = patch_sizes
         self.loss_weighted_patching = loss_weighted_patching
@@ -98,7 +85,8 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                                            cell_hidden_chns=channel_n - input_channels - output_channels, 
                                            embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
                                            embed_dropout=config["model.vitca.embed_dropout"], 
-                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], device=config["device"]
+                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], 
+                                           device=config["experiment.device"]
                                            ))
                 self.backbone_ncas = nn.ModuleList(self.backbone_ncas)
             else:

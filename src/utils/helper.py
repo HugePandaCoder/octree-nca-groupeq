@@ -3,6 +3,7 @@ import pickle
 import json
 from re import A
 import cv2
+import einops
 import numpy as np
 import seaborn as sns
 import bz2
@@ -62,7 +63,7 @@ def dump_json_file(file, path):
             path: location to dump file to
     """
     with open(path, 'w') as output_file:
-        json.dump(file, output_file)
+        json.dump(file, output_file, indent=4)
 
 def load_json_file(path):
     r"""Load json file
@@ -124,38 +125,17 @@ def normalize_image(image):
 
     return normalized
 
-def merge_img_label_gt_simplified(img, label, gt, rgb=False):
-    if label.size()[-1] != 1:
-        label = label[..., 0]
-        gt = gt[..., 0]
-        warnings.warn("WARNING: Currently image output supports one label only")
+def merge_img_label_gt_simplified(img, label, gt, rgb=False, segmentation=True):
+    #2D: img: BHWC, label: BHWC, gt: BHWC
 
-    #print(rgb, img.shape, label.shape, gt.shape)
-
-    if rgb:
-        if len(img.shape) == 5:
-            img = img.permute(0,4,1,2,3) # BCHWD -> BDCHW
-            img = torchvision.transforms.functional.rgb_to_grayscale(img)
-            img = img.permute(0,2,3,4,1) # BDCHW -> BCHWD
-
-    #print(img.shape, label.shape, gt.shape)
-    img = torch.squeeze(img)
-    label = torch.squeeze(label)
-    gt = torch.squeeze(gt)
-
-    if len(img.shape) - len(label.shape) == 1:
-        img = torch.squeeze(img)[..., 0]
+    assert len(img.shape) == 4, "Image must be 4D"
 
     img, label, gt = normalize_image(img), normalize_image(label), normalize_image(gt)
 
-    merged_image = torch.cat((img, label, gt)).numpy()
-    # If 3D
-    if len(img.shape) == 3:
-       merged_image = merged_image[..., merged_image.shape[2]//2]
-    
-    #from matplotlib import pyplot as plt
-    #plt.imshow(merged_image)#outputs_fft[0, 0, :, :].real.detach().cpu().numpy())
-    #plt.show()
+
+    merged_image = torch.stack((img, label, gt), dim=0).numpy()
+
+    merged_image = einops.rearrange(merged_image, 'i 1 h w c -> h (i w) c')
 
     return merged_image
 

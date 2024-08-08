@@ -29,7 +29,7 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         if loss != 0:
             loss.backward()
 
-            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
+            if gradient_norm or self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 total_norm = 0
                 for p in self.model.parameters():
                     if p.grad is not None:
@@ -48,16 +48,16 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
 
-            if self.exp.get_from_config('track_gradient_norm'):
+            if self.exp.get_from_config('experiment.logging.track_gradient_norm'):
                 if not hasattr(self, 'epoch_grad_norm'):
                     self.epoch_grad_norm = []
                 self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
-            if not self.exp.get_from_config('update_lr_per_epoch'):
+            if not self.exp.get_from_config('trainer.update_lr_per_epoch'):
                 self.update_lr()
             
-            if self.exp.get_from_config('apply_ema') and self.exp.get_from_config('ema_update_per') == 'batch':
+            if self.exp.get_from_config('trainer.ema') and self.exp.get_from_config('trainer.ema.update_per') == 'batch':
                 self.ema.update()
 
         return loss_ret
@@ -69,21 +69,20 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         targets = inputs.clone()
         #2D: inputs: BCHW, targets: BCHW
 
-        margin = self.exp.get_from_config("extrapolation_margin")
+        margin = self.exp.get_from_config("experiment.task.margin")
         inputs[:, :, :margin, :] = 0
         inputs[:, :, -margin:, :] = 0
         inputs[:, :, :, :margin] = 0
         inputs[:, :, :, -margin:] = 0
 
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('batch_duplication'))
+        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         #2D: inputs: BHWC, targets: BHWC
         return inputs, targets
     
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, split='test'):
-        #assert isinstance(loss_f, torch.nn.MSELoss), "loss_f must be a torch.nn.Module"
         loss_f = torch.nn.MSELoss()
 
 
@@ -96,7 +95,7 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         patient_real_Img = None
         loss_log = {}
-        for m in range(self.output_channels):
+        for m in range(self.exp.config['model.output_channels']):
             loss_log[m] = {}
         if save_img == None:
             save_img = [1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
@@ -147,14 +146,8 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
 
             if i in save_img: 
                 self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                                merge_img_label_gt_simplified(patient_real_Img[0:1, ...], patient_3d_image[0:1, ...], patient_3d_label[0:1, ...], dataset.is_rgb),
-                                #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
+                                merge_img_label_gt_simplified(patient_real_Img, patient_3d_image, patient_3d_label, dataset.is_rgb, False),
                                 self.exp.currentStep)
-                #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)),
-                #                    merge_img_label_gt(np.squeeze(inputs.detach().cpu().numpy()), 
-                #                                        torch.sigmoid(outputs).detach().cpu().numpy(), 
-                #                                        targets.detach().cpu().numpy()), 
-                #                    self.exp.currentStep)
         # If 2D
         out = str(patient_id) + ", "
         for m in range(patient_3d_label.shape[-1]):

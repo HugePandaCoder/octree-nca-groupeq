@@ -38,13 +38,13 @@ class Agent_Diffusion_Chain(Agent_Diffusion):
 
         timesteps = 0
         if self.model[0].training:
-            timesteps = self.exp.get_from_config('timesteps_train')
+            timesteps = self.exp.config['timesteps_train']
             #random_start = random.randint(0, self.timesteps - timesteps)
 
             t = torch.randint(timesteps, self.timesteps, (data['image'].shape[0],), device=self.exp.get_from_config(tag="device")).long()
             
         else:
-            t = torch.zeros((data['image'].shape[0],), device=self.exp.get_from_config(tag="device")).long()
+            t = torch.zeros((data['image'].shape[0],), device=self.exp.config["device"]).long()
             timesteps = self.timesteps
 
 

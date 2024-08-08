@@ -170,52 +170,19 @@ class EXP_OctreeNCA(ExperimentWrapper):
 
 class EXP_OctreeNCA2D_extrapolation(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
-        config = {
-            'description': 'OctreeNCA',#OctreeNCA
-            'lr': 16e-4,
-            'batch_duplication': 1,
-            # Model
-            'channel_n': 32,        # Number of CA state channels
-            'inference_steps': 64,
-            'cell_fire_rate': 0.5,
-            'batch_size': 12,
-            'hidden_size': 128,
-            'train_model':1,
-            'betas': (0.9, 0.99),
-            # Data
-            'scale_factor': 4,
-            'kernel_size': 3,
-            'levels': 2,
-            'input_size': (320,320) ,
-        }
 
-        config = merge_config(merge_config(study_config, config), detail_config)
-        print("CONFIG", config)
+        config = study_config
         if dataset_class is None:
             assert False, "Dataset is None"
-        model = OctreeNCA2DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
-                                    output_channels=config['output_channels'], steps=config['inference_steps'],
-                        octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
-                        compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
-                        loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'],
-                        config=config)
-
-        #model = OctreeNCAV2(config['channel_n'], config['cell_fire_rate'], 
-        #                  device=config['device'], hidden_size=config['hidden_size'], 
-        #                  input_channels=config['input_channels'], output_channels=config['output_channels'], 
-        #                  steps=config['inference_steps'], octree_res_and_steps=config['octree_res_and_steps'], 
-        #                  separate_models=config['separate_models'], compile=config['compile'], kernel_size=config['kernel_size'])
+        model = OctreeNCA2DPatch2(config)
         
-        assert config['batchnorm_track_running_stats'] == False
-        assert config['gradient_accumulation'] == False
-        assert config['train_quality_control'] == False
+        assert config['model.batchnorm_track_running_stats'] == False
+        assert config['trainer.gradient_accumulation'] == False
+        assert config['trainer.train_quality_control'] == False
 
+        assert config['experiment.task'] == 'extrapolation'
         agent = MedNCAAgent_extrapolation(model)
-        #loss_function = torch.nn.MSELoss() 
         loss_function = WeightedLosses(config)
-        print(loss_function)
-        exit()
-
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
     

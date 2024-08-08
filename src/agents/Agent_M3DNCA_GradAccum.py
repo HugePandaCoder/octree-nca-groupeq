@@ -55,7 +55,7 @@ class M3DNCAAgentGradientAccum(M3DNCAAgent):
         inputs, targets = data['image'], data['label']
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
-        if self.exp.get_from_config('gradient_accumulation'):#TODO also split across batch duplication
+        if self.exp.get_from_config('trainer.gradient_accumulation'):#TODO also split across batch duplication
             loss_ret = {}
             for b in range(inputs.shape[0]):
                 loss_ret_temp = self.compute_gradients(inputs[b:b+1], targets[b:b+1], loss_f, 1/inputs.shape[0])
@@ -87,7 +87,7 @@ class M3DNCAAgentGradientAccum(M3DNCAAgent):
 
 
         self.optimizer.step()
-        if not self.exp.get_from_config('update_lr_per_epoch'):
+        if not self.exp.get_from_config('trainer.update_lr_per_epoch'):
             self.update_lr()
         return loss_ret
     

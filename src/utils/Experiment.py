@@ -2,6 +2,7 @@
 #if TYPE_CHECKING:
 #    from src.agents.Agent import BaseAgent
 
+import json
 import os
 from filelock import Timeout
 import torch
@@ -37,9 +38,8 @@ class Experiment():
         if isinstance(config, list):
             config = config[0]
 
-        self.projectConfig = config
+        self.config = config
         self.add_required_to_config()
-        self.config = self.projectConfig
         self.dataset_class = dataset_class
         self.dataset_args = dataset_args
         self.model = model
@@ -47,7 +47,7 @@ class Experiment():
         self.storage = {}
         self.model_state = "train"
         self.general_preload()
-        if(os.path.isdir(os.path.join(self.config['model_path'], 'models'))):
+        if(os.path.isdir(os.path.join(self.config['experiment.model_path'], 'models'))):
             self.reload()
         else:
             self.setup()
@@ -57,6 +57,9 @@ class Experiment():
 
         self.general_postload()
 
+        print("\n-------- Experiment Setup --------")
+        print(json.dumps(self.config, indent=4))
+        print("-------- Experiment Setup --------\n")
 
 
         #self.initializeFID()
@@ -66,32 +69,15 @@ class Experiment():
     def add_required_to_config(self) -> None:
         r"""Fills config with basic setup if not defined otherwise
         """
-        if 'Persistence' not in self.projectConfig:
-            self.projectConfig['Persistence'] = False
-        if 'batch_duplication' not in self.projectConfig:
-            self.projectConfig['batch_duplication'] = 1
-        if 'keep_original_scale' not in self.projectConfig:
-            self.projectConfig['keep_original_scale'] = False
-        if 'rescale' not in self.projectConfig:
-            self.projectConfig['rescale'] = True
-        if 'channel_n' not in self.projectConfig:
-            self.projectConfig['channel_n'] = 16
-        if 'cell_fire_rate' not in self.projectConfig:
-            self.projectConfig['cell_fire_rate'] = 0.5
-        if 'output_channels' not in self.projectConfig:
-            self.projectConfig['output_channels'] = 1
-        if 'description' not in self.projectConfig:
-            self.projectConfig['description'] = "None"
-
         # Basic Configs
-        if 'model_path' not in self.projectConfig:
-            self.projectConfig['model_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig['name'] + "_" + self.projectConfig['description'])
-        if 'generate_path' not in self.projectConfig:
-            self.projectConfig['generate_path'] = os.path.join(pc.STUDY_PATH, 'Experiments', self.projectConfig['name'], 'Generated')
+        if 'experiment.model_path' not in self.config:
+            self.config['experiment.model_path'] = os.path.join(pc.STUDY_PATH, 
+                                                                       'Experiments', self.config['experiment.name'] + "_" + 
+                                                                       self.config['experiment.description'])
         # Git hash
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        self.projectConfig['git_hash'] = sha
+        self.config['experiment.git_hash'] = sha
         
     def set_loss_function(self, loss_function) -> None:
         self.loss_function = loss_function
@@ -100,23 +86,25 @@ class Experiment():
         r"""Initial experiment setup when first started
         """
         # Create dirs
-        os.makedirs(self.config['model_path'], exist_ok=True)
-        os.makedirs(os.path.join(self.config['model_path'], 'models'), exist_ok=True)
-        #os.makedirs(os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))), exist_ok=True)
+        os.makedirs(self.config['experiment.model_path'], exist_ok=True)
+        os.makedirs(os.path.join(self.config['experiment.model_path'], 'models'), exist_ok=True)
         # Create Run
-        self.run = Run(experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
-        self.run.description = self.projectConfig['description']
-        self.projectConfig['hash'] = self.run.hash
+        self.run = Run(experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+        self.run.description = self.config['experiment.description']
+        self.config['experiment.run_hash'] = self.run.hash
         self.run['hparams'] = self.config
 
         # Create basic configuration
         self.data_split = self.new_datasplit()
         self.set_model_state("train")
-        dump_pickle_file(self.data_split, os.path.join(self.config['model_path'], 'data_split.dt'))
-        dump_json_file(self.projectConfig, os.path.join(self.config['model_path'], 'config.dt'))
+        dump_pickle_file(self.data_split, os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
+        dump_json_file(self.config, os.path.join(self.config['experiment.model_path'], 'config.json'))
 
     def new_datasplit(self) -> 'DataSplit':
-        return DataSplit(self.config['img_path'], self.config['label_path'], data_split = self.config['data_split'], dataset = self.dataset_class(**self.dataset_args))
+        return DataSplit(self.config['experiment.dataset.img_path'], 
+                         self.config['experiment.dataset.label_path'], 
+                         data_split = self.config['experiment.data_split'], 
+                         dataset = self.dataset_class(**self.dataset_args))
 
     def temporarly_overwrite_config(self, config: dict):
         r"""This function is useful for evaluation purposes where you want to change the config, e.g. data paths or similar.
@@ -131,36 +119,40 @@ class Experiment():
     def get_max_steps(self) -> int:
         r"""Get max defined training steps of experiment
         """
-        return self.projectConfig['n_epoch']
+        return self.config['trainer.n_epochs']
 
     def reload(self) -> None:
         r"""Reload old experiment to continue training
             TODO: Add functionality to load any previous saved step
         """
-        # TODO: Proper reload
-        print(os.path.join(self.config['model_path'], 'data_split.dt'))
 
-        self.data_split = load_pickle_file(os.path.join(self.config['model_path'], 'data_split.dt'))
-        self.projectConfig = load_json_file(os.path.join(self.config['model_path'], 'config.dt'))
+        self.data_split = load_pickle_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
+        loaded_config = load_json_file(os.path.join(self.config['experiment.model_path'], 'config.json'))
+
+        for k, v in loaded_config.items():
+            if k == "experiment.run_hash":
+                continue
+            else:
+                assert k in self.config, f"Configurations do not match on key {k}. Check if you are loading the correct experiment."
+                assert self.config[k] == v, f"Configurations do not match on key {k}. Check if you are loading the correct experiment."
+
+        self.config = loaded_config
 
         self.set_model_state("train")
 
-        # Find most recent Experiment with name and reload
-        print(self.projectConfig['hash'])
-
         try:
-            self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+            self.run = Run(run_hash=self.config['experiment.run_hash'], 
+                           experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
         except Timeout as e:
             print("Timeout Error: ", e)
             in_key = input("Do you want to unlock manually? [y, N] ")
             if in_key.lower() == 'y':
-                self.run = Run(run_hash=self.projectConfig['hash'], experiment=self.config['name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'),
+                self.run = Run(run_hash=self.config['experiment.run_hash'], 
+                               experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'),
                                force_resume=True)
             else:
                 raise e
             
-
-        self.config = self.projectConfig
 
         self.load_model()
     
@@ -177,8 +169,7 @@ class Experiment():
             #self.agent.optimizer = opt_loc
             #self.agent.scheduler = sch_loc
         else:
-            model_path = os.path.join(self.config['model_path'], 'models', 'epoch_' + str(self.currentStep))
-        print(model_path)
+            model_path = os.path.join(self.config['experiment.model_path'], 'models', 'epoch_' + str(self.currentStep))
 
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
@@ -188,25 +179,20 @@ class Experiment():
 
     def set_size(self) -> None:
         for dataset in self.datasets.values():
-            if isinstance(self.config['input_size'][0], (tuple, list)):
-                dataset.set_size(self.config['input_size'][-1])
+            if isinstance(self.config['experiment.dataset.input_size'][0], (tuple, list)):
+                dataset.set_size(self.config['experiment.dataset.input_size'][-1])
             else:
-                print(self.config['input_size'])
-                dataset.set_size(self.config['input_size'])
+                dataset.set_size(self.config['experiment.dataset.input_size'])
 
     def general_preload(self) -> None:
         r"""General experiment configurations needed after setup or loading
         """
         self.currentStep = self.current_step()
-        #self.writer = SummaryWriter(log_dir=os.path.join(self.get_from_config('model_path'), 'tensorboard', os.path.basename(self.get_from_config('model_path'))))
-        #self.set_current_config()
         self.agent.set_exp(self)
         self.fid = None
         self.kid = None
-        #if self.currentStep == 0:
-        #    self.write_text('config', str(self.projectConfig), 0)
 
-        if self.get_from_config('unlock_CPU') is None or self.get_from_config('unlock_CPU') is False:
+        if self.get_from_config('performance.unlock_CPU') is None or self.get_from_config('performance.unlock_CPU') is False:
             print('In basic configuration threads are limited to 1 to limit CPU usage on shared Server. Add \'unlock_CPU:True\' to config to disable that.')
             torch.set_num_threads(4)
 
@@ -219,47 +205,44 @@ class Experiment():
             if len(self.data_split.get_images(split)) > 0:
                 self.datasets[split] = self.dataset_class(**self.dataset_args)
                 self.datasets[split].setState(split)
-                self.datasets[split].setPaths(self.config['img_path'], self.data_split.get_images(split), 
-                                              self.config['label_path'], self.data_split.get_labels(split))
+                self.datasets[split].setPaths(self.config['experiment.dataset.img_path'], self.data_split.get_images(split), 
+                                              self.config['experiment.dataset.label_path'], self.data_split.get_labels(split))
 
                 self.datasets[split].set_experiment(self)
         
 
-        assert self.get_from_config('difficulty_weighted_sampling') is False, "not implemented yet"
+        assert self.get_from_config('trainer.datagen.difficulty_weighted_sampling') is False, "not implemented yet"
         self.data_loaders = {}
         assert len(self.data_split.get_images('train')) > 0, "No training data available"
-        if self.config['batchgenerators']:
-            if self.get_from_config('num_steps_per_epoch') is not None:
-                data_generator = StepsPerEpochGenerator(self.datasets["train"], self.config['num_steps_per_epoch'], num_threads_in_mt=self.config['num_workers'], batch_size=self.config['batch_size'])
+        if self.config['trainer.datagen.batchgenerators']:
+            if self.get_from_config('trainer.num_steps_per_epoch') is not None:
+                data_generator = StepsPerEpochGenerator(self.datasets["train"], self.config['trainer.num_steps_per_epoch'], 
+                                                        num_threads_in_mt=self.config['performance.num_workers'], 
+                                                        batch_size=self.config['trainer.batch_size'])
             else:
-                data_generator = DatasetPerEpochGenerator(self.datasets["train"], num_threads_in_mt=self.config['num_workers'], batch_size=self.config['batch_size']) 
+                data_generator = DatasetPerEpochGenerator(self.datasets["train"], 
+                                                          num_threads_in_mt=self.config['performance.num_workers'], 
+                                                          batch_size=self.config['batch_size']) 
 
-            if self.get_from_config('train_data_augmentations'):
+            if self.get_from_config('trainer.datagen.augmentations'):
                 transforms = get_transform_arr()
             else:
                 transforms = []
 
             transforms.append(NumpyToTensor(keys=['image', 'label']))
 
-            assert self.config['num_workers'] > 0, "Batchgenerators need more than 0 workers"
-            self.data_loaders["train"] = MyMultiThreadedAugmenter(data_generator, Compose(transforms), num_processes=self.config['num_workers'])
+            assert self.config['performance.num_workers'] > 0, "Batchgenerators need more than 0 workers"
+            self.data_loaders["train"] = MyMultiThreadedAugmenter(data_generator, 
+                                                                  Compose(transforms), 
+                                                                  num_processes=self.config['performance.num_workers'])
 
 
         else:
-            assert self.get_from_config('train_data_augmentations') is False, "not implemented yet"
-            assert self.get_from_config('num_steps_per_epoch') is None, "not implemented yet"
-            self.data_loaders["train"] = torch.utils.data.DataLoader(self.datasets["train"], shuffle=True, batch_size=self.config['batch_size'],
-                                                        num_workers=self.config['num_workers'])
-
-
-        #for split in ['val', 'test']:
-        #    if len(self.data_split.get_images(split)) > 0:
-        #        if self.config['batchgenerators']:
-        #            assert False, "Batchgenerators not implemented"
-        #            self.data_loaders[split] = iter(self.datasets[split])
-        #        else:
-        #            self.data_loaders[split] = torch.utils.data.DataLoader(self.datasets[split], shuffle=False, batch_size=1,
-        #                                                num_workers=0)
+            assert self.get_from_config('trainer.datagen.augmentations') is False, "not implemented yet"
+            assert self.get_from_config('trainer.num_steps_per_epoch') is None, "not implemented yet"
+            self.data_loaders["train"] = torch.utils.data.DataLoader(self.datasets["train"], shuffle=True, 
+                                                                     batch_size=self.config['trainer.batch_size'],
+                                                        num_workers=self.config['performance.num_workers'])
         
         self.set_size()
 
@@ -353,7 +336,7 @@ class Experiment():
     def current_step(self, model_path: str = None) -> int:
         r"""Find out the initial epoch by checking the saved models"""
         if model_path is None:
-            model_path = os.path.join(self.config['model_path'], 'models')
+            model_path = os.path.join(self.config['experiment.model_path'], 'models')
         if os.path.exists(model_path):
             dirs = [d for d in os.listdir(model_path) if os.path.isdir(os.path.join(model_path, d))]
             if dirs:
@@ -377,9 +360,11 @@ class Experiment():
             #Args
                 tag (String): Key of requested value
         """
+        return self.config[tag]
         if tag in self.config.keys():
             return self.config[tag]
         else:
+            input("Key not found in config: " + tag)
             return None
 
     @DeprecationWarning

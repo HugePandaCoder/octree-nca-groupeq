@@ -13,6 +13,8 @@ from matplotlib import figure
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.utils.vitca_utils import norm_grad
+
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
     
@@ -28,29 +30,26 @@ class BaseAgent():
         self.initialize()
 
     def create_optimizer(self, model: torch.nn.Module) -> torch.optim:
-        if self.exp.get_from_config('optimizer') == "Adam":
-            return optim.Adam(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'))
-        elif self.exp.get_from_config('optimizer') == "AdamW":
-            return optim.AdamW(model.parameters(), lr=self.exp.get_from_config('lr'), betas=self.exp.get_from_config('betas'),
-                                                weight_decay=0)
-        elif self.exp.get_from_config('optimizer') == "SGD":
-            return optim.SGD(model.parameters(), lr=self.exp.get_from_config('lr'), momentum=self.exp.get_from_config('sgd_momentum'),
-                                            nesterov=self.exp.get_from_config('sgd_nesterov'))
-        else:
-            assert False, f"Optimizer {self.exp.get_from_config('optimizer')} not implemented"
+        r"""Create optimizer for model
+            #Args
+                model (torch.nn.Module): model to be optimized
+            #Returns:
+                optimizer (torch.optim): optimizer
+        """
+        optimizer_params = {k.replace("trainer.optimizer.", ""): v for k, v in self.exp.config.items() if k.startswith('trainer.optimizer.')}
+        optimizer = eval(self.exp.get_from_config('trainer.optimizer'))(model.parameters(), **optimizer_params)
+        return optimizer
 
     def create_scheduler(self, optimizer: torch.optim) -> torch.optim.lr_scheduler:
-        if self.exp.get_from_config('scheduler') == "exponential":
-            return optim.lr_scheduler.ExponentialLR(optimizer, self.exp.get_from_config('lr_gamma'))
-        elif self.exp.get_from_config('scheduler') == "polynomial":
-            return optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.exp.get_from_config('n_epoch'), 
-                                                   power=self.exp.get_from_config('polynomial_scheduler_power'))
+        scheduler_params = {k.replace("trainer.lr_scheduler.", ""): v for k, v in self.exp.config.items() if k.startswith('trainer.lr_scheduler.')}
+        scheduler = eval(self.exp.get_from_config('trainer.lr_scheduler'))(optimizer, **scheduler_params)
+        return scheduler
 
     def initialize(self): 
         r"""Initialize agent with optimizers and schedulers
         """
-        self.device = torch.device(self.exp.get_from_config('device'))
-        self.batch_size = self.exp.get_from_config('batch_size')
+        self.device = torch.device(self.exp.get_from_config('experiment.device'))
+        self.batch_size = self.exp.get_from_config('trainer.batch_size')
         # If stacked NCAs
         if isinstance(self.model, list):
             self.optimizer = []
@@ -64,15 +63,15 @@ class BaseAgent():
             
             self.scheduler = self.create_scheduler(self.optimizer)
 
-        if self.exp.get_from_config('find_best_model_on') is not None:
+        if self.exp.get_from_config('trainer.find_best_model_on') is not None:
             self.best_model = {
                 'epoch': 0,
                 'dice': 0
             }
 
-        if self.exp.get_from_config('apply_ema'):
-            self.ema: EMA = EMA(self.model, self.exp.get_from_config('ema_decay'))
-            assert self.exp.get_from_config('ema_update_per') in ['batch', 'epoch']
+        if self.exp.config['trainer.ema']:
+            self.ema: EMA = EMA(self.model, self.exp.config['trainer.ema.decay'])
+            assert self.exp.config['trainer.ema.update_per'] in ['batch', 'epoch']
 
     def printIntermediateResults(self, loss: torch.Tensor, epoch: int) -> None:
         r"""Prints intermediate results of training and adds it to tensorboard
@@ -109,7 +108,7 @@ class BaseAgent():
         """
         return
 
-    def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
+    def batch_step(self, data: tuple, loss_f: torch.nn.Module) -> dict:
         r"""Execute a single batch training step
             #Args
                 data (tensor, tensor): inputs, targets
@@ -141,7 +140,7 @@ class BaseAgent():
         if loss != 0:
             loss.backward()
 
-            if gradient_norm or self.exp.get_from_config('track_gradient_norm'):
+            if self.exp.config['trainer.normalize_gradients'] == "all" or self.exp.config['experiment.logging.track_gradient_norm']:
                 total_norm = 0
                 for p in self.model.parameters():
                     if p.grad is not None:
@@ -149,7 +148,7 @@ class BaseAgent():
                         total_norm += param_norm.item() ** 2
                 total_norm = total_norm ** 0.5
 
-            if gradient_norm:
+            if self.exp.config['trainer.normalize_gradients'] == "all":
                 max_norm = 1.0
                 # Gradient normalization
 
@@ -159,24 +158,27 @@ class BaseAgent():
                     for p in self.model.parameters():
                         if p.grad is not None:
                             p.grad.data.mul_(scale_factor)
+            elif self.exp.config['trainer.normalize_gradients'] == "layerwise":
+                with torch.no_grad():
+                    norm_grad(self.model)
 
-            if self.exp.get_from_config('track_gradient_norm'):
+            if self.exp.config['experiment.logging.track_gradient_norm']:
                 if not hasattr(self, 'epoch_grad_norm'):
                     self.epoch_grad_norm = []
                 self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
-            if not self.exp.get_from_config('update_lr_per_epoch'):
+            if not self.exp.config['update_lr_per_epoch']:
                 self.update_lr()
             
-            if self.exp.get_from_config('apply_ema') and self.exp.get_from_config('ema_update_per') == 'batch':
+            if self.exp.config['apply_ema'] and self.exp.config['ema_update_per'] == 'batch':
                 self.ema.update()
 
         return loss_ret
 
     def update_lr(self) -> None:
         for i, lr in enumerate(self.scheduler.get_last_lr()):
-            self.exp.write_scalar(f'lr/{i}', lr, None)
+            self.exp.write_scalar(f'lr/{i}', lr, self.scheduler.last_epoch)
         self.scheduler.step()
         
 
@@ -213,15 +215,15 @@ class BaseAgent():
                 dataset (Dataset)
                 epoch (int)
         """
-        if self.exp.get_from_config('apply_ema'):
+        if self.exp.get_from_config('trainer.ema'):
             self.ema.apply_shadow()
         diceLoss = DiceLoss(useSigmoid=True)
         loss_log = self.test(diceLoss, split=split, tag=f'{split}/img/')
-        if self.exp.get_from_config('apply_ema'):
+        if self.exp.get_from_config('trainer.ema'):
             self.ema.restore_original()
 
         
-        if self.exp.get_from_config('difficulty_weighted_sampling'):
+        if self.exp.get_from_config('trainer.datagen.difficulty_weighted_sampling'):
             assert loss_log is not None
             loss_sum_per_patient = {}
             for mask in loss_log.keys():
@@ -245,7 +247,7 @@ class BaseAgent():
                     self.exp.write_histogram(f'Dice/{split}/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
 
-        if self.exp.get_from_config('find_best_model_on') == split:
+        if self.exp.get_from_config('trainer.find_best_model_on') == split:
             assert loss_log is not None
             dices = [sum(loss_log[key].values())/len(loss_log[key]) for key in loss_log.keys()]
             dice = sum(dices) / len(dices)
@@ -266,11 +268,11 @@ class BaseAgent():
             #Returns:
                 return (float): Average Dice score of test set. """
         
-        if self.exp.get_from_config("find_best_model_on") is not None:
-            find_best_model_on = self.exp.get_from_config("find_best_model_on")
+        if self.exp.get_from_config("trainer.find_best_model_on") is not None:
+            find_best_model_on = self.exp.get_from_config("trainer.find_best_model_on")
             best_model_epoch = self.best_model['epoch']
             print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
-            self.load_state(os.path.join(self.exp.config['model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
+            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
 
         diceLoss = DiceLoss(useSigmoid=useSigmoid)
         loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble)
@@ -293,10 +295,10 @@ class BaseAgent():
         torch.save(self.model.state_dict(), os.path.join(model_path, 'model.pth'))
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
-        if self.exp.get_from_config('find_best_model_on') is not None:
-            dump_json_file(self.best_model, os.path.join(self.exp.config['model_path'], 'best_model.json'))
+        if self.exp.get_from_config('trainer.find_best_model_on') is not None:
+            dump_json_file(self.best_model, os.path.join(self.exp.config['experiment.model_path'], 'best_model.json'))
         
-        if self.exp.get_from_config('apply_ema'):
+        if self.exp.get_from_config('trainer.ema'):
             torch.save(self.ema.shadow, os.path.join(model_path, 'ema.pth'))
 
     def load_state(self, model_path: str, pretrained=False) -> None:
@@ -323,7 +325,7 @@ class BaseAgent():
             print("Epoch: " + str(epoch))
             self.exp.set_model_state('train')
             loss_log = {}
-            for m in range(self.output_channels):
+            for m in range(self.exp.get_from_config('model.output_channels')):
                 loss_log[m] = []
             self.initialize_epoch()
             print('Dataset size: ' + str(len(dataloader)))
@@ -335,32 +337,32 @@ class BaseAgent():
                     else:
                         loss_log[key].append(loss_item[key].detach())
 
-            if self.exp.get_from_config('apply_ema') and self.exp.get_from_config('ema_update_per') == 'epoch':
+            if self.exp.get_from_config('trainer.ema') and self.exp.get_from_config('trainer.ema.update_per') == 'epoch':
                 self.ema.update()
 
             self.maybe_track_grad_norm()
-            if self.exp.get_from_config('update_lr_per_epoch'):
+            if self.exp.get_from_config('trainer.update_lr_per_epoch'):
                 self.update_lr()
             self.intermediate_results(epoch, loss_log)
             do_eval = False
-            if self.exp.get_from_config('always_eval_in_last_epochs') is not None:
-                if epoch > self.exp.get_max_steps() - self.exp.get_from_config('always_eval_in_last_epochs'):
+            if self.exp.get_from_config('trainer.always_eval_in_last_epochs') is not None:
+                if epoch > self.exp.get_max_steps() - self.exp.get_from_config('trainer.always_eval_in_last_epochs'):
                     do_eval = True 
-            if epoch % self.exp.get_from_config('evaluate_interval') == 0 or do_eval:
+            if epoch % self.exp.get_from_config('experiment.logging.evaluate_interval') == 0 or do_eval:
                 print("Evaluate model")
                 self.intermediate_evaluation(epoch, split='test')
-                if self.exp.get_from_config('also_eval_on_train'):
+                if self.exp.get_from_config('experiment.logging.also_eval_on_train'):
                     self.intermediate_evaluation(epoch, split='train')
             #if epoch % self.exp.get_from_config('ood_interval') == 0:
             #    print("Evaluate model in OOD cases")
             #    self.ood_evaluation(epoch=epoch)
             save_best_model = False
-            if self.exp.get_from_config('find_best_model_on') is not None:
+            if self.exp.get_from_config('trainer.find_best_model_on') is not None:
                 if self.best_model['epoch'] == epoch:
                     save_best_model = True
-            if epoch % self.exp.get_from_config('save_interval') == 0 or save_best_model:
+            if epoch % self.exp.get_from_config('experiment.save_interval') == 0 or save_best_model:
                 print("Model saved")
-                self.save_state(os.path.join(self.exp.get_from_config('model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
+                self.save_state(os.path.join(self.exp.get_from_config('experiment.model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
             self.conclude_epoch()
             self.exp.increase_epoch()
 
@@ -372,7 +374,7 @@ class BaseAgent():
         return image
 
     def maybe_track_grad_norm(self) -> None:
-        if not self.exp.get_from_config('track_gradient_norm'):
+        if not self.exp.get_from_config('experiment.logging.track_gradient_norm'):
             return
         self.exp.write_scalar('Model/grad_norm', np.mean(self.epoch_grad_norm), self.exp.currentStep)
         self.epoch_grad_norm = []

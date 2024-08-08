@@ -55,7 +55,7 @@ agent = Agent_NCA_gen(ca)
 exp = Experiment(config, dataset, ca, agent)
 dataset.set_experiment(exp)
 exp.set_model_state('train')
-data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.get_from_config('batch_size'))
+data_loader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=exp.config['batch_size'])
 loss_function = DiceFocalLoss() 
 
 #agent.train(data_loader, loss_function)
