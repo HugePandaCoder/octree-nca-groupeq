@@ -33,7 +33,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         input_channels = config['model.input_channels']
         output_channels = config['model.output_channels']
         kernel_size = config['model.kernel_size']
-        track_running_stats = config['model.track_running_stats']
+        track_running_stats = config['model.batchnorm_track_running_stats']
 
         octree_res_and_steps = config['model.octree.res_and_steps']
         separate_models = config['model.octree.separate_models']
@@ -74,7 +74,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
 
 
         if separate_models:
-            if config.get("model.vitca", False):
+            if config["model.vitca"]:
                 self.backbone_ncas = []
                 for l in range(len(octree_res_and_steps)):
                     conv_size = kernel_size[l]
@@ -97,11 +97,11 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                 for i, model in enumerate(self.backbone_ncas):
                     self.backbone_ncas[i] = torch.compile(model)
         else:
-            if config.get("model.vitca", False):
+            if config["model.vitca"]:
                 conv_size = config["kernel_size"]
                 self.backbone_nca = ViTCA(patch_size=1, depth=config["model.vitca.depth"], heads=config["model.vitca.heads"],
                                            mlp_dim=config["model.vitca.mlp_dim"], dropout=config["model.vitca.dropout"], 
-                                           cell_in_chns=input_channels, cell_out_chns=output_channels, cell_hidden_chns=channel_n,
+                                           cell_in_chns=input_channels, cell_out_chns=output_channels, cell_hidden_chns=channel_n - input_channels - output_channels,
                                            embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
                                            embed_dropout=config["model.vitca.embed_dropout"], 
                                            localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], device=config["device"]

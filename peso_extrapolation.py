@@ -11,7 +11,7 @@ ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-        'experiment.name': r'peso_extrapolation_vitca_3',
+        'experiment.name': r'peso_extrapolation_vitca_1_test',
         'experiment.description': "OctreeNCAExtrapolation",
         'experiment.data_split': [0.7, 0, 0.3],
         'experiment.save_interval': 50,

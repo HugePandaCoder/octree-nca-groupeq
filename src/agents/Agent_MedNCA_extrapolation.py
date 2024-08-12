@@ -7,7 +7,7 @@ from src.utils.helper import merge_img_label_gt_simplified
 class MedNCAAgent_extrapolation(MedNCAAgent):
     def initialize(self):
         super().initialize()
-        assert self.config['task'] == 'extrapolation', "Task must be extrapolation"
+        assert self.exp.config['experiment.task'] == 'extrapolation', "Task must be extrapolation"
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step

@@ -308,10 +308,10 @@ class BaseAgent():
         if not pretrained:
             self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
             self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
-            if self.exp.get_from_config('find_best_model_on') is not None:
-                self.best_model = load_json_file(os.path.join(self.exp.config['model_path'], 'best_model.json'))
+            if self.exp.get_from_config('trainer.find_best_model_on') is not None:
+                self.best_model = load_json_file(os.path.join(self.exp.config['experiment.model_path'], 'best_model.json'))
         
-        if self.exp.get_from_config('apply_ema'):
+        if self.exp.get_from_config('trainer.ema'):
             loaded_shadow = torch.load(os.path.join(model_path, 'ema.pth'))
             assert self.ema.shadow.keys() == loaded_shadow.keys(), "Loaded EMA shadow does not match model parameters!"
             self.ema.shadow = loaded_shadow

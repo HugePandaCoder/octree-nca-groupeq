@@ -129,12 +129,30 @@ class Experiment():
         self.data_split = load_pickle_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
         loaded_config = load_json_file(os.path.join(self.config['experiment.model_path'], 'config.json'))
 
+        config_keys = list(self.config.keys())
+        print(config_keys)
+
+
         for k, v in loaded_config.items():
             if k == "experiment.run_hash":
-                continue
+                pass
             else:
-                assert k in self.config, f"Configurations do not match on key {k}. Check if you are loading the correct experiment."
-                assert self.config[k] == v, f"Configurations do not match on key {k}. Check if you are loading the correct experiment."
+                config_keys.remove(k)
+                valid = True
+                valid = valid and k in self.config
+                valid = valid and self.config[k] == v
+                if not valid:
+                    print(f"Configurations do not match on key '{k}'. Check if you are loading the correct experiment.")
+                    in_key = input("Do you want to continue with the loaded configuration? [y, N] ")
+                    if in_key.lower() != 'y':
+                        raise Exception(f"Configurations do not match on key '{k}'. Check if you are loading the correct experiment.")
+
+        if len(config_keys) > 0:
+            print(f"Loaded configuration is missing keys: '{config_keys}'. Check if you are loading the correct experiment.")
+            in_key = input("Do you want to continue with the loaded configuration? [y, N] ")
+            if in_key.lower() != 'y':
+                raise Exception(f"Loaded configuration is missing keys: {config_keys}. Check if you are loading the correct experiment.")
+
 
         self.config = loaded_config
 

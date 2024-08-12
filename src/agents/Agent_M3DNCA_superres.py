@@ -6,8 +6,10 @@ from src.agents.Agent_UNet import UNetAgent
 import torch.nn.functional as F
 import random
 from src.agents.Agent_MedSeg3D import Agent_MedSeg3D
+from src.models.Model_OctreeNCA_3d_patching2 import OctreeNCA3DPatch2
 from src.utils.MyDataParallel import MyDataParallel
 from src.utils.helper import merge_img_label_gt_simplified
+from src.utils.patchwise_inference import patchwise_inference3d
 #import matplotlib
 #matplotlib.use('Agg')
 
@@ -47,7 +49,14 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             plt.imshow(targets[0, :, :, 12, 0].detach().cpu().numpy())
             print(F.mse_loss(inputs, targets))
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+
+        if self.exp.get_from_config('model.eval.patch_wise') and self.exp.model_state == 'test':
+            inputs = patchwise_inference3d(inputs, self.model, self.exp.get_from_config('model.train.patch_sizes'))
+            inputs = inputs[:, :, :, :,self.exp.get_from_config('model.input_channels'):self.exp.get_from_config('model.input_channels')+self.exp.get_from_config('model.output_channels')]
+
+
+        else:
+            inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         
         if visualize:
             fig.add_subplot(1, 3, 3)

@@ -9,6 +9,8 @@ import math
 import torch.nn.functional as F
 import subprocess as sp
 
+from src.models.Model_VitCA3D import ViTCA3D
+
 class OctreeNCA3D(nn.Module):
     r"""Implementation of M3D-NCA
     """
@@ -53,16 +55,42 @@ class OctreeNCA3D(nn.Module):
 
 
         if separate_models:
-            self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, 
-                                                           hidden_size=config['model.hidden_size'], input_channels=self.input_channels, kernel_size=kernel_size[l],
-                                                           track_running_stats=False, inplace_relu=config['performance.inplace_operations']) 
-                                                           for l in range(len(octree_res_and_steps))])
+            if config["model.vitca"]:
+                self.backbone_ncas = []
+                for l in range(len(octree_res_and_steps)):
+                    conv_size = kernel_size[l]
+                    self.backbone_ncas.append(ViTCA3D(patch_size=1, depth=config["model.vitca.depth"], heads=config["model.vitca.heads"],
+                                           mlp_dim=config["model.vitca.mlp_dim"], dropout=config["model.vitca.dropout"], 
+                                           cell_in_chns=self.input_channels, cell_out_chns=self.output_channels, 
+                                           cell_hidden_chns=self.channel_n - self.input_channels - self.output_channels, 
+                                           embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
+                                           embed_dropout=config["model.vitca.embed_dropout"], 
+                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size, conv_size], 
+                                           device=config["experiment.device"]
+                                           ))
+                self.backbone_ncas = nn.ModuleList(self.backbone_ncas)
+            else:
+                self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, 
+                                                            hidden_size=config['model.hidden_size'], input_channels=self.input_channels, kernel_size=kernel_size[l],
+                                                            track_running_stats=False, inplace_relu=config['performance.inplace_operations']) 
+                                                            for l in range(len(octree_res_and_steps))])
             if config['performance.compile']:
                 for i, model in enumerate(self.backbone_ncas):
                     self.backbone_ncas[i] = torch.compile(model)
         else:
-            self.backbone_nca = BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, hidden_size=config['model.hidden_size'], 
-                                           input_channels=self.input_channels, kernel_size=kernel_size, inplace_relu=config['performance.inplace_operations'])
+            if config["model.vitca"]:
+                conv_size = config["kernel_size"]
+                self.backbone_nca = ViTCA3D(patch_size=1, depth=config["model.vitca.depth"], heads=config["model.vitca.heads"],
+                                           mlp_dim=config["model.vitca.mlp_dim"], dropout=config["model.vitca.dropout"], 
+                                           cell_in_chns=self.input_channels, cell_out_chns=self.output_channels, 
+                                           cell_hidden_chns=self.channel_n - self.input_channels - self.output_channels,
+                                           embed_cells=config["model.vitca.embed_cells"], embed_dim=config["model.vitca.embed_dim"],
+                                           embed_dropout=config["model.vitca.embed_dropout"], 
+                                           localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size, conv_size], device=config["device"]
+                                           )
+            else:
+                self.backbone_nca = BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, hidden_size=config['model.hidden_size'], 
+                                            input_channels=self.input_channels, kernel_size=kernel_size, inplace_relu=config['performance.inplace_operations'])
             if config['performance.compile']:
                 self.backbone_nca = torch.compile(self.backbone_nca)
 

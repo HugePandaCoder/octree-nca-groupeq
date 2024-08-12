@@ -29,7 +29,7 @@ PROSTATE_49_SPLIT = pkl.load(open(PROSTATE_49_SPLIT_FILE, "rb"))
 
 
 study_config = {
-    'experiment.name': r'prostate_superres_2_test',
+    'experiment.name': r'prostate_vitca_6',
     'experiment.description': "OctreeNCASuperresolution",
     'experiment.data_split': [0.7, 0, 0.3],
     'experiment.save_interval': 50,
@@ -37,7 +37,7 @@ study_config = {
 
     'experiment.logging.also_eval_on_train': True,
     'experiment.logging.track_gradient_norm': True,
-    'experiment.logging.evaluate_interval': 1,
+    'experiment.logging.evaluate_interval': 2001,
 
     'experiment.dataset.img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
     'experiment.dataset.label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
@@ -52,7 +52,7 @@ study_config = {
     'experiment.task.train_on_residual': True,
 
 
-    'performance.compile': False,
+    'performance.compile': True,
     'performance.data_parallel': False,
     'performance.num_workers': 8,
     'performance.unlock_CPU': True,
@@ -100,10 +100,12 @@ study_config = {
     'model.train.patch_sizes': [[80, 80, 6], [80, 80, 6], None, None, None],
     'model.train.loss_weighted_patching': False,
 
+    'model.eval.patch_wise': True,
+
     'model.octree.res_and_steps': [[[320,320,24], 5], [[160,160,12], 5], [[80,80,6], 5], [[40,40,6], 5], [[20,20,6], 20]],
     'model.octree.separate_models': True,
 
-    'model.vitca': False, # TODO 3D ViTCA is not implemented yet!
+    'model.vitca': True,
     'model.vitca.depth': 1,
     'model.vitca.heads': 4,
     'model.vitca.mlp_dim': 64,
@@ -118,7 +120,6 @@ study = Study(study_config)
 
 exp = EXP_OctreeNCA3D_superres().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
 study.add_experiment(exp)
-
 
 for split in "train", "val", "test":
     if not exp.data_split.get_images(split) == PROSTATE_49_SPLIT.get_images(split):
