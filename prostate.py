@@ -7,7 +7,7 @@ from src.datasets.Nii_Gz_Dataset_3D_customPath import Dataset_NiiGz_3D_customPat
 from src.models.Model_M3DNCA import M3DNCA
 from src.agents.Agent_M3DNCA_Simple import M3DNCAAgent
 from src.losses.LossFunctions import DiceFocalLoss
-from src.utils.BaselineConfigs import EXP_OctreeNCA3D_superres
+from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_OctreeNCA3D_superres
 from src.utils.DataAugmentations import get_augmentation_dataset
 from src.utils.Study import Study
 from src.utils.ProjectConfiguration import ProjectConfiguration
@@ -24,17 +24,16 @@ print(ProjectConfiguration.STUDY_PATH)
 PROSTATE_49_SPLIT_FILE = r"/local/scratch/clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.dt"
 PROSTATE_49_SPLIT = pkl.load(open(PROSTATE_49_SPLIT_FILE, "rb"))
 
-
 study_config = {
-    'experiment.name': r'prostate_vitca_6',
-    'experiment.description': "OctreeNCASuperresolution",
+    'experiment.name': r'new_prostate_1',
+    'experiment.description': "OctreeNCASegmentation",
     'experiment.data_split': [0.7, 0, 0.3],
     'experiment.save_interval': 50,
     'experiment.device': "cuda:0",
 
     'experiment.logging.also_eval_on_train': True,
     'experiment.logging.track_gradient_norm': True,
-    'experiment.logging.evaluate_interval': 2001,
+    'experiment.logging.evaluate_interval': 50,
 
     'experiment.dataset.img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
     'experiment.dataset.label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
@@ -44,10 +43,8 @@ study_config = {
     'experiment.dataset.patchify': False,
 
 
-    'experiment.task': "super_resolution",
-    'experiment.task.factor': 4,
-    'experiment.task.train_on_residual': True,
-    'experiment.task.score': ["torch.nn.L1Loss"],
+    'experiment.task': "segmentation",
+    'experiment.task.score': ["src.scores.DiceScore.DiceScore"],
 
 
     'performance.compile': True,
@@ -62,7 +59,7 @@ study_config = {
     'trainer.lr_scheduler': "torch.optim.lr_scheduler.CosineAnnealingLR",
     'trainer.lr_scheduler.T_max': 2000,
     'trainer.update_lr_per_epoch': True,
-    'trainer.losses': ["torch.nn.L1Loss"],
+    'trainer.losses': ["src.losses.DiceBCELoss.DiceBCELoss"],
     'trainer.loss_weights': [1e2],
     'trainer.normalize_gradients': "layerwise", # all, layerwise, none
 
@@ -96,14 +93,14 @@ study_config = {
     'model.batchnorm_track_running_stats': False,
 
     'model.train.patch_sizes': [[80, 80, 6], [80, 80, 6], None, None, None],
-    'model.train.loss_weighted_patching': False,
+    'model.train.loss_weighted_patching': True,
 
     'model.eval.patch_wise': True,
 
     'model.octree.res_and_steps': [[[320,320,24], 5], [[160,160,12], 5], [[80,80,6], 5], [[40,40,6], 5], [[20,20,6], 20]],
     'model.octree.separate_models': True,
 
-    'model.vitca': True,
+    'model.vitca': False,
     'model.vitca.depth': 1,
     'model.vitca.heads': 4,
     'model.vitca.mlp_dim': 64,
@@ -116,7 +113,7 @@ study_config = {
 study = Study(study_config)
 
 
-exp = EXP_OctreeNCA3D_superres().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
+exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
 study.add_experiment(exp)
 
 for split in "train", "val", "test":

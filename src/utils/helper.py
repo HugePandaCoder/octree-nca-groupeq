@@ -19,6 +19,7 @@ import torch
 import warnings
 import torchvision
 import torchvision.transforms.functional
+import colormaps as cmaps
 
 def dump_pickle_file(file, path):
     r"""Dump pickle file in path
@@ -125,19 +126,53 @@ def normalize_image(image):
 
     return normalized
 
-def merge_img_label_gt_simplified(img, label, gt, rgb=False, segmentation=True):
+def merge_img_label_gt_simplified(img: torch.Tensor, label: torch.Tensor, gt: torch.Tensor, rgb=False, segmentation=True):
     #2D: img: BHWC, label: BHWC, gt: BHWC
     #3D: img: BCHWD, label: BHWDC, gt: BHWDC
 
     if len(img.shape) == 5:
+        assert len(img.shape) == len(label.shape) == len(gt.shape) == 5
         img = einops.rearrange(img, 'b c h w d -> b h w d c')
         assert img.shape[3] == label.shape[3] == gt.shape[3]
         d = img.shape[3]
         img = img[:,:,:, d//2]
         label = label[:,:,:, d//2]
         gt = gt[:,:,:, d//2]
+    else:
+        assert len(img.shape) == len(label.shape) == len(gt.shape) == 4
 
-    img, label, gt = normalize_image(img), normalize_image(label), normalize_image(gt)
+    # all: BHWC
+
+    img = normalize_image(img)
+
+    if img.shape[3] != 3:
+        assert img.shape[3] == 1
+        img = einops.repeat(img, 'b h w c -> b h w (n c)', n=3)
+    
+
+
+    assert label.shape[3] == gt.shape[3]
+    if segmentation:
+        label = label > 0
+        gt = gt > 0
+
+        label_img = torch.zeros(img.shape[0],img.shape[1],img.shape[2], 3)
+        gt_img = torch.zeros(img.shape[0],img.shape[1],img.shape[2], 3)
+        for i in range(label.shape[3]):
+            print(i, label.shape)
+            color = torch.tensor(cmaps.bold[i].colors, dtype=torch.float32)
+            label_img[label[..., i]] = color
+            gt_img[gt[..., i]] = color
+            
+        label = label_img
+        gt = gt_img
+    else:
+        label, gt = normalize_image(label), normalize_image(gt)
+        if label.shape[3] != 3:
+            label = einops.repeat(label, 'b h w c -> b h w (n c)', n=3)
+            gt = einops.repeat(gt, 'b h w c -> b h w (n c)', n=3)
+
+
 
 
     merged_image = torch.stack((img, label, gt), dim=0).numpy()

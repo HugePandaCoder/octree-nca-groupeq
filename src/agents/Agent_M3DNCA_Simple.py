@@ -54,17 +54,7 @@ class M3DNCAAgent(UNetAgent):
         #print(outputs.shape)
         #print(targets.shape)
         #exit()
-        if len(outputs.shape) == 5 and targets.shape[-1] == 1:
-            for m in range(targets.shape[-1]):
-                loss_loc = loss_f(outputs[..., m], targets[...])
-                loss = loss + loss_loc
-                loss_ret[m] = loss_loc.item()
-        else:
-            for m in range(targets.shape[-1]):
-                if 1 in targets[..., m]:
-                    loss_loc = loss_f(outputs[..., m], targets[..., m])
-                    loss = loss + loss_loc
-                    loss_ret[m] = loss_loc.item()
+        loss, loss_ret = loss_f(outputs, targets)
 
         # CALC NQM
         if self.exp.get_from_config('trainer.train_quality_control') == "NQM":

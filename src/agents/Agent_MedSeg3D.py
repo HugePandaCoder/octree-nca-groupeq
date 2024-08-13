@@ -1,4 +1,5 @@
 import torch
+from src.scores import ScoreList
 from src.agents.Agent import BaseAgent
 from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_gt_simplified
@@ -9,7 +10,7 @@ import torch.utils.data
 class Agent_MedSeg3D(BaseAgent):
 
     @torch.no_grad()
-    def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
+    def test(self, scores: ScoreList, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, 
              split='test'):
         r"""Evaluate model on testdata by merging it into 3d volumes first
@@ -27,8 +28,6 @@ class Agent_MedSeg3D(BaseAgent):
         patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
         patient_real_Img = None
         loss_log = {}
-        for m in range(self.output_channels):
-            loss_log[m] = {}
         if save_img == None:
             save_img = []#1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
@@ -78,30 +77,17 @@ class Agent_MedSeg3D(BaseAgent):
             patient_id = id
             #print(patient_id)
 
-            for m in range(patient_3d_image.shape[-1]):
-                if 1 in patient_3d_label[..., m]:
-                    #class is present
-                    loss_log[m][patient_id] = 1 - loss_f(patient_3d_image[...,m], patient_3d_label[...,m], smooth=0, binarize=True).item()
-                else:
-                    if not 1 in patient_3d_image[..., m]:
-                        #class is not present and not segmented -> everything is fine. Just leave this class out
-                        #loss_log[m][patient_id] = None
-                        continue
-                    else:
-                        #class is not present but segmented -> dice is 0
-                        loss_log[m][patient_id] = 0
+            s = scores(patient_3d_image, patient_3d_label)
+            for key in s.keys():
+                if key not in loss_log:
+                    loss_log[key] = {}
+                loss_log[key][patient_id] = s[key]
 
-                print(",",loss_log[m][patient_id])
+                print(",",loss_log[key][patient_id])
                 # Add image to tensorboard
                 if True: 
                     if len(patient_3d_label.shape) == 4:
                         patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
-                    middle_slice = int(patient_3d_real_Img.shape[3] /2)
-                    #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
-                    self.exp.write_img(str(tag) + str(patient_id) + "_" + str(m),
-                                    merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
-                                    #merge_img_label_gt(patient_3d_real_Img[:,:,:,middle_slice:middle_slice+1,0].numpy(), torch.sigmoid(patient_3d_image[:,:,:,middle_slice:middle_slice+1,m]).numpy(), patient_3d_label[:,:,:,middle_slice:middle_slice+1,m].numpy()), 
-                                    self.exp.currentStep)
                     #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
                     #convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
                     #self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
@@ -119,6 +105,12 @@ class Agent_MedSeg3D(BaseAgent):
 
                         nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
                         nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_ground.nii.gz"))
+
+            #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
+            self.exp.write_img(str(tag) + str(patient_id),
+                            merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
+                            self.exp.currentStep)
+        
 
         # Print dice score per label
         for key in loss_log.keys():

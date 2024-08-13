@@ -499,7 +499,7 @@ class DataSplit():
                 dic['val'][key] = files[key]
             else:
                 dic['test'][key] = files[key]
-        print("Datasplit-> train entries: {}, val entries: {}, test entries: {}".format(len(dic['train']), len(dic['val']), len(dic['test'])))
+        print(f"Datasplit-> train entries: {len(dic['train'])}, val entries: {len(dic['val'])}, test entries: {len(dic['test'])}")
         return dic
 
     def getFilesInFolder(self, path: str, dataset: Dataset) -> list:

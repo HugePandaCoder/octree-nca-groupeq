@@ -3,6 +3,7 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
+from src.scores.ScoreList import ScoreList
 from src.utils.EMA import EMA
 from src.utils.helper import convert_image, load_json_file, merge_img_label_gt, dump_json_file
 from src.losses.LossFunctions import DiceLoss
@@ -217,8 +218,9 @@ class BaseAgent():
         """
         if self.exp.get_from_config('trainer.ema'):
             self.ema.apply_shadow()
-        diceLoss = DiceLoss(useSigmoid=True)
-        loss_log = self.test(diceLoss, split=split, tag=f'{split}/img/')
+        
+        scores = ScoreList(self.exp.config)
+        loss_log = self.test(scores, split=split, tag=f'{split}/img/')
         if self.exp.get_from_config('trainer.ema'):
             self.ema.restore_original()
 
@@ -241,10 +243,10 @@ class BaseAgent():
         if loss_log is not None:
             for key in loss_log.keys():
                 img_plot = self.plot_results_byPatient(loss_log[key])
-                self.exp.write_figure('Patient/dice/mask' + str(key), img_plot, epoch)
+                self.exp.write_figure(f'Patient/{split}/' + str(key), img_plot, epoch)
                 if len(loss_log[key]) > 0:
-                    self.exp.write_scalar(f'Dice/{split}/mask' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
-                    self.exp.write_histogram(f'Dice/{split}/byPatient/mask' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
+                    self.exp.write_scalar(f'{split}/' + str(key), sum(loss_log[key].values())/len(loss_log[key]), epoch)
+                    self.exp.write_histogram(f'{split}/byPatient/' + str(key), np.fromiter(loss_log[key].values(), dtype=float), epoch)
         param_lst = []
 
         if self.exp.get_from_config('trainer.find_best_model_on') == split:
@@ -263,7 +265,7 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, useSigmoid: bool = True, tag: str = "", pseudo_ensemble: bool = False, dataset = None) -> dict:
+    def getAverageDiceScore(self, pseudo_ensemble: bool = False) -> dict:
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
@@ -272,10 +274,18 @@ class BaseAgent():
             find_best_model_on = self.exp.get_from_config("trainer.find_best_model_on")
             best_model_epoch = self.best_model['epoch']
             print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
-            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
+            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=False)
+        elif self.exp.get_from_config("trainer.ema"):
+            self.ema.apply_shadow()
 
-        diceLoss = DiceLoss(useSigmoid=useSigmoid)
-        loss_log = self.test(diceLoss, save_img=None, pseudo_ensemble=pseudo_ensemble)
+
+        scores = ScoreList(self.exp.config)
+        loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble)
+
+        if self.exp.get_from_config("trainer.find_best_model_on") is not None:
+            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.exp.currentStep)), pretrained=False)
+        elif self.exp.get_from_config("trainer.ema"):
+            self.ema.restore_original()
 
         return loss_log
 
@@ -283,8 +293,7 @@ class BaseAgent():
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
-        diceLoss = DiceLoss(useSigmoid=useSigmoid)
-        loss_log = self.test(diceLoss, save_img=[], pseudo_ensemble=pseudo_ensemble)
+        loss_log = self.test(ScoreList(self.exp.config), save_img=[], pseudo_ensemble=pseudo_ensemble)
 
         return loss_log
 
@@ -325,13 +334,13 @@ class BaseAgent():
             print("Epoch: " + str(epoch))
             self.exp.set_model_state('train')
             loss_log = {}
-            for m in range(self.exp.get_from_config('model.output_channels')):
-                loss_log[m] = []
             self.initialize_epoch()
             print('Dataset size: ' + str(len(dataloader)))
             for i, data in enumerate(tqdm(dataloader)):
                 loss_item = self.batch_step(data, loss_f)
                 for key in loss_item.keys():
+                    if key not in loss_log:
+                        loss_log[key] = []
                     if isinstance(loss_item[key], float):
                         loss_log[key].append(loss_item[key])
                     else:
