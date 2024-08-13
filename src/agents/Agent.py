@@ -271,10 +271,11 @@ class BaseAgent():
                 return (float): Average Dice score of test set. """
         
         if self.exp.get_from_config("trainer.find_best_model_on") is not None:
+            current_params = {k: v.cpu() for k, v in self.model.state_dict()}
             find_best_model_on = self.exp.get_from_config("trainer.find_best_model_on")
             best_model_epoch = self.best_model['epoch']
             print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
-            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=False)
+            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
         elif self.exp.get_from_config("trainer.ema"):
             self.ema.apply_shadow()
 
@@ -283,7 +284,7 @@ class BaseAgent():
         loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble)
 
         if self.exp.get_from_config("trainer.find_best_model_on") is not None:
-            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.exp.currentStep)), pretrained=False)
+            self.model.load_state_dict(current_params)
         elif self.exp.get_from_config("trainer.ema"):
             self.ema.restore_original()
 

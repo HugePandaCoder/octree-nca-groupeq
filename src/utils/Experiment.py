@@ -4,6 +4,7 @@
 
 import json
 import os
+import random
 from filelock import Timeout
 import torch
 from src.datasets.BatchgeneratorDatagenerator import DatasetPerEpochGenerator, StepsPerEpochGenerator
@@ -97,14 +98,23 @@ class Experiment():
         # Create basic configuration
         self.data_split = self.new_datasplit()
         self.set_model_state("train")
-        dump_pickle_file(self.data_split, os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
+        self.data_split.save_to_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
         dump_json_file(self.config, os.path.join(self.config['experiment.model_path'], 'config.json'))
 
     def new_datasplit(self) -> 'DataSplit':
-        return DataSplit(self.config['experiment.dataset.img_path'], 
-                         self.config['experiment.dataset.label_path'], 
-                         data_split = self.config['experiment.data_split'], 
-                         dataset = self.dataset_class(**self.dataset_args))
+        split_file = self.config.get('experiment.dataset.split_file', None)
+        if split_file is not None:
+            split = DataSplit()
+            split.load_from_file(split_file)
+            return split
+        else:
+            split = DataSplit()
+            split.initialize(self.config['experiment.dataset.img_path'], 
+                            self.config['experiment.dataset.label_path'], 
+                            data_split = self.config['experiment.data_split'], 
+                            dataset = self.dataset_class(**self.dataset_args),
+                            seed=self.config['experiment.dataset.seed'])
+            return split
 
     def temporarly_overwrite_config(self, config: dict):
         r"""This function is useful for evaluation purposes where you want to change the config, e.g. data paths or similar.
@@ -126,7 +136,9 @@ class Experiment():
             TODO: Add functionality to load any previous saved step
         """
 
-        self.data_split = load_pickle_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
+        d = load_pickle_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
+        self.data_split = DataSplit()
+        self.data_split.load_from_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
         loaded_config = load_json_file(os.path.join(self.config['experiment.model_path'], 'config.json'))
 
         config_keys = list(self.config.keys())
@@ -455,9 +467,21 @@ class Experiment():
 class DataSplit():
     r"""Handles the splitting of data
     """
-    def __init__(self, path_image: str, path_label: str, data_split: dict, dataset: Dataset):
-        self.images = self.split_files(self.getFilesInFolder(path_image, dataset), data_split)
-        self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split)
+    def __init__(self):
+        pass
+
+    def initialize(self, path_image: str, path_label: str, data_split: dict, dataset: Dataset, seed: int):
+        self.images = self.split_files(self.getFilesInFolder(path_image, dataset), data_split, seed)
+        self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split, seed)
+
+    def load_from_file(self, path: str):
+        d = load_pickle_file(path)
+        self.images = d['images']
+        self.labels = d['labels']
+
+    def save_to_file(self, path: str):
+        d = {'images': self.images, 'labels': self.labels}
+        dump_pickle_file(d, path)
 
     def get_images(self, state: str) ->  dict:
         r"""#Returns the images of selected state
@@ -484,15 +508,17 @@ class DataSplit():
             lst_out.extend([*d.values()])
         return lst_out
 
-    def split_files(self, files: dict, data_split: list) -> dict:
+    def split_files(self, files: dict, data_split: list, seed: int) -> dict:
         r"""Split files into train, val, test according to definition
             while keeping patients slics together.
             #Args
                 files ({int, {int, string}}): {id, {slice, img_name}}
                 data_split ([float, float, float]): Sum of 1
         """
+        temp = sorted(files.keys())
+        random.Random(seed).shuffle(temp)
         dic = {'train':{}, 'val':{}, 'test':{}}
-        for index, key in enumerate(files):
+        for index, key in enumerate(temp):
             if index / len(files) < data_split[0]:
                 dic['train'][key] = files[key]
             elif index / len(files) < data_split[0] + data_split[1]: 

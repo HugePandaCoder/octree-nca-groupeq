@@ -1,3 +1,5 @@
-def get_extrapolation_task_config():
-    raise NotImplementedError
-    return {}
+extrapolation_task_config={
+    'experiment.task': "extrapolation",
+    'experiment.task.margin': 10, #remove 10 pixels from each border
+}
+    

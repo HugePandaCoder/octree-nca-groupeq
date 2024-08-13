@@ -20,14 +20,13 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         data = self.prepare_data(data)
         # data["image"]: BCHW
         # data["label"]: BCHW
-        outputs, targets = self.get_outputs(data)
+        out = self.get_outputs(data)
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
         #print(outputs.shape, targets.shape)
         #2D: outputs: BHWC, targets: BHWC
-        loss = loss_f(outputs, targets)
-        loss_ret[0] = loss.item()
+        loss, loss_ret = loss_f(**out)
 
         if loss != 0:
             loss.backward()
@@ -65,7 +64,7 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
 
         return loss_ret
 
-    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
+    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> dict:
         
         inputs, targets = data['image'], data['label']
         del targets 
@@ -79,9 +78,9 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         inputs[:, :, :, -margin:] = 0
 
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+        out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         #2D: inputs: BHWC, targets: BHWC
-        return inputs, targets
+        return out
     
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
@@ -110,7 +109,8 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
             data_id, inputs, _ = data['id'], data['image'], data['label']
             if 'name' in data:
                 name = data['name']
-            outputs, targets = self.get_outputs(data, full_img=True, tag="0")
+            out = self.get_outputs(data, full_img=True, tag="0")
+            outputs, targets = out['pred'], out['target']
 
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')

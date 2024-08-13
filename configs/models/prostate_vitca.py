@@ -1,9 +1,6 @@
-def get_prostate_vitca_model_config():
-    return {
+peso_vitca_model_config={
         'model.channel_n': 16,
         'model.fire_rate': 0.5,
-        'model.input_channels': 1,
-        'model.output_channels': 1,
         'model.kernel_size': [3, 3, 3, 3, 3],
         'model.hidden_size': 64,
         'model.batchnorm_track_running_stats': False,

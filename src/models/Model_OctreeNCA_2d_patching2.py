@@ -138,12 +138,10 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         #    y = y.to(self.device)
 
         if self.training:
-            x, y = self.forward_train(x, y, batch_duplication)
-            return x, y
+            return self.forward_train(x, y, batch_duplication)
             
         else:
-            x = self.forward_eval(x)
-            return x, y
+            return self.forward_eval(x)
 
     @torch.no_grad()
     def downscale(self, x: torch.Tensor, level: int):
@@ -338,9 +336,10 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         y = y_new
         
         self.remove_names(x)
-        x = x[..., self.input_channels:self.input_channels+self.output_channels]
+        out = x[..., self.input_channels:self.input_channels+self.output_channels]
+        hidden = x[..., self.input_channels+self.output_channels:]
 
-        return x, y
+        return {'pred': out, 'target': y, 'hidden_channels': hidden}
     
     @torch.no_grad()
     def forward_eval(self, x: torch.Tensor):

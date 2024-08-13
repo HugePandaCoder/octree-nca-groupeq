@@ -14,4 +14,4 @@ eval "$(/gris/gris-f/homestud/nlemke/miniconda3/bin/conda shell.bash hook)"
 cd /gris/gris-f/homestud/nlemke/NCA
 conda activate nca3
 
-python /gris/gris-f/homestud/nlemke/NCA/prostate2.py
+python /gris/gris-f/homestud/nlemke/NCA/peso_extrapolation2.py

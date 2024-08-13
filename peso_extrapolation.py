@@ -101,7 +101,7 @@ study = Study(study_config)
 
 study.add_experiment(EXP_OctreeNCA2D_extrapolation().createExperiment(study_config, detail_config={}, 
                                                       dataset_class=Dataset_PESO, dataset_args={
-                                                            'patches_path': r"/local/scratch/clmn1/data/PESO_patches/",
+                                                            'patches_path': study_config['experiment.dataset.patches_path'],
                                                             'patch_size': study_config['experiment.dataset.input_size'],
                                                             'path': study_config['experiment.dataset.img_path'],
                                                             'img_level': study_config['experiment.dataset.img_level']
