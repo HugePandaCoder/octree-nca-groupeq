@@ -16,12 +16,18 @@ class OverflowLoss(torch.nn.Module):
         loss_ret = {}
         loss = 0
 
-        hidden = kwargs['hidden_channels']
+        hidden: torch.Tensor = kwargs['hidden_channels']
 
         hidden_overflow_loss = (hidden - torch.clip(hidden, -1.0, 1.0)).abs().mean()
-        #rgb_overflow_loss = (output - torch.clip(output, 0, 1)).abs().mean()
+        with torch.no_grad():
+            _max = torch.amax(target, dim=tuple(range(1,len(target.shape))), keepdim=True)
+            _min = torch.amin(target, dim=tuple(range(1,len(target.shape))), keepdim=True)
 
-        loss = hidden_overflow_loss
+
+        rgb_overflow_loss = (output - torch.clamp(output, _min, _max)).abs().mean()
+
+        loss = hidden_overflow_loss + rgb_overflow_loss
         loss_ret['hidden'] = hidden_overflow_loss.item()
+        loss_ret['rgb'] = rgb_overflow_loss.item()
 
         return loss, loss_ret

@@ -18,7 +18,7 @@ from src.utils.convert_to_cluster import convert_paths_to_cluster_paths
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-        'experiment.name': r'peso_extrapolation_vitca_1_hidden_overflow_cluster',
+        'experiment.name': r'peso_extrapolation_vitca_2_fixed_overflow_cluster',
         'experiment.description': "OctreeNCAExtrapolation",
 }
 
@@ -33,6 +33,8 @@ study_config['experiment.logging.also_eval_on_train'] = False
 study_config['trainer.losses'] = ["torch.nn.L1Loss", "src.losses.OverflowLoss.OverflowLoss"]
 study_config['trainer.loss_weights'] = [1e2, 1e2]
 study_config['experiment.logging.evaluate_interval']= 2001
+
+study_config['performance.compile'] = True
 
 study_config = convert_paths_to_cluster_paths(study_config)
 
