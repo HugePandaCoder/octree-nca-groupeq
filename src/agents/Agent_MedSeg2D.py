@@ -8,11 +8,12 @@ from matplotlib import pyplot as plt
 import nibabel as nib
 import os
 from src.losses.LossFunctions import DiceLoss
+import torchio as tio
 
 class Agent_MedSeg2D(BaseAgent):
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
-             pseudo_ensemble: bool = False, split='test'):
+             pseudo_ensemble: bool = False, split='test', ood_augmentation: tio.Transform=None) -> dict:
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -37,6 +38,16 @@ class Agent_MedSeg2D(BaseAgent):
         # For each data sample
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
+            
+            if ood_augmentation != None:
+                print(data["image"].shape)
+                data['image'] = ood_augmentation(data['image'][0])
+                data["image"] = data["image"][None]
+                print(data["image"].shape)
+                exit()
+
+
+
             data_id, inputs, _ = data['id'], data['image'], data['label']
             if 'name' in data:
                 name = data['name']

@@ -17,7 +17,7 @@ class M3DNCAAgent(UNetAgent):
         self.model.to(self.device)
 
 
-    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
+    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> dict:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
@@ -26,11 +26,11 @@ class M3DNCAAgent(UNetAgent):
 
         #inputs: BCHWD
         #targets: BHWDC
-        
+
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
-        inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
-        return inputs, targets 
+        out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+        return out 
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
         r"""Execute a single batch training step
@@ -44,9 +44,10 @@ class M3DNCAAgent(UNetAgent):
         data = self.prepare_data(data)
         rnd = random.randint(0, 1000000000)
         random.seed(rnd)
-        outputs, targets = self.get_outputs(data)
+        out = self.get_outputs(data)
         #print("______________________")
         if self.exp.get_from_config('trainer.train_quality_control') in ["NQM", "MSE"]:
+            raise NotImplementedError("NQM and MSE not implemented for 3D")
             random.seed(rnd)
             outputs2, targets2 = self.get_outputs(data)
         loss = 0
@@ -54,7 +55,7 @@ class M3DNCAAgent(UNetAgent):
         #print(outputs.shape)
         #print(targets.shape)
         #exit()
-        loss, loss_ret = loss_f(outputs, targets)
+        loss, loss_ret = loss_f(**out)
 
         # CALC NQM
         if self.exp.get_from_config('trainer.train_quality_control') == "NQM":
@@ -116,7 +117,4 @@ class M3DNCAAgent(UNetAgent):
             if not self.exp.get_from_config('trainer.update_lr_per_epoch'):
                 self.update_lr()
         return loss_ret
-
-    #def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:
-    #    return super().batch_step(data, loss_f, gradient_norm)
     

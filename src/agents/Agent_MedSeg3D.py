@@ -1,3 +1,6 @@
+import os
+from matplotlib import pyplot as plt
+import pandas as pd
 import torch
 from src.scores import ScoreList
 from src.agents.Agent import BaseAgent
@@ -6,13 +9,15 @@ from src.utils.helper import convert_image, merge_img_label_gt, merge_img_label_
 import numpy as np
 import math 
 import torch.utils.data
+import torchio as tio
 
 class Agent_MedSeg3D(BaseAgent):
 
     @torch.no_grad()
     def test(self, scores: ScoreList, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, 
-             split='test'):
+             split='test', ood_augmentation: tio.Transform=None,
+             output_name: str=None) -> dict:
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -35,8 +40,14 @@ class Agent_MedSeg3D(BaseAgent):
         for i, data in enumerate(dataloader):
             data = self.prepare_data(data, eval=True)
             assert data['image'].shape[0] == 1, "Batch size must be 1 for evaluation"
-            data_id, inputs, *_ = data['id'], data['image'], data['label']
-            outputs, targets = self.get_outputs(data, full_img=True, tag="0")
+
+            if ood_augmentation != None:
+                data['image'] = ood_augmentation(data['image'][0])
+                data["image"] = data["image"][None]
+
+            data_id, inputs, targets = data['id'], data['image'], data['label']
+            out = self.get_outputs(data, full_img=True, tag="0")
+            outputs = out["pred"]
 
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')
@@ -52,16 +63,16 @@ class Agent_MedSeg3D(BaseAgent):
 
             # Run inference 10 times to create a pseudo ensemble
             if pseudo_ensemble: # 5 + 5 times
-                outputs2, _ = self.get_outputs(data, full_img=True, tag="1")
-                outputs3, _ = self.get_outputs(data, full_img=True, tag="2")
-                outputs4, _ = self.get_outputs(data, full_img=True, tag="3")
-                outputs5, _ = self.get_outputs(data, full_img=True, tag="4")
+                outputs2 = self.get_outputs(data, full_img=True, tag="1")["pred"]
+                outputs3 = self.get_outputs(data, full_img=True, tag="2")["pred"]
+                outputs4 = self.get_outputs(data, full_img=True, tag="3")["pred"]
+                outputs5 = self.get_outputs(data, full_img=True, tag="4")["pred"]
                 if True: 
-                    outputs6, _ = self.get_outputs(data, full_img=True, tag="5")
-                    outputs7, _ = self.get_outputs(data, full_img=True, tag="6")
-                    outputs8, _ = self.get_outputs(data, full_img=True, tag="7")
-                    outputs9, _ = self.get_outputs(data, full_img=True, tag="8")
-                    outputs10, _ = self.get_outputs(data, full_img=True, tag="9")
+                    outputs6 = self.get_outputs(data, full_img=True, tag="5")["pred"]
+                    outputs7 = self.get_outputs(data, full_img=True, tag="6")["pred"]
+                    outputs8 = self.get_outputs(data, full_img=True, tag="7")["pred"]
+                    outputs9 = self.get_outputs(data, full_img=True, tag="8")["pred"]
+                    outputs10 = self.get_outputs(data, full_img=True, tag="9")["pred"]
                     stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
                     
                     # Calculate median
@@ -107,16 +118,22 @@ class Agent_MedSeg3D(BaseAgent):
                         nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_ground.nii.gz"))
 
             #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
-            self.exp.write_img(str(tag) + str(patient_id),
-                            merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
-                            self.exp.currentStep)
+            if ood_augmentation is None:
+                self.exp.write_img(str(tag) + str(patient_id),
+                                merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
+                                self.exp.currentStep)
         
+        ood_label = ""
+        if ood_augmentation != None:
+            ood_label = str(ood_augmentation)
 
         # Print dice score per label
         for key in loss_log.keys():
             if len(loss_log[key]) > 0:
-                print("Average Dice Loss 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
-                print("Standard Deviation 3d: " + str(key) + ", " + str(self.standard_deviation(loss_log[key])))
+                print(f"Average Dice Loss {ood_label} 3d: " + str(key) + ", " + str(sum(loss_log[key].values())/len(loss_log[key])))
+                print(f"Standard Deviation {ood_label} 3d: " + str(key) + ", " + str(self.standard_deviation(loss_log[key])))
 
         self.exp.set_model_state('train')
+
+
         return loss_log

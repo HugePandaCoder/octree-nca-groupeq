@@ -48,12 +48,10 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
 
         if self.training:
             assert x.shape[1:4] == self.octree_res[0], f"Expected shape {self.octree_res[0]}, got shape {x.shape[1:4]}"
-            x, y = self.forward_train(x, y, batch_duplication)
-            return x, y
+            return self.forward_train(x, y, batch_duplication)
             
         else:
-            x = self.forward_eval(x)
-            return x, y
+            return self.forward_eval(x)
 
     @torch.no_grad()
     def downscale(self, x: torch.Tensor, level: int):
@@ -101,9 +99,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 if self.SAVE_VRAM_DURING_BATCHED_FORWARD: # activate this to minimize memory usage, resulting in lower runtime performance
                     initial_pred = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3], self.output_channels), device=self.device)
                     for b in range(x.shape[0]):
-                        initial_pred[b] = self.forward_eval(x[b:b+1])
+                        initial_pred[b] = self.forward_eval(x[b:b+1])["pred"]
                 else:
-                    initial_pred = self.forward_eval(x)
+                    initial_pred = self.forward_eval(x)["pred"]
                 self.train()
 
                 loss = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3]), device=self.device) # HWD 
@@ -262,9 +260,10 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         y = y_new
         
         self.remove_names(x)
-        x = x[..., self.input_channels:self.input_channels+self.output_channels]
+        pred = x[..., self.input_channels:self.input_channels+self.output_channels]
+        hidden = x[..., :self.input_channels+self.output_channels]
 
-        return x, y
+        return {'pred': pred, 'target': y, 'hidden': hidden}
     
 
     def compute_octree_res(self, x: torch.Tensor) -> list[tuple[int]]:
@@ -298,7 +297,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
 
 
 
-        out, _ = self.forward_train(x, x)
+        out = self.forward_train(x, x)
+        out.pop('target') #remove target
 
         
         if x.shape[1:4] != tuple(self.octree_res[0]):

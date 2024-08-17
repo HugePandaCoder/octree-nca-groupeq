@@ -1,8 +1,10 @@
 
+from matplotlib import pyplot as plt
 from src.agents.Agent_MedNCA_Simple import MedNCAAgent
 import torch, math, numpy as np, einops
-
+import torchio as tio
 from src.utils.helper import merge_img_label_gt_simplified
+
 
 class MedNCAAgent_extrapolation(MedNCAAgent):
     def initialize(self):
@@ -79,13 +81,19 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
 
 
         out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+
+        out['unpatched_target'] = einops.rearrange(targets, "b c h w -> b h w c")
+
         #2D: inputs: BHWC, targets: BHWC
         return out
     
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
-             pseudo_ensemble: bool = False, split='test'):
+             pseudo_ensemble: bool = False, split='test', ood_augmentation: tio.Transform | None=None,
+             output_name: str|None=None) -> dict:
         loss_f = torch.nn.MSELoss()
+        assert ood_augmentation is None, "OOD augmentation not supported for extrapolation"
+        assert output_name is None, "Output name not supported for extrapolation"
 
 
         # Prepare dataset for testing
@@ -110,7 +118,7 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
             if 'name' in data:
                 name = data['name']
             out = self.get_outputs(data, full_img=True, tag="0")
-            outputs, targets = out['pred'], out['target']
+            outputs, targets = out['pred'], out['unpatched_target']
 
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')

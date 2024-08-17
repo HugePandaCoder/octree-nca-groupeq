@@ -19,9 +19,9 @@ class UNetWrapper3D(nn.Module):
 
             out = self.model(x)
             out = einops.rearrange(out, 'b c d h w -> b d h w c')
-            return out, y
+            return {"pred":out, "target": y}
         else:
             # evaluation
             out = self.model(x)
             out = einops.rearrange(out, 'b c d h w -> b d h w c')
-            return out, y
+            return {"pred":out}

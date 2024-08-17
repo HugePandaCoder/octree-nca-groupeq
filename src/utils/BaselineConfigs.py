@@ -1,7 +1,6 @@
 import torch
 from src.agents.Agent_M3DNCA_GradAccum import M3DNCAAgentGradientAccum
 from src.agents.Agent_M3DNCA_superres import M3DNCAAgent_superres
-from src.agents.Agent_M3D_NCA import Agent_M3D_NCA
 from src.agents.Agent_MedNCA_extrapolation import MedNCAAgent_extrapolation
 from src.losses.WeightedLosses import WeightedLosses
 from src.models.UNetWrapper2D import UNetWrapper2D
@@ -237,124 +236,39 @@ class EXP_OctreeNCA3D_superres(ExperimentWrapper):
 from unet import UNet3D
 class EXP_UNet3D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
-        config = {
-            'description': 'UNet3D',#OctreeNCA
-            'batch_duplication': 1,
-            # Model
-            'batch_size': 12,
-            # Data
-            'input_size': (320,320),
 
-            #miscellaneous
-            'gradient_accumulation': False, #this does not work currently!
-            'track_gradient_norm': True, #default is False, but this is just tracking
-            'train_quality_control': False, #False or "NQM" or "MSE"
-            'inplace_relu': False,
-
-            #EMA
-            'apply_ema': False,
-            'ema_decay': 0.999,
-            'ema_update_per': 'epoch', # 'epoch' or 'batch'
-
-            #instead of EMA, you could find the best model and save it
-            'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
-            'always_eval_in_last_epochs': None,
-            
-
-            # Optimizer
-            'optimizer': "Adam",# default is "Adam"
-            'sgd_momentum': 0.99,
-            'sgd_nesterov': True,
-            'betas': (0.9, 0.99),
-
-            # LR - Scheduler
-            'scheduler': "exponential",#default is exponential
-            'lr': 16e-4,
-            'polynomial_scheduler_power': 1.8,
-            'lr_gamma': 0.9999**8,
-
-            # Data loading
-            'num_workers': 4,
-            'batchgenerators': True,
-
-        }
-
-        config = merge_config(merge_config(study_config, config), detail_config)
-        print("CONFIG", config)
+        config = study_config
+        
         if dataset_class is None:
             assert False, "Dataset is None"
 
-        model = UNet3D(in_channels=config['input_channels'], out_classes=config['output_channels'], padding=1)
+        model = UNet3D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1)
         model = UNetWrapper3D(model)
-        if config['compile']:
+        if config['performance.compile']:
             model.compile()
             
-        assert not ('gradient_accumulation' in config and config['gradient_accumulation'])
+        assert not config.get('gradient_accumulation', False)
         agent = M3DNCAAgent(model)
-        loss_function = DiceBCELoss() 
+        loss_function = WeightedLosses(config)
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 
 class EXP_UNet2D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
-        config = {
-            'description': 'UNet2D',
-            'batch_duplication': 1,
-            # Model
-            'batch_size': 12,
-            # Data
-            'input_size': (320,320),
-
-            #miscellaneous
-            'gradient_accumulation': False, #this does not work currently!
-            'track_gradient_norm': True, #default is False, but this is just tracking
-            'train_quality_control': False, #False or "NQM" or "MSE"
-            'inplace_relu': False,
-
-            #EMA
-            'apply_ema': False,
-            'ema_decay': 0.999,
-            'ema_update_per': 'epoch', # 'epoch' or 'batch'
-
-            #instead of EMA, you could find the best model and save it
-            'find_best_model_on': None, # default is None. Can be 'train', 'val' or 'test' whereas 'test' is not recommended
-            'always_eval_in_last_epochs': None,
-            
-
-            # Optimizer
-            'optimizer': "Adam",# default is "Adam"
-            'sgd_momentum': 0.99,
-            'sgd_nesterov': True,
-            'betas': (0.9, 0.99),
-
-            # LR - Scheduler
-            'scheduler': "exponential",#default is exponential
-            'lr': 16e-4,
-            'polynomial_scheduler_power': 1.8,
-            'lr_gamma': 0.9999**8,
-
-            # Data loading
-            'num_workers': 4,
-            'batchgenerators': True,
-
-        }
-
-        config = merge_config(merge_config(study_config, config), detail_config)
-        print("CONFIG", config)
+        config = study_config
+        
         if dataset_class is None:
             assert False, "Dataset is None"
         
-        assert config['batchnorm_track_running_stats'] == False
-        assert config['gradient_accumulation'] == False
-        assert config['train_quality_control'] == False
+        assert not config.get('gradient_accumulation', False)
 
-        model = UNet2D(in_channels=config['input_channels'], out_classes=config['output_channels'], padding=1)
+        model = UNet2D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1)
         model = UNetWrapper2D(model)
 
-        if config['compile']:
+        if config['performance.compile']:
             model.compile()
         agent = MedNCAAgent(model)
-        loss_function = DiceBCELoss() 
+        loss_function = WeightedLosses(config)
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 

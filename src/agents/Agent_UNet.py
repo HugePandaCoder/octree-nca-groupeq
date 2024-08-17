@@ -42,11 +42,12 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
 
         return data
 
-    def get_outputs(self, data: tuple, **kwargs) -> tuple:
+    def get_outputs(self, data: tuple, **kwargs) -> dict:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
         """
+        raise NotImplementedError("This method must be implemented in the child class")
         _, inputs, targets = data['id'], data['image'], data['label']
         if len(inputs.shape) == 4:
             return (self.model(inputs)).permute(0, 2, 3, 1), targets.permute(0, 2, 3, 1)

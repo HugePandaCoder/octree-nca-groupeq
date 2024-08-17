@@ -6,12 +6,12 @@ from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_prepro
 
 
 import configs
-from src.utils.convert_to_cluster import convert_paths_to_cluster_paths
+from src.utils.convert_to_cluster import maybe_convert_paths_to_cluster_paths
 
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'new_cholec_seg_1_cluster',
+    'experiment.name': r'new_cholec_seg_2_cluster',
     'experiment.description': "OctreeNCASegmentation",
 
     'model.output_channels': 5,
@@ -22,10 +22,11 @@ study_config = study_config | configs.datasets.cholec.cholec_dataset_config
 study_config = study_config | configs.tasks.segmentation.segmentation_task_config
 study_config = study_config | configs.default.default_config
 
+study_config['performance.compile'] = True
 study_config['also_eval_on_train'] = False
+study_config['model.channel_n'] = 20
 
-study_config = convert_paths_to_cluster_paths(study_config)
-
+study_config = maybe_convert_paths_to_cluster_paths(study_config)
 study = Study(study_config)
 
 exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, 

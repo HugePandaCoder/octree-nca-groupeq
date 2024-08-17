@@ -57,7 +57,7 @@ class Dataset_PESO(Dataset_Base):
                         seg = slide_seg.read_region((int(x * slide_seg.level_downsamples[img_level]), 
                                                      int(y * slide_seg.level_downsamples[img_level])), img_level, patch_size)
                         seg = np.array(seg)[:,:,0] #channel RGB contains the same values, only alpha might be different
-                        assert seg.shape == patch_size, f"{seg.shape} != {patch_size}"
+                        assert seg.shape == tuple(patch_size), f"{seg.shape} != {patch_size}"
                         
                         #if np.count_nonzero(seg == 2) / (patch_size[0] * patch_size[1]) < 0.01: # 1% of the patch must be labeled
                         if np.count_nonzero(seg == 2) == 0: # 1% of the patch must be labeled

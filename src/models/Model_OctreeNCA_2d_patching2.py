@@ -345,7 +345,8 @@ class OctreeNCA2DPatch2(torch.nn.Module):
     def forward_eval(self, x: torch.Tensor):
         temp = self.patch_sizes
         self.patch_sizes = [None] * len(self.patch_sizes)
-        out, _ = self.forward_train(x, x)
+        out = self.forward_train(x, x)
+        out.pop("target")#target contains the input anyways so we remove it here!
         self.patch_sizes = temp
         return out
     

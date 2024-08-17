@@ -17,9 +17,9 @@ class UNetWrapper2D(nn.Module):
                 y = einops.repeat(y, 'b h w c -> (b dup) h w c', dup=batch_duplication)
             seg = self.model(x)
             seg = einops.rearrange(seg, 'b c h w -> b h w c')
-            return seg, y
+            return {"pred":seg, "target": y}
         else:
             # evaluation
             seg = self.model(x)
             seg = einops.rearrange(seg, 'b c h w -> b h w c')
-            return seg, y
+            return {"pred":seg}

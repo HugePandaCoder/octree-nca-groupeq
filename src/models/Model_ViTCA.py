@@ -259,7 +259,7 @@ class ViTCA(torch.nn.Module):
 
         return cells
 
-    def forward(self, cells, step_n=1, update_rate=0.5, chkpt_segments=1, **kwargs):
+    def forward(self, cells, steps=1, fire_rate=0.5, chkpt_segments=1, **kwargs):
         cells = einops.rearrange(cells, 'b h w c -> b c h w')
         inputs = []
         if self.octaves > 0:
@@ -267,7 +267,7 @@ class ViTCA(torch.nn.Module):
             octave = self.octaves
             while octave > 0 and h > 2 and w > 2:
                 # let cells collect info before fusing
-                cells = self.f(self.f(cells, update_rate, **kwargs), update_rate, **kwargs)
+                cells = self.f(self.f(cells, fire_rate, **kwargs), fire_rate, **kwargs)
                 # save input before fusing
                 inputs.append(cells[:, :self.cell_pe_patch_dim+self.cell_in_patch_dim].detach().clone())
                 cells = self.fusion(cells)  # fuse cells
@@ -277,12 +277,12 @@ class ViTCA(torch.nn.Module):
         if self.training and chkpt_segments > 1:
             # gradient checkpointing to save memory but at the cost of re-computing forward pass
             # during backward pass
-            z_star = checkpoint_sequential(self.f, cells, segments=chkpt_segments, seq_length=step_n,
-                                           update_rate=update_rate, kwargs=kwargs)
+            z_star = checkpoint_sequential(self.f, cells, segments=chkpt_segments, seq_length=steps,
+                                           update_rate=fire_rate, kwargs=kwargs)
         else:
             z_star = cells
-            for _ in range(step_n):
-                z_star = self.f(z_star, update_rate, **kwargs)
+            for _ in range(steps):
+                z_star = self.f(z_star, fire_rate, **kwargs)
 
         if self.octaves > 0:
             octave = self.octaves
@@ -291,7 +291,7 @@ class ViTCA(torch.nn.Module):
                 # replace input with input used at same scale before fusion
                 z_star[:, :self.cell_pe_patch_dim+self.cell_in_patch_dim] = inputs.pop()
                 # let cells adapt to the change
-                z_star = self.f(self.f(z_star, update_rate, **kwargs), update_rate, **kwargs)
+                z_star = self.f(self.f(z_star, fire_rate, **kwargs), fire_rate, **kwargs)
                 octave -= 1
         
         z_star = einops.rearrange(z_star, 'b c h w -> b h w c')

@@ -39,7 +39,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             else:
                 if id not in dic:
                     dic[id] = {}
-                dic[id][0] = (f, f, 0)           
+                dic[id][0] = (f, f, 0)
         return dic
 
     def getSlicesOnAxis(self, path: str, axis: int) -> nib.nifti1:
@@ -121,15 +121,15 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 img (numpy): Image data
                 label (numpy): Label data
         """
-        size = self.size
+        size = self.exp.config['experiment.dataset.patchify.patch_size']
 
-        containsMask = (random.uniform(0, 1) < self.exp.get_from_config('priotize_masks'))
+        enforce_mask = (random.uniform(0, 1) < self.exp.get_from_config('experiment.dataset.patchify.foreground_oversampling_probability'))
         while True:
             pos_x = random.randint(0, img.shape[0] - size[0])
             pos_y = random.randint(0, img.shape[1] - size[1])
             pos_z = random.randint(0, img.shape[2] - size[2])
 
-            if containsMask:
+            if enforce_mask:
                 if 1 in np.unique(label[pos_x:pos_x+size[0], pos_y:pos_y+size[1], pos_z:pos_z+size[2]]):
                     break
             else: 
@@ -269,7 +269,7 @@ class Dataset_NiiGz_3D(Dataset_3D):
             if self.slice is not None:
                 if len(img.shape) == 4:
                     img = img[..., 0]
-                if self.exp.get_from_config('rescale') is not None and self.exp.get_from_config('rescale') is True:
+                if self.exp.get_from_config('experiment.dataset.rescale') is not None and self.exp.get_from_config('experiment.dataset.rescale') is True:
                     img, label = self.rescale3d(img), self.rescale3d(label, isLabel=True)
                 if self.slice == 0:
                     img, label = img[img_id, :, :], label[img_id, :, :]

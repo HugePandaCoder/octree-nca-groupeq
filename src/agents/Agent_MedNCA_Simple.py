@@ -8,7 +8,7 @@ class MedNCAAgent(UNetAgent):
     def initialize(self):
         super().initialize()
 
-    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
+    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> dict:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
@@ -17,7 +17,7 @@ class MedNCAAgent(UNetAgent):
         #2D: inputs: BCHW, targets: BCHW
 
 
-        inputs, targets = self.model(inputs, targets, self.exp['trainer.batch_duplication'])
+        out = self.model(inputs, targets, self.exp.config['trainer.batch_duplication'])
         #2D: inputs: BHWC, targets: BHWC
 
-        return inputs, targets
+        return out

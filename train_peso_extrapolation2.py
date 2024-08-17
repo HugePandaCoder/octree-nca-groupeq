@@ -1,4 +1,7 @@
 
+import os
+
+from matplotlib import pyplot as plt
 from src.datasets.Dataset_PESO import Dataset_PESO
 from src.utils.Study import Study
 from src.utils.ProjectConfiguration import ProjectConfiguration
@@ -7,18 +10,13 @@ from src.datasets.Dataset_BCSS_Seg import Dataset_BCSS_Seg
 from src.datasets.Dataset_AGGC import Dataset_AGGC
 import octree_vis
 
-import configs.models.peso_vitca
-import configs.datasets.cholec, configs.datasets.prostate, configs.datasets.peso
-import configs.models.prostate, configs.models.prostate_vitca
-import configs.trainers.vitca, configs.trainers.nca
-import configs.tasks.segmentation, configs.tasks.extrapolation, configs.tasks.superres
-import configs.default
-from src.utils.convert_to_cluster import convert_paths_to_cluster_paths
+import configs
+from src.utils.convert_to_cluster import convert_paths_to_cluster_paths, maybe_convert_paths_to_cluster_paths
 
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-        'experiment.name': r'peso_extrapolation_vitca_2_fixed_overflow_cluster',
+        'experiment.name': r'peso_extrapolation_vitca_fix_5',
         'experiment.description': "OctreeNCAExtrapolation",
 }
 
@@ -34,10 +32,13 @@ study_config['trainer.losses'] = ["torch.nn.L1Loss", "src.losses.OverflowLoss.Ov
 study_config['trainer.loss_weights'] = [1e2, 1e2]
 study_config['experiment.logging.evaluate_interval']= 2001
 
+
+study_config['model.octree.res_and_steps'] = [[[160, 160], 5], [[80, 80], 10], [[40, 40], 10], [[20,20], 10], [[10, 10], 20]]
+study_config['experiment.dataset.input_size'] = [160, 160]
+
 study_config['performance.compile'] = True
 
-study_config = convert_paths_to_cluster_paths(study_config)
-
+study_config = maybe_convert_paths_to_cluster_paths(study_config)
 study = Study(study_config)
 
 ###### Define specific model setups here and save them in list ######
@@ -53,3 +54,4 @@ study.add_experiment(EXP_OctreeNCA2D_extrapolation().createExperiment(study_conf
 study.run_experiments()
 study.eval_experiments()
 #figure = octree_vis.visualize(study.experiments[0])
+plt.show()

@@ -1,6 +1,7 @@
 import nibabel as nib
 import numpy as np
 import os
+import pandas as pd
 import torch
 import torch.optim as optim
 from src.scores.ScoreList import ScoreList
@@ -13,6 +14,7 @@ import math
 from matplotlib import figure
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import torchio as tio
 
 from src.utils.vitca_utils import norm_grad
 
@@ -92,7 +94,7 @@ class BaseAgent():
         """
         return data
 
-    def get_outputs(self, data: torch.Tensor, **kwargs) -> torch.Tensor:
+    def get_outputs(self, data: torch.Tensor, **kwargs) -> dict:
         r"""Get the output of the model.
             #Args 
                 data (torch): The data to be passed to the model.
@@ -120,23 +122,14 @@ class BaseAgent():
         data = self.prepare_data(data)
         # data["image"]: BCHW
         # data["label"]: BCHW
-        outputs, targets = self.get_outputs(data)
+        out = self.get_outputs(data)
         self.optimizer.zero_grad()
         loss = 0
         loss_ret = {}
         #print(outputs.shape, targets.shape)
         #2D: outputs: BHWC, targets: BHWC
-        if len(outputs.shape) == 5:
-            for m in range(targets.shape[-1]):
-                loss_loc = loss_f(outputs[..., m], targets[...])
-                loss = loss + loss_loc
-                loss_ret[m] = loss_loc.item()
-        else:
-            for m in range(targets.shape[-1]):
-                if 1 in targets[..., m]:
-                    loss_loc = loss_f(outputs[..., m], targets[..., m])
-                    loss = loss + loss_loc
-                    loss_ret[m] = loss_loc.item()
+        
+        loss, loss_ret = loss_f(**out)
 
         if loss != 0:
             loss.backward()
@@ -169,10 +162,10 @@ class BaseAgent():
                 self.epoch_grad_norm.append(total_norm)
 
             self.optimizer.step()
-            if not self.exp.config['update_lr_per_epoch']:
+            if not self.exp.config['trainer.update_lr_per_epoch']:
                 self.update_lr()
             
-            if self.exp.config['apply_ema'] and self.exp.config['ema_update_per'] == 'batch':
+            if self.exp.config['trainer.ema'] and self.exp.config['trainer.ema.update_per'] == 'batch':
                 self.ema.update()
 
         return loss_ret
@@ -265,13 +258,13 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, pseudo_ensemble: bool = False) -> dict:
+    def getAverageDiceScore(self, pseudo_ensemble: bool = False, ood_augmentation: tio.Transform=None, output_name: str=None) -> dict:
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
         
         if self.exp.get_from_config("trainer.find_best_model_on") is not None:
-            current_params = {k: v.cpu() for k, v in self.model.state_dict()}
+            current_params = {k: v.cpu() for k, v in self.model.state_dict().items()}
             find_best_model_on = self.exp.get_from_config("trainer.find_best_model_on")
             best_model_epoch = self.best_model['epoch']
             print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
@@ -281,12 +274,28 @@ class BaseAgent():
 
 
         scores = ScoreList(self.exp.config)
-        loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble)
+        loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble, ood_augmentation=ood_augmentation,
+                             output_name=output_name)
 
         if self.exp.get_from_config("trainer.find_best_model_on") is not None:
             self.model.load_state_dict(current_params)
         elif self.exp.get_from_config("trainer.ema"):
             self.ema.restore_original()
+
+
+        eval_file = os.path.join(self.exp.get_from_config("experiment.model_path"), "eval", "standard.csv")
+        if ood_augmentation is None and not os.path.exists(eval_file):
+            print("write results to", eval_file)
+            os.makedirs(os.path.dirname(eval_file), exist_ok=True)
+            df = pd.DataFrame(loss_log)
+            df.to_csv(eval_file, sep='\t')
+        elif ood_augmentation is not None and output_name is not None:
+            eval_file = os.path.join(self.exp.get_from_config("experiment.model_path"), "eval", output_name)
+            print("write results to", eval_file)
+            os.makedirs(os.path.dirname(eval_file), exist_ok=True)
+            df = pd.DataFrame(loss_log)
+            df.to_csv(eval_file, sep='\t', mode='a', header=False)
+
 
         return loss_log
 
@@ -466,5 +475,7 @@ class BaseAgent():
     
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
-             pseudo_ensemble: bool = False, split='test'):
+             pseudo_ensemble: bool = False, split='test',
+             ood_augmentation: tio.Transform=None,
+             output_name: str=None) -> dict:
         raise NotImplementedError

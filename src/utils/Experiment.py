@@ -135,8 +135,6 @@ class Experiment():
         r"""Reload old experiment to continue training
             TODO: Add functionality to load any previous saved step
         """
-
-        d = load_pickle_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
         self.data_split = DataSplit()
         self.data_split.load_from_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
         loaded_config = load_json_file(os.path.join(self.config['experiment.model_path'], 'config.json'))

@@ -1,13 +1,14 @@
 from matplotlib import pyplot as plt
 import configs.default
 import configs.models
+import configs.models.prostate_unet
 import configs.tasks
 import configs.tasks.segmentation
 import configs.trainers
 import configs.trainers.vitca
 from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
-from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_OctreeNCA3D_superres
+from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_OctreeNCA3D_superres, EXP_UNet2D, EXP_UNet3D
 from src.utils.Study import Study
 from src.utils.ProjectConfiguration import ProjectConfiguration
 from src.datasets.png_seg_Dataset import png_seg_Dataset
@@ -17,24 +18,21 @@ import pickle as pkl
 from src.datasets.Dataset_CholecSeg import Dataset_CholecSeg
 from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_preprocessed
 
+import torchio as tio
 
-import configs.datasets.cholec, configs.datasets.prostate, configs.datasets.peso
-import configs.models.prostate, configs.models.prostate_vitca
-import configs.trainers.vitca, configs.trainers.nca
-import configs.tasks.segmentation, configs.tasks.extrapolation, configs.tasks.superres
-import configs.default
+import configs
+from src.utils.convert_to_cluster import maybe_convert_paths_to_cluster_paths
 
-ProjectConfiguration.STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
 
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'new_prostate_4_test',
-    'experiment.description': "OctreeNCASegmentation",
+    'experiment.name': r'new_prostate_unet_3d_8',
+    'experiment.description': "UNetSegmentation",
 
     'model.output_channels': 1,
 }
-study_config = study_config | configs.models.prostate.prostate_model_config
+study_config = study_config | configs.models.prostate_unet.prostate_unet_model_config
 study_config = study_config | configs.trainers.nca.nca_trainer_config
 study_config = study_config | configs.datasets.prostate.prostate_dataset_config
 study_config = study_config | configs.tasks.segmentation.segmentation_task_config
@@ -42,20 +40,33 @@ study_config = study_config | configs.default.default_config
 
 study_config['trainer.ema'] = False
 study_config['performance.compile'] = True
-#study_config['trainer.loss_weights'] = [1e2]
-study_config['model.train.loss_weighted_patching'] = True
 
-study_config['trainer.find_best_model_on'] = "train"
-study_config['trainer.always_eval_in_last_epochs'] = 300
+study_config['trainer.batch_size'] = 3
 
+study_config['experiment.dataset.input_size'] = [320, 320, 24]
+study_config['experiment.dataset.patchify'] = True
+study_config['experiment.dataset.patchify.foreground_oversampling_probability'] = 0.5
+study_config['experiment.dataset.patchify.patch_size'] = [160, 160, 24]
+
+study_config['model.eval.patch_wise'] = True
+
+
+study_config = maybe_convert_paths_to_cluster_paths(study_config)
 study = Study(study_config)
 
+ood_augmentation = None
+output_name = None
+severity = 6
+#ood_augmentation = tio.RandomGhosting(num_ghosts=severity, intensity=0.5 * severity)
+if ood_augmentation != None:
+    output_name = f"{ood_augmentation.__class__.__name__}_{severity}.csv"
 
-exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
+
+exp = EXP_UNet3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
 study.add_experiment(exp)
 
 study.run_experiments()
-study.eval_experiments()
+study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
 #figure = octree_vis.visualize(study.experiments[0])
 
 

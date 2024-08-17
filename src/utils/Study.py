@@ -1,5 +1,5 @@
 from typing import List
-
+import torchio as tio
 from .Experiment import Experiment
 
 class Study():
@@ -24,8 +24,8 @@ class Study():
             experiment.agent.train(experiment.data_loaders['train'], experiment.loss_function)
             
 
-    def eval_experiments(self) -> None:
+    def eval_experiments(self, ood_augmentation: tio.Transform=None, output_name: str=None) -> None:
         r"""Eval all experiments
         """
         for experiment in self.experiments:
-            experiment.agent.getAverageDiceScore(pseudo_ensemble=True)  
+            experiment.agent.getAverageDiceScore(pseudo_ensemble=True, ood_augmentation=ood_augmentation, output_name=output_name)  

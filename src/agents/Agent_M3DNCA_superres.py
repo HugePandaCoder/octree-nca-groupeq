@@ -10,12 +10,14 @@ from src.models.Model_OctreeNCA_3d_patching2 import OctreeNCA3DPatch2
 from src.utils.MyDataParallel import MyDataParallel
 from src.utils.helper import merge_img_label_gt_simplified
 from src.utils.patchwise_inference import patchwise_inference3d
+import torchio as tio
 #import matplotlib
 #matplotlib.use('Agg')
+#start xming!!!
 
 
 class M3DNCAAgent_superres(M3DNCAAgent):
-    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> tuple:
+    def get_outputs(self, data: tuple, full_img=True, **kwargs) -> dict:
         r"""Get the outputs of the model
             #Args
                 data (int, tensor, tensor): id, inputs, targets
@@ -64,6 +66,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             plt.show()
             input("Press Enter to continue...")
         
+        raise NotImplementedError("this must return a dict")
         return inputs, targets
     
 
@@ -155,7 +158,7 @@ class M3DNCAAgent_superres(M3DNCAAgent):
     @torch.no_grad()
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, 
-             split='test'):
+             split='test', ood_augmentation: tio.Transform=None):
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
