@@ -28,4 +28,18 @@ class Study():
         r"""Eval all experiments
         """
         for experiment in self.experiments:
-            experiment.agent.getAverageDiceScore(pseudo_ensemble=True, ood_augmentation=ood_augmentation, output_name=output_name)  
+            experiment.agent.getAverageDiceScore(pseudo_ensemble=True, ood_augmentation=ood_augmentation, output_name=output_name)
+            
+    
+    def eval_experiments_ood(self) -> None:
+        for severity in range(1, 6):
+            augmentations = []
+            augmentations.append(tio.RandomGhosting(num_ghosts=severity, intensity=0.5 * severity))
+            augmentations.append(tio.RandomAnisotropy(downsampling=severity))
+            augmentations.append(tio.RandomBiasField(coefficients=0.1*severity))
+            augmentations.append(tio.RandomNoise(std=0.1*severity))
+            augmentations.append(tio.RandomBlur(std=0.5*severity))
+
+            for ood_augmentation in augmentations:
+                output_name = f"{ood_augmentation.__class__.__name__}_{severity}.csv"
+                self.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)

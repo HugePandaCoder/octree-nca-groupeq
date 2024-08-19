@@ -6,7 +6,6 @@ from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_prepro
 
 
 import configs
-from src.utils.convert_to_cluster import maybe_convert_paths_to_cluster_paths
 
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
@@ -26,7 +25,6 @@ study_config['performance.compile'] = True
 study_config['also_eval_on_train'] = False
 study_config['model.channel_n'] = 20
 
-study_config = maybe_convert_paths_to_cluster_paths(study_config)
 study = Study(study_config)
 
 exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, 

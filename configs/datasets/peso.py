@@ -1,11 +1,11 @@
 peso_dataset_config = {
-        'experiment.dataset.img_path': r"/local/scratch/PESO/peso_training",
-        'experiment.dataset.label_path': r"/local/scratch/PESO/peso_training",
+        'experiment.dataset.img_path': r"PESO/peso_training",
+        'experiment.dataset.label_path': r"PESO/peso_training",
         'experiment.dataset.keep_original_scale': True,
         'experiment.dataset.rescale': True,
         'experiment.dataset.input_size': [320, 320],
         'experiment.dataset.img_level': 1,
-        'experiment.dataset.patches_path': r"/local/scratch/clmn1/data/PESO_patches/",
+        'experiment.dataset.patches_path': r"clmn1/data/PESO_patches/",
 
         'experiment.dataset.seed': 42,
 

@@ -1,4 +1,4 @@
-peso_vitca_model_config={
+prostate_vitca_model_config={
         'model.channel_n': 16,
         'model.fire_rate': 0.5,
         'model.kernel_size': [3, 3, 3, 3, 3],

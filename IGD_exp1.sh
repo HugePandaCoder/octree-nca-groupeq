@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH --mail-user=nick.lemke@gris.informatik.tu-darmstadt.de
-#SBATCH -J octree_cholec
+#SBATCH -J octree
 #SBATCH -n 1
 #SBATCH -c 16
 #SBATCH --mem-per-cpu=8192 
@@ -13,5 +13,6 @@
 eval "$(/gris/gris-f/homestud/nlemke/miniconda3/bin/conda shell.bash hook)"
 cd /gris/gris-f/homestud/nlemke/NCA
 conda activate nca3
+export PYTHONPATH=.
 
-python /gris/gris-f/homestud/nlemke/NCA/train_cholecSeg2.py
+python /gris/gris-f/homestud/nlemke/NCA/train_prostate_superres.py

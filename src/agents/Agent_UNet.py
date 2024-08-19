@@ -8,7 +8,7 @@ class UNetAgent(Agent_MedSeg2D, Agent_MedSeg3D):
     """Base agent for training UNet models
     """
 
-    def prepare_data(self, data: tuple, eval: bool = False) -> tuple:
+    def prepare_data(self, data: tuple, eval: bool = False) -> dict:
         r"""Prepare the data to be used with the model
             #Args
                 data (int, tensor, tensor): identity, image, target mask

@@ -25,7 +25,7 @@ from src.utils.convert_to_cluster import convert_paths_to_cluster_paths, maybe_c
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'new_prostate_overkill5',
+    'experiment.name': r'new_prostate_overkill_weight_decay_3',
     'experiment.description': "OctreeNCASegmentation",
 
     'model.output_channels': 1,
@@ -47,20 +47,24 @@ study_config['model.channel_n'] = 24
 study_config['model.hidden_size'] = 100
 study_config['model.kernel_size'] = [3, 3, 3, 3, 7]
 study_config['model.octree.res_and_steps'] = [[[320,320,24], 20], [[160,160,12], 20], [[80,80,6], 20], [[40,40,6], 20], [[20,20,6], 40]]
+study_config['trainer.optimizer.weight_decay'] = 0.001
 
-study_config = maybe_convert_paths_to_cluster_paths(study_config)
 
 study = Study(study_config)
 
 ood_augmentation = None
+output_name = None
 severity = 6
-#ood_augmentation = tio.RandomGhosting(num_ghosts=severity, intensity=0.25 * severity)
+#ood_augmentation = tio.RandomGhosting(num_ghosts=severity, intensity=0.5 * severity)
+if ood_augmentation != None:
+    output_name = f"{ood_augmentation.__class__.__name__}_{severity}.csv"
 
 exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset_class=Dataset_NiiGz_3D, dataset_args={})
 study.add_experiment(exp)
 
 study.run_experiments()
-study.eval_experiments(ood_augmentation=ood_augmentation)
+study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
 #figure = octree_vis.visualize(study.experiments[0])
 
 
+study.eval_experiments_ood()

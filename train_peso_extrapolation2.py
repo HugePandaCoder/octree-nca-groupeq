@@ -4,19 +4,16 @@ import os
 from matplotlib import pyplot as plt
 from src.datasets.Dataset_PESO import Dataset_PESO
 from src.utils.Study import Study
-from src.utils.ProjectConfiguration import ProjectConfiguration
 from src.utils.BaselineConfigs import EXP_OctreeNCA, EXP_OctreeNCA2D_extrapolation
-from src.datasets.Dataset_BCSS_Seg import Dataset_BCSS_Seg
-from src.datasets.Dataset_AGGC import Dataset_AGGC
 import octree_vis
-
+from src.utils.ProjectConfiguration import ProjectConfiguration as pc
 import configs
 from src.utils.convert_to_cluster import convert_paths_to_cluster_paths, maybe_convert_paths_to_cluster_paths
 
-print("Study Path:", ProjectConfiguration.STUDY_PATH)
+print("Study Path:", pc.STUDY_PATH)
 
 study_config = {
-        'experiment.name': r'peso_extrapolation_vitca_fix_5',
+        'experiment.name': r'peso_extrapolation_vitca_top_only',
         'experiment.description': "OctreeNCAExtrapolation",
 }
 
@@ -38,16 +35,19 @@ study_config['experiment.dataset.input_size'] = [160, 160]
 
 study_config['performance.compile'] = True
 
-study_config = maybe_convert_paths_to_cluster_paths(study_config)
+study_config['experiment.task.margin'] = 30
+study_config['experiment.task.direction'] = "top"
+
+
 study = Study(study_config)
 
 ###### Define specific model setups here and save them in list ######
 
 study.add_experiment(EXP_OctreeNCA2D_extrapolation().createExperiment(study_config, detail_config={}, 
                                                       dataset_class=Dataset_PESO, dataset_args={
-                                                            'patches_path': study_config['experiment.dataset.patches_path'],
+                                                            'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
                                                             'patch_size': study_config['experiment.dataset.input_size'],
-                                                            'path': study_config['experiment.dataset.img_path'],
+                                                            'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
                                                             'img_level': study_config['experiment.dataset.img_level']
                                                       }))
 

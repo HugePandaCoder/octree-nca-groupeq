@@ -20,7 +20,6 @@ from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_prepro
 import torchio as tio
 
 import configs
-from src.utils.convert_to_cluster import maybe_convert_paths_to_cluster_paths
 
 print(ProjectConfiguration.STUDY_PATH)
 
@@ -42,7 +41,6 @@ study_config['performance.compile'] = False
 study_config['trainer.batch_size'] = 3
 study_config['trainer.batch_duplication'] = 2
 
-study_config = maybe_convert_paths_to_cluster_paths(study_config)
 study = Study(study_config)
 
 ood_augmentation = None
@@ -56,7 +54,8 @@ exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset
 study.add_experiment(exp)
 
 study.run_experiments()
-study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
+#study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
 #figure = octree_vis.visualize(study.experiments[0])
 
 
+study.eval_experiments_ood()

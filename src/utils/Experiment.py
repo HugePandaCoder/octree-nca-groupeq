@@ -48,7 +48,7 @@ class Experiment():
         self.storage = {}
         self.model_state = "train"
         self.general_preload()
-        if(os.path.isdir(os.path.join(self.config['experiment.model_path'], 'models'))):
+        if(os.path.isdir(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'models'))):
             self.reload()
         else:
             self.setup()
@@ -87,10 +87,9 @@ class Experiment():
         r"""Initial experiment setup when first started
         """
         # Create dirs
-        os.makedirs(self.config['experiment.model_path'], exist_ok=True)
-        os.makedirs(os.path.join(self.config['experiment.model_path'], 'models'), exist_ok=True)
+        os.makedirs(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'models'), exist_ok=True)
         # Create Run
-        self.run = Run(experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+        self.run = Run(experiment=self.config['experiment.name'], repo=os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'Aim'))
         self.run.description = self.config['experiment.description']
         self.config['experiment.run_hash'] = self.run.hash
         self.run['hparams'] = self.config
@@ -98,19 +97,19 @@ class Experiment():
         # Create basic configuration
         self.data_split = self.new_datasplit()
         self.set_model_state("train")
-        self.data_split.save_to_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
-        dump_json_file(self.config, os.path.join(self.config['experiment.model_path'], 'config.json'))
+        self.data_split.save_to_file(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'data_split.pkl'))
+        dump_json_file(self.config, os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'config.json'))
 
     def new_datasplit(self) -> 'DataSplit':
         split_file = self.config.get('experiment.dataset.split_file', None)
         if split_file is not None:
             split = DataSplit()
-            split.load_from_file(split_file)
+            split.load_from_file(os.path.join(pc.FILER_BASE_PATH, split_file))
             return split
         else:
             split = DataSplit()
-            split.initialize(self.config['experiment.dataset.img_path'], 
-                            self.config['experiment.dataset.label_path'], 
+            split.initialize(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
+                            os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.label_path']), 
                             data_split = self.config['experiment.data_split'], 
                             dataset = self.dataset_class(**self.dataset_args),
                             seed=self.config['experiment.dataset.seed'])
@@ -136,8 +135,8 @@ class Experiment():
             TODO: Add functionality to load any previous saved step
         """
         self.data_split = DataSplit()
-        self.data_split.load_from_file(os.path.join(self.config['experiment.model_path'], 'data_split.pkl'))
-        loaded_config = load_json_file(os.path.join(self.config['experiment.model_path'], 'config.json'))
+        self.data_split.load_from_file(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'data_split.pkl'))
+        loaded_config = load_json_file(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'config.json'))
 
         config_keys = list(self.config.keys())
         print(config_keys)
@@ -146,6 +145,8 @@ class Experiment():
         for k, v in loaded_config.items():
             if k == "experiment.run_hash":
                 pass
+            elif k == "experiment.git_hash":
+                config_keys.remove(k)
             else:
                 config_keys.remove(k)
                 valid = True
@@ -153,6 +154,7 @@ class Experiment():
                 valid = valid and self.config[k] == v
                 if not valid:
                     print(f"Configurations do not match on key '{k}'. Check if you are loading the correct experiment.")
+                    print(f"Loaded: {v} | Current: {self.config.get(k, None)}")
                     in_key = input("Do you want to continue with the loaded configuration? [y, N] ")
                     if in_key.lower() != 'y':
                         raise Exception(f"Configurations do not match on key '{k}'. Check if you are loading the correct experiment.")
@@ -170,13 +172,13 @@ class Experiment():
 
         try:
             self.run = Run(run_hash=self.config['experiment.run_hash'], 
-                           experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'))
+                           experiment=self.config['experiment.name'], repo=os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'Aim'))
         except Timeout as e:
             print("Timeout Error: ", e)
             in_key = input("Do you want to unlock manually? [y, N] ")
             if in_key.lower() == 'y':
                 self.run = Run(run_hash=self.config['experiment.run_hash'], 
-                               experiment=self.config['experiment.name'], repo=os.path.join(pc.STUDY_PATH, 'Aim'),
+                               experiment=self.config['experiment.name'], repo=os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'Aim'),
                                force_resume=True)
             else:
                 raise e
@@ -191,13 +193,13 @@ class Experiment():
             pretrained = True
             #opt_loc = self.agent.optimizer
             #sch_loc = self.agent.scheduler
-            pretrained_path = os.path.join(pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
+            pretrained_path = os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
             pretrained_step = self.current_step(os.path.join(pretrained_path, 'models')) #os.path.join(self.config['model_path'], 'models')
             model_path = os.path.join(pretrained_path, 'models', 'epoch_' + str(pretrained_step))
             #self.agent.optimizer = opt_loc
             #self.agent.scheduler = sch_loc
         else:
-            model_path = os.path.join(self.config['experiment.model_path'], 'models', 'epoch_' + str(self.currentStep))
+            model_path = os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'models', 'epoch_' + str(self.currentStep))
 
         if os.path.exists(model_path):
             print("Reload State " + str(self.currentStep))
@@ -233,8 +235,10 @@ class Experiment():
             if len(self.data_split.get_images(split)) > 0:
                 self.datasets[split] = self.dataset_class(**self.dataset_args)
                 self.datasets[split].setState(split)
-                self.datasets[split].setPaths(self.config['experiment.dataset.img_path'], self.data_split.get_images(split), 
-                                              self.config['experiment.dataset.label_path'], self.data_split.get_labels(split))
+                self.datasets[split].setPaths(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
+                                              self.data_split.get_images(split), 
+                                              os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.label_path']), 
+                                              self.data_split.get_labels(split))
 
                 self.datasets[split].set_experiment(self)
         
@@ -301,7 +305,7 @@ class Experiment():
 
     def initializeKID(self) -> None:
         # Reload or generate FID Model
-        fid_path = os.path.join(pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
+        fid_path = os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
 
         self.set_model_state("train")
         self.kid = KernelInceptionDistance(feature=2048, reset_real_features=False, subset_size=10)
@@ -320,7 +324,7 @@ class Experiment():
 
     def initializeFID(self) -> None:
         # Reload or generate FID Model
-        fid_path = os.path.join(pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
+        fid_path = os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'DatasetsFID', os.path.basename(self.config['img_path']), 'fid.dt')
 
         if os.path.exists(fid_path):
             # RELOAD
@@ -346,7 +350,7 @@ class Experiment():
         """
         if 'pretrained' in self.config and self.current_step == 0:
             print('Load Pretrained Model')
-            pretrained_path = os.path.join(pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
+            pretrained_path = os.path.join(pc.FILER_BASE_PATH, pc.STUDY_PATH, 'Experiments', self.config['pretrained'] + "_" + self.projectConfig['description'])
             pretrained_step = self.current_step(model_path = os.path.join(self.config['pretrained_path'], 'models')) #os.path.join(self.config['model_path'], 'models')
             model_path = os.path.join(pretrained_path, 'models', 'epoch_' + str(pretrained_step), 'model.pth')
         else:
@@ -364,7 +368,7 @@ class Experiment():
     def current_step(self, model_path: str = None) -> int:
         r"""Find out the initial epoch by checking the saved models"""
         if model_path is None:
-            model_path = os.path.join(self.config['experiment.model_path'], 'models')
+            model_path = os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'models')
         if os.path.exists(model_path):
             dirs = [d for d in os.listdir(model_path) if os.path.isdir(os.path.join(model_path, d))]
             if dirs:

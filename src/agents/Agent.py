@@ -15,7 +15,7 @@ from matplotlib import figure
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchio as tio
-
+from src.utils.ProjectConfiguration import ProjectConfiguration as pc
 from src.utils.vitca_utils import norm_grad
 
 class BaseAgent():
@@ -268,7 +268,7 @@ class BaseAgent():
             find_best_model_on = self.exp.get_from_config("trainer.find_best_model_on")
             best_model_epoch = self.best_model['epoch']
             print(f"Loading best model that was found during training on the {find_best_model_on} set, which is from epoch {best_model_epoch}")
-            self.load_state(os.path.join(self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
+            self.load_state(os.path.join(pc.FILER_BASE_PATH, self.exp.config['experiment.model_path'], 'models', 'epoch_' + str(self.best_model['epoch'])), pretrained=True)
         elif self.exp.get_from_config("trainer.ema"):
             self.ema.apply_shadow()
 
@@ -283,18 +283,19 @@ class BaseAgent():
             self.ema.restore_original()
 
 
-        eval_file = os.path.join(self.exp.get_from_config("experiment.model_path"), "eval", "standard.csv")
+        eval_file = os.path.join(pc.FILER_BASE_PATH, self.exp.get_from_config("experiment.model_path"), "eval", "standard.csv")
         if ood_augmentation is None and not os.path.exists(eval_file):
             print("write results to", eval_file)
             os.makedirs(os.path.dirname(eval_file), exist_ok=True)
             df = pd.DataFrame(loss_log)
             df.to_csv(eval_file, sep='\t')
-        elif ood_augmentation is not None and output_name is not None:
-            eval_file = os.path.join(self.exp.get_from_config("experiment.model_path"), "eval", output_name)
+        elif ood_augmentation is not None and output_name is not None \
+                and not os.path.exists(os.path.join(pc.FILER_BASE_PATH, self.exp.get_from_config("experiment.model_path"), "eval", output_name)):
+            eval_file = os.path.join(pc.FILER_BASE_PATH, self.exp.get_from_config("experiment.model_path"), "eval", output_name)
             print("write results to", eval_file)
             os.makedirs(os.path.dirname(eval_file), exist_ok=True)
             df = pd.DataFrame(loss_log)
-            df.to_csv(eval_file, sep='\t', mode='a', header=False)
+            df.to_csv(eval_file, sep='\t')
 
 
         return loss_log
@@ -315,7 +316,7 @@ class BaseAgent():
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
         torch.save(self.scheduler.state_dict(), os.path.join(model_path, 'scheduler.pth'))
         if self.exp.get_from_config('trainer.find_best_model_on') is not None:
-            dump_json_file(self.best_model, os.path.join(self.exp.config['experiment.model_path'], 'best_model.json'))
+            dump_json_file(self.best_model, os.path.join(pc.FILER_BASE_PATH, self.exp.config['experiment.model_path'], 'best_model.json'))
         
         if self.exp.get_from_config('trainer.ema'):
             torch.save(self.ema.shadow, os.path.join(model_path, 'ema.pth'))
@@ -328,7 +329,7 @@ class BaseAgent():
             self.optimizer.load_state_dict(torch.load(os.path.join(model_path, 'optimizer.pth')))
             self.scheduler.load_state_dict(torch.load(os.path.join(model_path, 'scheduler.pth')))
             if self.exp.get_from_config('trainer.find_best_model_on') is not None:
-                self.best_model = load_json_file(os.path.join(self.exp.config['experiment.model_path'], 'best_model.json'))
+                self.best_model = load_json_file(os.path.join(pc.FILER_BASE_PATH, self.exp.config['experiment.model_path'], 'best_model.json'))
         
         if self.exp.get_from_config('trainer.ema'):
             loaded_shadow = torch.load(os.path.join(model_path, 'ema.pth'))
@@ -381,7 +382,7 @@ class BaseAgent():
                     save_best_model = True
             if epoch % self.exp.get_from_config('experiment.save_interval') == 0 or save_best_model:
                 print("Model saved")
-                self.save_state(os.path.join(self.exp.get_from_config('experiment.model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
+                self.save_state(os.path.join(pc.FILER_BASE_PATH, self.exp.get_from_config('experiment.model_path'), 'models', 'epoch_' + str(self.exp.currentStep)))
             self.conclude_epoch()
             self.exp.increase_epoch()
 

@@ -1,13 +1,13 @@
 
 prostate_dataset_config = {
-    'experiment.dataset.img_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
-    'experiment.dataset.label_path': r"/local/scratch/jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
+    'experiment.dataset.img_path': r"jkalkhof/Data/Prostate_MEDSeg/imagesTr/",
+    'experiment.dataset.label_path': r"jkalkhof/Data/Prostate_MEDSeg/labelsTr/",
     'experiment.dataset.keep_original_scale': True,
     'experiment.dataset.rescale': True,
     'experiment.dataset.input_size': [320, 320, 24],
     'experiment.dataset.patchify': False,
 
-    'experiment.dataset.split_file': r"/local/scratch/clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.pkl", 
+    'experiment.dataset.split_file': r"clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.pkl", 
 
     'model.input_channels': 1,
 

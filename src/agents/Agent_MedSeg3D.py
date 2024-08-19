@@ -42,7 +42,7 @@ class Agent_MedSeg3D(BaseAgent):
             assert data['image'].shape[0] == 1, "Batch size must be 1 for evaluation"
 
             if ood_augmentation != None:
-                data['image'] = ood_augmentation(data['image'][0])
+                data['image'] = ood_augmentation(data['image'][0].cpu()).to(self.device)
                 data["image"] = data["image"][None]
 
             data_id, inputs, targets = data['id'], data['image'], data['label']
@@ -77,7 +77,8 @@ class Agent_MedSeg3D(BaseAgent):
                     
                     # Calculate median
                     outputs, _ = torch.median(stack, dim=0)
-                    self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+                    nqm_score = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+
 
                 else:
                     outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)

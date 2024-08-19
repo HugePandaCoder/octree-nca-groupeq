@@ -72,12 +72,17 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         del targets 
         targets = inputs.clone()
         #2D: inputs: BCHW, targets: BCHW
-
         margin = self.exp.get_from_config("experiment.task.margin")
-        inputs[:, :, :margin, :] = 0
-        inputs[:, :, -margin:, :] = 0
-        inputs[:, :, :, :margin] = 0
-        inputs[:, :, :, -margin:] = 0
+
+        if self.exp.config["experiment.task.direction"] == "top":
+            inputs[:, :, :margin, :] = 0
+        elif self.exp.config["experiment.task.direction"] == "all":
+            inputs[:, :, :margin, :] = 0
+            inputs[:, :, -margin:, :] = 0
+            inputs[:, :, :, :margin] = 0
+            inputs[:, :, :, -margin:] = 0
+        else:
+            raise ValueError("Invalid direction")
 
 
         out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))

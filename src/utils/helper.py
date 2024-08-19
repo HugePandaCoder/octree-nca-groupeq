@@ -133,7 +133,7 @@ def merge_img_label_gt_simplified(img: torch.Tensor, label: torch.Tensor, gt: to
     if len(img.shape) == 5:
         assert len(img.shape) == len(label.shape) == len(gt.shape) == 5
         img = einops.rearrange(img, 'b c h w d -> b h w d c')
-        assert img.shape[3] == label.shape[3] == gt.shape[3]
+        assert img.shape[3] == label.shape[3] == gt.shape[3], f"{img.shape} {label.shape} {gt.shape}"
         d = img.shape[3]
         img = img[:,:,:, d//2]
         label = label[:,:,:, d//2]

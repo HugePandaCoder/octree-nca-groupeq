@@ -55,10 +55,8 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         if self.exp.get_from_config('model.eval.patch_wise') and self.exp.model_state == 'test':
             inputs = patchwise_inference3d(inputs, self.model, self.exp.get_from_config('model.train.patch_sizes'))
             inputs = inputs[:, :, :, :,self.exp.get_from_config('model.input_channels'):self.exp.get_from_config('model.input_channels')+self.exp.get_from_config('model.output_channels')]
-
-
         else:
-            inputs, targets = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+            out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
         
         if visualize:
             fig.add_subplot(1, 3, 3)
@@ -66,8 +64,9 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             plt.show()
             input("Press Enter to continue...")
         
-        raise NotImplementedError("this must return a dict")
-        return inputs, targets
+
+        out["inputs"] = einops.rearrange(inputs, 'b h w d c -> b c h w d')
+        return out
     
 
 
@@ -83,15 +82,15 @@ class M3DNCAAgent_superres(M3DNCAAgent):
         data = self.prepare_data(data)
         rnd = random.randint(0, 1000000000)
         random.seed(rnd)
-        outputs, targets = self.get_outputs(data)
+        out = self.get_outputs(data)
         #print("______________________")
         if self.exp.get_from_config('trainer.train_quality_control') in ["NQM", "MSE"]:
+            raise NotImplementedError("NQM and MSE not implemented for 3D")
             random.seed(rnd)
             outputs2, targets2 = self.get_outputs(data)
-        loss = 0
-        loss_ret = {}
-        loss = loss_f(outputs, targets)
-        loss_ret[0] = loss.item()
+
+
+        loss, loss_ret = loss_f(**out)
 
 
         if self.exp.get_from_config('trainer.train_quality_control') == "NQM":
@@ -186,7 +185,10 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             data = self.prepare_data(data, eval=True)
             assert data['image'].shape[0] == 1, "Batch size must be 1 for evaluation"
             data_id, inputs, *_ = data['id'], data['image'], data['label']
-            outputs, targets = self.get_outputs(data, full_img=True, tag="0")
+            out = self.get_outputs(data, full_img=True, tag="0")
+            outputs = out["pred"]
+            inputs = out["inputs"]
+            targets = data['label']
 
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')

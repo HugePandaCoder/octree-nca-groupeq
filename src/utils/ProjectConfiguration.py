@@ -1,7 +1,8 @@
 import os
 class ProjectConfiguration:
-    STUDY_PATH = r"/local/scratch/clmn1/octree_study/"
+    STUDY_PATH = r"clmn1/octree_study/"
     VITB16_WEIGHTS = r"/home/jkalkhof_locale/Documents/GitHub/PretrainedVITs/imagenet21k_R50+ViT-B_16.npz"
+    FILER_BASE_PATH = r"/local/scratch/"
 
-if not os.path.exists(ProjectConfiguration.STUDY_PATH):
-    ProjectConfiguration.STUDY_PATH = ProjectConfiguration.STUDY_PATH.replace(r"/local/scratch/", r"/gris/scratch-gris-filesrv/")
+if not os.path.exists(ProjectConfiguration.FILER_BASE_PATH):
+    ProjectConfiguration.FILER_BASE_PATH = r"/gris/scratch-gris-filesrv/"

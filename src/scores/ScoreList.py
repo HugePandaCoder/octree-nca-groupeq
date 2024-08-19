@@ -15,6 +15,9 @@ class ScoreList(nn.Module):
         loss_ret = {}
         for i, _ in enumerate(self.scores):
             s = self.scores[i](pred, target)
-            for k, v in s.items():
-                loss_ret[f"{self.scores[i].__class__.__name__}/{k}"] = s[k]
+            if isinstance(s, tuple):
+                for k, v in s.items():
+                    loss_ret[f"{self.scores[i].__class__.__name__}/{k}"] = s[k]
+            else:
+                loss_ret[f"{self.scores[i].__class__.__name__}/score"] = s.item()
         return loss_ret
