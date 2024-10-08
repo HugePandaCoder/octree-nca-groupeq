@@ -44,7 +44,10 @@ class OctreeNCA2DPatch2(torch.nn.Module):
 
         compile = config['performance.compile']
 
+        normalization = config.get("model.normalization", "batch")
 
+        self.apply_nonlin = config.get("model.apply_nonlin", None)
+        self.apply_nonlin = eval(self.apply_nonlin) if self.apply_nonlin is not None else None
 
         self.channel_n = channel_n
         self.input_channels = input_channels
@@ -91,7 +94,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
             else:
                 self.backbone_ncas = nn.ModuleList([BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
                                                             hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
-                                                            track_running_stats=track_running_stats) 
+                                                            normalization=normalization) 
                                                             for l in range(len(octree_res_and_steps))])
             if compile:
                 for i, model in enumerate(self.backbone_ncas):
@@ -108,7 +111,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                                            )
             else:
                 self.backbone_nca = BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
-                                            input_channels=input_channels, kernel_size=kernel_size)
+                                            input_channels=input_channels, kernel_size=kernel_size, normalization=normalization)
                 
             if compile:
                 self.backbone_nca = torch.compile(self.backbone_nca)
@@ -234,11 +237,11 @@ class OctreeNCA2DPatch2(torch.nn.Module):
 
             for b in range(x.shape[0]):
                 if self.loss_weighted_patching:
-                    h_start, w_start, d_start = self.sample_index(loss_weighted_probabilities[b])
+                    h_start, w_start = self.sample_index(loss_weighted_probabilities[b])
                 else:
                     h_start = self.my_rand_int(0, self.octree_res[-1][0]-self.patch_sizes[-1][0])
                     w_start = self.my_rand_int(0, self.octree_res[-1][1]-self.patch_sizes[-1][1])
-                current_patch[b] = np.array([[h_start, w_start, d_start], 
+                current_patch[b] = np.array([[h_start, w_start], 
                                         [self.patch_sizes[-1][0] + h_start, 
                                         self.patch_sizes[-1][1] + w_start]
                                         ])
@@ -327,7 +330,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         
         #x: BHWC
 
-
         y_new = torch.zeros(y.shape[0], x.shape[1], x.shape[2],
                              y.shape[3], device=self.device, dtype=torch.float)
         for b in range(x.shape[0]):
@@ -336,10 +338,18 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         y = y_new
         
         self.remove_names(x)
-        out = x[..., self.input_channels:self.input_channels+self.output_channels]
+        logits = x[..., self.input_channels:self.input_channels+self.output_channels]
         hidden = x[..., self.input_channels+self.output_channels:]
 
-        return {'pred': out, 'target': y, 'hidden_channels': hidden}
+        ret_dict = {'logits': logits, 'target': y, 'hidden_channels': hidden}
+
+
+        if self.apply_nonlin is not None:
+            probabilites = self.apply_nonlin(logits)
+            ret_dict['probabilities'] = probabilites
+
+
+        return ret_dict
     
     @torch.no_grad()
     def forward_eval(self, x: torch.Tensor):
@@ -350,7 +360,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.patch_sizes = temp
         return out
     
-    def create_inference_series(self, x: torch.Tensor):
+    def create_inference_series(self, x: torch.Tensor, per_step: bool):
         inference_series = [] #list of BHWC tensors
         #x: BCHW
         original = x
@@ -373,15 +383,26 @@ class OctreeNCA2DPatch2(torch.nn.Module):
             x = self.align_tensor_to(x, "BHWC")
             self.remove_names(x)
 
-            inference_series.append(x)
-
-            if self.separate_models:
-                x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+            if per_step:
+                pass
             else:
-                x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+                inference_series.append(x)
+
+            if per_step:
+                if self.separate_models:
+                    x, gallery = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate, visualize=True)
+                else:
+                    x, gallery = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate, visualize=True)
+                inference_series.append(gallery)
+            else:
+                if self.separate_models:
+                    x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+                else:
+                    x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
             x.names = ('B', 'H', 'W', 'C')
 
-            inference_series.append(x)
+            if not per_step:
+                inference_series.append(x)
 
 
             if level > 0:

@@ -4,7 +4,7 @@ import torch.nn.functional as F
  
 class BasicNCA2D(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
-                 track_running_stats=False):
+                 normalization="batch"):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -28,7 +28,19 @@ class BasicNCA2D(nn.Module):
         padding = int((kernel_size-1) / 2)
 
         self.p0 = nn.Conv2d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=padding, padding_mode="reflect", groups=channel_n)
-        self.bn = torch.nn.BatchNorm2d(hidden_size, track_running_stats=track_running_stats)
+        
+        if normalization == "batch":
+            self.bn = torch.nn.BatchNorm2d(hidden_size, track_running_stats=False)
+        elif normalization == "layer":
+            self.bn = torch.nn.LayerNorm(hidden_size)
+        elif normalization == "group":
+            self.bn = torch.nn.GroupNorm(1, hidden_size)
+        elif normalization == "none":
+            self.bn = torch.nn.Identity()
+        else:
+            raise ValueError(f"Unknown normalization type {normalization}")
+
+
         
         with torch.no_grad():
             self.fc1.weight.zero_()
@@ -78,16 +90,23 @@ class BasicNCA2D(nn.Module):
 
         return x
 
-    def forward(self, x, steps=10, fire_rate=0.5):
+    def forward(self, x, steps=10, fire_rate=0.5, visualize: bool=False):
         r"""Forward function applies update function s times leaving input channels unchanged
             #Args:
                 x: image
                 steps: number of steps to run update
                 fire_rate: random activation rate of each cell
         """
+        if visualize:
+            gallery = []
         #x: BHWC
         for step in range(steps):
             x2 = self.update(x, fire_rate).clone() #[...,3:][...,3:]
             #x2: BHWC
             x = torch.concat((x[...,0:self.input_channels], x2[...,self.input_channels:]), 3)
+            if visualize:
+                gallery.append(x.detach().cpu())
+        
+        if visualize:
+            return x, gallery
         return x

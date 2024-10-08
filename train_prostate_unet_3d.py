@@ -21,13 +21,12 @@ from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_prepro
 import torchio as tio
 
 import configs
-from src.utils.convert_to_cluster import maybe_convert_paths_to_cluster_paths
 
 
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'new_prostate_unet_3d_8',
+    'experiment.name': r'prostate_unet',
     'experiment.description': "UNetSegmentation",
 
     'model.output_channels': 1,
@@ -39,7 +38,7 @@ study_config = study_config | configs.tasks.segmentation.segmentation_task_confi
 study_config = study_config | configs.default.default_config
 
 study_config['trainer.ema'] = False
-study_config['performance.compile'] = True
+study_config['performance.compile'] = False
 
 study_config['trainer.batch_size'] = 3
 
@@ -65,7 +64,7 @@ exp = EXP_UNet3D().createExperiment(study_config, detail_config={}, dataset_clas
 study.add_experiment(exp)
 
 study.run_experiments()
-#study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
+study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
 #figure = octree_vis.visualize(study.experiments[0])
 
 study.eval_experiments_ood()

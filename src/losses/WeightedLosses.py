@@ -1,7 +1,12 @@
+import einops
 import torch
 import torch.nn as nn
 import src.losses.DiceBCELoss
 import src.losses.OverflowLoss
+import src.losses.MaskedL1Loss
+import src.losses.IntermediateSupervision
+import src.losses.BCELoss
+import src.losses.DiceLoss
 
 
 class WeightedLosses(nn.Module):
@@ -11,18 +16,34 @@ class WeightedLosses(nn.Module):
         self.losses = []
         self.weights = []
         for i, _ in enumerate(config['trainer.losses']):
-            self.losses.append(eval(config['trainer.losses'][i])())
+            try:
+                self.losses.append(eval(config['trainer.losses'][i])(config=config))
+            except TypeError:
+                try:
+                    loss_parameters = config['trainer.losses.parameters'][i]
+                    self.losses.append(eval(config['trainer.losses'][i])(**loss_parameters))
+                except TypeError:
+                    self.losses.append(eval(config['trainer.losses'][i])())
+            
             self.weights.append(config['trainer.loss_weights'][i])
             
+            
 
-    def forward(self, pred, target, **kwargs):
+    def forward(self, **kwargs):
         loss = 0
         loss_ret = {}
         for i, _ in enumerate(self.losses):
             try:
-                r = self.losses[i](pred, target, **kwargs)
+                r = self.losses[i](**kwargs)
             except TypeError:
-                r = self.losses[i](pred, target)
+                if kwargs["logits"].dim() == 5:
+                    logits = einops.rearrange(kwargs["logits"], "b h w d c -> b c h w d")
+                    target = einops.rearrange(kwargs["target"], "b h w d c -> b c h w d")
+                else:
+                    assert kwargs["logits"].dim() == 4, f"Expected 4D tensor, got {kwargs['logits'].dim()}"
+                    logits = einops.rearrange(kwargs["logits"], "b h w c -> b c h w")
+                    target = einops.rearrange(kwargs["target"], "b h w c -> b c h w")
+                r = self.losses[i](logits, target)
             if isinstance(r, tuple):
                 l, d = r
             else:

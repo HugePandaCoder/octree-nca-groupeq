@@ -1,5 +1,5 @@
 cholec_model_config = {
-        'model.channel_n': 25,
+        'model.channel_n': 20,
         'model.fire_rate': 0.5,
         'model.kernel_size': [3, 3, 3, 3, 7],
         'model.hidden_size': 100,
@@ -10,7 +10,7 @@ cholec_model_config = {
 
         'model.eval.patch_wise': False,
 
-        'model.octree.res_and_steps': [[[240, 432, 80], 15], [[120, 216, 40], 15], [[60,108,20], 15], [[30,54,10], 15], [[15,27,5], 40]],
+        'model.octree.res_and_steps': [[[240, 432, 80], 20], [[120, 216, 40], 20], [[60,108,20], 20], [[30,54,10], 20], [[15,27,5], 40]],
         'model.octree.separate_models': True,
 
         'model.vitca': False,

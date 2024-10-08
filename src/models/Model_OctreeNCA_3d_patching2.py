@@ -99,9 +99,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 if self.SAVE_VRAM_DURING_BATCHED_FORWARD: # activate this to minimize memory usage, resulting in lower runtime performance
                     initial_pred = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3], self.output_channels), device=self.device)
                     for b in range(x.shape[0]):
-                        initial_pred[b] = self.forward_eval(x[b:b+1])["pred"]
+                        initial_pred[b] = self.forward_eval(x[b:b+1])["logits"]
                 else:
-                    initial_pred = self.forward_eval(x)["pred"]
+                    initial_pred = self.forward_eval(x)["logits"]
                 self.train()
 
                 loss = torch.zeros((x.shape[0], x.shape[1], x.shape[2], x.shape[3]), device=self.device) # HWD 
@@ -176,6 +176,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
 
         #x: BHWDC
 
+        intermediate_outputs = []
+        intermediate_patches = []
+
 
         for level in range(len(self.octree_res)-1, -1, -1):
 
@@ -186,6 +189,9 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
                 x = self.backbone_ncas[level](x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
             else:
                 x = self.backbone_nca(x, steps=self.inference_steps[level], fire_rate=self.fire_rate)
+            
+            intermediate_outputs.append(x[..., self.input_channels:self.input_channels+self.output_channels])
+            intermediate_patches.append(current_patch.copy())
             x.names = ('B', 'H', 'W', 'D', 'C')
 
 
@@ -250,7 +256,6 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         
         #x: BHWDC
 
-
         y_new = torch.zeros(y.shape[0], x.shape[1], x.shape[2], x.shape[3],
                              y.shape[4], device=self.device, dtype=torch.float)
         for b in range(x.shape[0]):
@@ -263,7 +268,8 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         pred = x[..., self.input_channels:self.input_channels+self.output_channels]
         hidden = x[..., :self.input_channels+self.output_channels]
 
-        return {'pred': pred, 'target': y, 'hidden': hidden}
+        return {'pred': pred, 'target': y, 'hidden': hidden, "intermediate_outputs": intermediate_outputs,
+                "intermediate_patches": intermediate_patches}
     
 
     def compute_octree_res(self, x: torch.Tensor) -> list[tuple[int]]:

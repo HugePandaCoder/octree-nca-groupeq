@@ -26,7 +26,7 @@ from tqdm import tqdm
 from src.utils.DataAugmentations import get_transform_arr
 from batchgenerators.transforms.utility_transforms import NumpyToTensor
 from batchgenerators.transforms.abstract_transforms import Compose
-
+import pickle as pkl
 
 class Experiment():
     r"""This class handles:
@@ -103,15 +103,17 @@ class Experiment():
     def new_datasplit(self) -> 'DataSplit':
         split_file = self.config.get('experiment.dataset.split_file', None)
         if split_file is not None:
-            split = DataSplit()
+            split = DataSplit(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
+                            os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.label_path']), 
+                            dataset = self.dataset_class(**self.dataset_args))
             split.load_from_file(os.path.join(pc.FILER_BASE_PATH, split_file))
             return split
         else:
-            split = DataSplit()
-            split.initialize(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
+            split = DataSplit(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
                             os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.label_path']), 
-                            data_split = self.config['experiment.data_split'], 
-                            dataset = self.dataset_class(**self.dataset_args),
+                            dataset = self.dataset_class(**self.dataset_args))
+            split.initialize( 
+                            data_split = self.config['experiment.data_split'],
                             seed=self.config['experiment.dataset.seed'])
             return split
 
@@ -134,12 +136,13 @@ class Experiment():
         r"""Reload old experiment to continue training
             TODO: Add functionality to load any previous saved step
         """
-        self.data_split = DataSplit()
+        self.data_split = DataSplit(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.img_path']), 
+                        os.path.join(pc.FILER_BASE_PATH, self.config['experiment.dataset.label_path']), 
+                        dataset = self.dataset_class(**self.dataset_args))
         self.data_split.load_from_file(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'data_split.pkl'))
         loaded_config = load_json_file(os.path.join(pc.FILER_BASE_PATH, self.config['experiment.model_path'], 'config.json'))
 
         config_keys = list(self.config.keys())
-        print(config_keys)
 
 
         for k, v in loaded_config.items():
@@ -241,17 +244,24 @@ class Experiment():
                                               self.data_split.get_labels(split))
 
                 self.datasets[split].set_experiment(self)
-        
 
-        assert self.get_from_config('trainer.datagen.difficulty_weighted_sampling') is False, "not implemented yet"
+
+        precomputed_difficulties = None
+        if self.get_from_config('trainer.datagen.difficulty_weighted_sampling') and self.config.get('trainer.datagen.difficulty_dict', False):
+            precomputed_difficulties = pkl.load(open(self.config['trainer.datagen.difficulty_dict'], 'rb'))
+
+
         self.data_loaders = {}
         assert len(self.data_split.get_images('train')) > 0, "No training data available"
         if self.config['trainer.datagen.batchgenerators']:
             if self.get_from_config('trainer.num_steps_per_epoch') is not None:
                 data_generator = StepsPerEpochGenerator(self.datasets["train"], self.config['trainer.num_steps_per_epoch'], 
                                                         num_threads_in_mt=self.config['performance.num_workers'], 
-                                                        batch_size=self.config['trainer.batch_size'])
+                                                        batch_size=self.config['trainer.batch_size'],
+                                                        difficulty_weighted_sampling=self.get_from_config('trainer.datagen.difficulty_weighted_sampling'),
+                                                        precomputed_difficulties=precomputed_difficulties)
             else:
+                assert self.get_from_config('trainer.datagen.difficulty_weighted_sampling') is False, "not implemented for StepsPerEpochGenerator"
                 data_generator = DatasetPerEpochGenerator(self.datasets["train"], 
                                                           num_threads_in_mt=self.config['performance.num_workers'], 
                                                           batch_size=self.config['trainer.batch_size']) 
@@ -469,20 +479,37 @@ class Experiment():
 class DataSplit():
     r"""Handles the splitting of data
     """
-    def __init__(self):
-        pass
+    def __init__(self, path_image: str, path_label: str, dataset: Dataset):
+        self.path_image = path_image
+        self.path_label = path_label
+        self.dataset = dataset
 
-    def initialize(self, path_image: str, path_label: str, data_split: dict, dataset: Dataset, seed: int):
-        self.images = self.split_files(self.getFilesInFolder(path_image, dataset), data_split, seed)
-        self.labels = self.split_files(self.getFilesInFolder(path_label, dataset), data_split, seed)
+    def initialize(self, data_split: dict, seed: int):
+        self.images = self.split_files(self.getFilesInFolder(self.path_image, self.dataset), data_split, seed)
+        self.labels = self.split_files(self.getFilesInFolder(self.path_label, self.dataset), data_split, seed)
 
     def load_from_file(self, path: str):
         d = load_pickle_file(path)
-        self.images = d['images']
-        self.labels = d['labels']
+        assert isinstance(d, dict)
+        assert set(d.keys()) == set(['train', 'val', 'test'])
+        images = self.getFilesInFolder(self.path_image, self.dataset)
+        labels = self.getFilesInFolder(self.path_label, self.dataset)
+        self.images = {}
+        self.labels = {}
+        for s in ['train', 'val', 'test']:
+            self.images[s] = {}
+            self.labels[s] = {}
+            for file in d[s]:
+                self.images[s][file] = images[file]
+                self.labels[s][file] = labels[file]
 
     def save_to_file(self, path: str):
-        d = {'images': self.images, 'labels': self.labels}
+        d = {}
+        for s in ['train', 'val', 'test']:
+            d[s] = []
+            for case in self.images[s]:
+                if case not in d[s]:
+                    d[s].append(case)
         dump_pickle_file(d, path)
 
     def get_images(self, state: str) ->  dict:

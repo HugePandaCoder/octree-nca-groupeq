@@ -140,7 +140,7 @@ def perform_inference(model, video):
 
     state = new_state
 
-    segmentation = (state > 0.5).numpy()
+    segmentation = (state > 0).numpy()
     return segmentation
 
 video_path = "/local/scratch/Cholec80/cholec80_full_set/videos/video01.mp4"

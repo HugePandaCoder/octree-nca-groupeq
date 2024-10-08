@@ -7,7 +7,9 @@ prostate_dataset_config = {
     'experiment.dataset.input_size': [320, 320, 24],
     'experiment.dataset.patchify': False,
 
-    'experiment.dataset.split_file': r"clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.pkl", 
+    #'experiment.dataset.split_file': r"clmn1/octree_study/Experiments/Prostate49_OctreeNCA3D/data_split.pkl", 
+    'experiment.dataset.split_file': r"clmn1/octree_study/nnunet_split_0.pkl", 
+    #'experiment.dataset.seed': 99, #42
 
     'model.input_channels': 1,
 

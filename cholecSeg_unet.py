@@ -93,7 +93,6 @@ def setup_cholecSeg():
 
     exp = EXP_UNet3D().createExperiment(study_config, detail_config={}, 
                                              dataset_class=Dataset_CholecSeg_preprocessed, dataset_args = {
-                                                 'use_max_sequence_length_in_eval': False,
                                                  'patch_size': study_config['patch_size']
                                              })
     study.add_experiment(exp)

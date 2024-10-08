@@ -3,3 +3,8 @@ import configs.models.prostate_m3d as prostate_m3d
 import configs.models.prostate as prostate
 import configs.models.peso_vitca as peso_vitca
 import configs.models.prostate_vitca as prostate_vitca
+import configs.models.min_unet as min_unet
+import configs.models.prostate_unet as prostate_unet
+import configs.models.peso as peso
+import configs.models.peso_med as peso_med
+import configs.models.cholec_unet as cholec_unet

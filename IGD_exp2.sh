@@ -15,4 +15,4 @@ cd /gris/gris-f/homestud/nlemke/NCA
 conda activate nca3
 export PYTHONPATH=.
 
-python -m trace -t /gris/gris-f/homestud/nlemke/NCA/train_prostate_superres.py
+python /gris/gris-f/homestud/nlemke/NCA/train_cholecSeg_unet.py

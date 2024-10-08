@@ -300,19 +300,20 @@ class Dataset_NiiGz_3D(Dataset_3D):
                 my_print("Dataset_NiiGz_3D line 282")
                 if len(label.shape) == 3:
                     label = np.expand_dims(label, axis=-1)
+            slice_id = str(img_id)
             img_id = "_" + str(p_id) + "_" + str(img_id)
 
             my_print("Dataset_NiiGz_3D line 284")
             if self.store:
-                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label))
+                self.data.set_data(key=self.images_list[idx], data=(img_id, img, label, str(p_id), slice_id))
                 img = self.data.get_data(key=self.images_list[idx])
             else:
-                img = (img_id, img, label)
+                img = (img_id, img, label, str(p_id), slice_id)
            
         my_print("Dataset_NiiGz_3D line 291")
         
 
-        id, img, label = img
+        id, img, label, p_id, slice_id = img
 
         size = self.size 
         
@@ -346,6 +347,10 @@ class Dataset_NiiGz_3D(Dataset_3D):
 
         data_dict = {}
         data_dict['id'] = id
+        data_dict['patient_id'] = p_id
+        data_dict['recording_id'] = p_id#each patient has only one recording
+        if self.slice is not None:
+            data_dict['slice_id'] = slice_id
         data_dict['image'] = img
         data_dict['label'] = label
 

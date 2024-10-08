@@ -2,6 +2,7 @@ import torch
 from src.agents.Agent_M3DNCA_GradAccum import M3DNCAAgentGradientAccum
 from src.agents.Agent_M3DNCA_superres import M3DNCAAgent_superres
 from src.agents.Agent_MedNCA_extrapolation import MedNCAAgent_extrapolation
+from src.agents.Agent_MedSeg3D_slicewise import Agent_MedSeg3D_slicewise
 from src.losses.WeightedLosses import WeightedLosses
 from src.models.UNetWrapper2D import UNetWrapper2D
 from src.models.UNetWrapper3D import UNetWrapper3D
@@ -122,47 +123,18 @@ from src.models.Model_OctreeNCA import OctreeNCA
 from src.models.Model_OctreeNCAV2 import OctreeNCAV2
 class EXP_OctreeNCA(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
-        config = {
-            'description': 'OctreeNCA',#OctreeNCA
-            'lr': 16e-4,
-            'batch_duplication': 1,
-            # Model
-            'channel_n': 32,        # Number of CA state channels
-            'inference_steps': 64,
-            'cell_fire_rate': 0.5,
-            'batch_size': 12,
-            'hidden_size': 128,
-            'train_model':1,
-            'betas': (0.9, 0.99),
-            # Data
-            'scale_factor': 4,
-            'kernel_size': 3,
-            'levels': 2,
-            'input_size': (320,320) ,
-        }
-
-        config = merge_config(merge_config(study_config, config), detail_config)
-        print("CONFIG", config)
+        config = study_config
         if dataset_class is None:
             assert False, "Dataset is None"
-        model = OctreeNCA2DPatch2(config['channel_n'], config['cell_fire_rate'], device=config['device'], hidden_size=config['hidden_size'], input_channels=config['input_channels'], 
-                                    output_channels=config['output_channels'], steps=config['inference_steps'],
-                        octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
-                        compile=config['compile'], patch_sizes=config['patch_sizes'], kernel_size=config['kernel_size'],
-                        loss_weighted_patching=config['loss_weighted_patching'], track_running_stats=config['batchnorm_track_running_stats'])
-
-        #model = OctreeNCAV2(config['channel_n'], config['cell_fire_rate'], 
-        #                  device=config['device'], hidden_size=config['hidden_size'], 
-        #                  input_channels=config['input_channels'], output_channels=config['output_channels'], 
-        #                  steps=config['inference_steps'], octree_res_and_steps=config['octree_res_and_steps'], 
-        #                  separate_models=config['separate_models'], compile=config['compile'], kernel_size=config['kernel_size'])
+        model = OctreeNCA2DPatch2(config)
         
-        assert config['batchnorm_track_running_stats'] == False
-        assert config['gradient_accumulation'] == False
-        assert config['train_quality_control'] == False
+        assert config['model.batchnorm_track_running_stats'] == False
+        assert config['trainer.gradient_accumulation'] == False
+        assert config['trainer.train_quality_control'] == False
 
+        assert config['experiment.task'] == 'segmentation'
         agent = MedNCAAgent(model)
-        loss_function = DiceBCELoss() 
+        loss_function = WeightedLosses(config) 
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
     
@@ -272,7 +244,54 @@ class EXP_UNet2D(ExperimentWrapper):
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 
+class EXP_min_UNet2D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+        
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        #model_params.pop("eval.patch_wise")
+        model = smp.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
+        model = UNetWrapper2D(model)
 
+        if config['performance.compile']:
+            model.compile()
+        agent = MedNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+
+import segmentation_models_pytorch as smp
+class EXP_min_UNet(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        #model_params.pop("eval.patch_wise")
+        model = smp.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
+
+        model = UNetWrapper2D(model)
+
+        if config['performance.compile']:
+            model.compile()
+        agent = Agent_MedSeg3D_slicewise(model)
+        #agent = MedNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 
     
 

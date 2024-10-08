@@ -1,4 +1,5 @@
 import os
+import einops
 from matplotlib import pyplot as plt
 import pandas as pd
 import torch
@@ -16,8 +17,9 @@ class Agent_MedSeg3D(BaseAgent):
     @torch.no_grad()
     def test(self, scores: ScoreList, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, 
-             split='test', ood_augmentation: tio.Transform=None,
-             output_name: str=None) -> dict:
+             split='test', ood_augmentation: tio.Transform|None=None,
+             output_name: str=None,
+             export_prediction: bool = False) -> dict:
         r"""Evaluate model on testdata by merging it into 3d volumes first
             TODO: Clean up code and write nicer. Replace fixed images for saving in tensorboard.
             #Args
@@ -29,12 +31,7 @@ class Agent_MedSeg3D(BaseAgent):
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         self.exp.set_model_state('test')
         
-        # Prepare arrays
-        patient_id, patient_3d_image, patient_3d_label, average_loss, patient_count = None, None, None, 0, 0
-        patient_real_Img = None
         loss_log = {}
-        if save_img == None:
-            save_img = []#1, 2, 3, 4, 5, 32, 45, 89, 357, 53, 122, 267, 97, 389]
 
         # For each data sample
         for i, data in enumerate(dataloader):
@@ -45,84 +42,56 @@ class Agent_MedSeg3D(BaseAgent):
                 data['image'] = ood_augmentation(data['image'][0].cpu()).to(self.device)
                 data["image"] = data["image"][None]
 
-            data_id, inputs, targets = data['id'], data['image'], data['label']
-            out = self.get_outputs(data, full_img=True, tag="0")
-            outputs = out["pred"]
+            patient_id, image, label = data['recording_id'][0], data['image'], data['label']
+            recording_id = data['recording_id'][0]
 
-            if isinstance(data_id, str):
-                _, id, slice = dataset.__getname__(data_id).split('_')
+            # image.shape: BCHWD
+            label = einops.rearrange(label, "b h w d c -> b c h w d")
+
+            if pseudo_ensemble:
+                predictions = []
+                for i in range(10):
+                    predictions.append(self.get_outputs(data, full_img=True, tag=str(i))["pred"])
+                stack = torch.stack(predictions, dim=0)
+                pred, _ = torch.median(stack, dim=0)
+                nqm_score = self.compute_nqm_score((stack>0).cpu().numpy())
+                del predictions, stack
             else:
-                print("DATA_ID", data_id)
-                text = str(data_id[0]).split('_')
-                if len(text) == 3:
-                    _, id, slice = text
-                else:
-                    id = data_id[0]
-                    slice = None
+                pred = self.get_outputs(data, full_img=True, tag="0")["pred"]
+
+            pred = einops.rearrange(pred, "b h w d c -> b c h w d")
 
 
-            # Run inference 10 times to create a pseudo ensemble
-            if pseudo_ensemble: # 5 + 5 times
-                outputs2 = self.get_outputs(data, full_img=True, tag="1")["pred"]
-                outputs3 = self.get_outputs(data, full_img=True, tag="2")["pred"]
-                outputs4 = self.get_outputs(data, full_img=True, tag="3")["pred"]
-                outputs5 = self.get_outputs(data, full_img=True, tag="4")["pred"]
-                if True: 
-                    outputs6 = self.get_outputs(data, full_img=True, tag="5")["pred"]
-                    outputs7 = self.get_outputs(data, full_img=True, tag="6")["pred"]
-                    outputs8 = self.get_outputs(data, full_img=True, tag="7")["pred"]
-                    outputs9 = self.get_outputs(data, full_img=True, tag="8")["pred"]
-                    outputs10 = self.get_outputs(data, full_img=True, tag="9")["pred"]
-                    stack = torch.stack([outputs, outputs2, outputs3, outputs4, outputs5, outputs6, outputs7, outputs8, outputs9, outputs10], dim=0)
-                    
-                    # Calculate median
-                    outputs, _ = torch.median(stack, dim=0)
-                    nqm_score = self.labelVariance(torch.sigmoid(stack).detach().cpu().numpy(), torch.sigmoid(outputs).detach().cpu().numpy(), inputs.detach().cpu().numpy(), id, targets.detach().cpu().numpy() )
+            s: dict = scores(einops.rearrange(pred, "b c h w d -> b h w d c"), 
+                            einops.rearrange(label, "b c h w d -> b h w d c"))
+            
+            if pseudo_ensemble:
+                s["NQMScore"] = nqm_score
 
-
-                else:
-                    outputs, _ = torch.median(torch.stack([outputs, outputs2, outputs3, outputs4, outputs5], dim=0), dim=0)
-
-            patient_3d_image = outputs.detach().cpu()
-            patient_3d_label = targets.detach().cpu()
-            patient_3d_real_Img = inputs.detach().cpu()
-            patient_id = id
-            #print(patient_id)
-
-            s = scores(patient_3d_image, patient_3d_label)
+            print(recording_id, ':', s)
             for key in s.keys():
                 if key not in loss_log:
                     loss_log[key] = {}
-                loss_log[key][patient_id] = s[key]
+                loss_log[key][recording_id] = s[key]
 
-                print(",",loss_log[key][patient_id])
-                # Add image to tensorboard
-                if True: 
-                    if len(patient_3d_label.shape) == 4:
-                        patient_3d_label = patient_3d_label.unsqueeze(dim=-1)
-                    #self.exp.write_img(str(tag) + str(patient_id) + "_" + str(len(patient_3d_image)), 
-                    #convert_image(self.prepare_image_for_display(patient_3d_real_Img[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                    #self.prepare_image_for_display(patient_3d_image[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                    #self.prepare_image_for_display(patient_3d_label[:,:,:,5:6,:].detach().cpu()).numpy(), 
-                    #encode_image=False), self.exp.currentStep)
 
-                    # REFACTOR: Save predictions
-                    if False:
-                        label_out = torch.sigmoid(patient_3d_image[0, ...])
-                        nib_save = nib.Nifti1Image(label_out  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + ".nii.gz"))
+            pred = pred.cpu()
+            label = label.cpu()
+            image = image.cpu()
 
-                        nib_save = nib.Nifti1Image(torch.sigmoid(patient_3d_real_Img[0, ...])  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_real.nii.gz"))
-
-                        nib_save = nib.Nifti1Image(patient_3d_label[0, ...]  , np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1))), nib.Nifti1Header())
-                        nib.save(nib_save, os.path.join("path", str(len(loss_log[0])) + "_ground.nii.gz"))
-
-            #print(patient_3d_real_Img.shape, patient_3d_image.shape, patient_3d_label.shape)
+            # write images to logger
             if ood_augmentation is None:
-                self.exp.write_img(str(tag) + str(patient_id),
-                                merge_img_label_gt_simplified(patient_3d_real_Img, patient_3d_image, patient_3d_label, rgb=dataset.is_rgb),
+                self.exp.write_img(str(tag) + str(recording_id),
+                                merge_img_label_gt_simplified(image, 
+                                                                einops.rearrange(pred, 'b c h w d -> b h w d c'), 
+                                                                einops.rearrange(label, 'b c h w d -> b h w d c'), 
+                                                                rgb=dataset.is_rgb),
                                 self.exp.currentStep)
+            if export_prediction:
+                exportable_segmentation = einops.rearrange(pred, "b c h w d -> b h w d c")[0]
+                eval_path = os.path.join(self.exp.get_from_config('experiment.output_path'), 'pred')
+                os.makedirs(eval_path, exist_ok=True)
+                np.save(os.path.join(eval_path, f"{recording_id}.npy"), exportable_segmentation.numpy())
         
         ood_label = ""
         if ood_augmentation != None:

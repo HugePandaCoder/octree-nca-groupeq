@@ -74,20 +74,35 @@ class MedNCAAgent_extrapolation(MedNCAAgent):
         #2D: inputs: BCHW, targets: BCHW
         margin = self.exp.get_from_config("experiment.task.margin")
 
+        b,c,h,w = inputs.shape
+        mask  = torch.zeros(b,1,h,w, device=inputs.device)
+
         if self.exp.config["experiment.task.direction"] == "top":
-            inputs[:, :, :margin, :] = 0
+            mask[:, :, :margin, :] = 1
         elif self.exp.config["experiment.task.direction"] == "all":
-            inputs[:, :, :margin, :] = 0
-            inputs[:, :, -margin:, :] = 0
-            inputs[:, :, :, :margin] = 0
-            inputs[:, :, :, -margin:] = 0
+            mask[:, :, :margin, :] = 1
+            mask[:, :, -margin:, :] = 1
+            mask[:, :, :, :margin] = 1
+            mask[:, :, :, -margin:] = 1
         else:
             raise ValueError("Invalid direction")
+        
+        inputs = inputs * (1-mask)
+        data['inputs'] = inputs
 
 
         out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
 
+        #plt.subplot(1,2,1)
+        #plt.imshow(einops.rearrange(inputs.cpu().numpy()[0], "c h w -> h w c"))
+        #plt.subplot(1,2,2)
+        #plt.imshow(out["pred"].cpu().numpy()[0])
+        #plt.show()
+
+
         out['unpatched_target'] = einops.rearrange(targets, "b c h w -> b h w c")
+
+        out['loss_mask'] = einops.rearrange(mask, "b c h w -> b h w c")
 
         #2D: inputs: BHWC, targets: BHWC
         return out

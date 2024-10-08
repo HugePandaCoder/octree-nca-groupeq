@@ -17,6 +17,7 @@ from tqdm import tqdm
 import torchio as tio
 from src.utils.ProjectConfiguration import ProjectConfiguration as pc
 from src.utils.vitca_utils import norm_grad
+import datetime
 
 class BaseAgent():
     """Base class for all agents. Handles basic training and only needs to be adapted if special use cases are necessary.
@@ -128,7 +129,7 @@ class BaseAgent():
         loss_ret = {}
         #print(outputs.shape, targets.shape)
         #2D: outputs: BHWC, targets: BHWC
-        
+        out["target_unpatched"] = data["label"]
         loss, loss_ret = loss_f(**out)
 
         if loss != 0:
@@ -187,7 +188,7 @@ class BaseAgent():
                 average_loss = sum(loss_log[key]) / len(loss_log[key])
             else:
                 average_loss = 0
-            print(epoch, "loss =", average_loss)
+            print(f"Loss/train/{key} = {average_loss}")
             self.exp.write_scalar('Loss/train/' + str(key), average_loss, epoch)
 
     def plot_results_byPatient(self, loss_log: dict) -> figure:
@@ -218,7 +219,9 @@ class BaseAgent():
             self.ema.restore_original()
 
         
-        if self.exp.get_from_config('trainer.datagen.difficulty_weighted_sampling'):
+        if self.exp.get_from_config('trainer.datagen.difficulty_weighted_sampling') and False:
+            raise NotImplementedError("This must be updated")
+            # This will not be that easy! The SlimDataLoader computes weighted_difficulties once. They are not updated during training!!!
             assert loss_log is not None
             loss_sum_per_patient = {}
             for mask in loss_log.keys():
@@ -258,7 +261,8 @@ class BaseAgent():
         #    param_lst.extend(np.fromiter(param.flatten(), dtype=float))
         #self.exp.write_histogram('Model/weights', np.fromiter(param_lst, dtype=float), epoch)
 
-    def getAverageDiceScore(self, pseudo_ensemble: bool = False, ood_augmentation: tio.Transform=None, output_name: str=None) -> dict:
+    def getAverageDiceScore(self, pseudo_ensemble: bool = False, ood_augmentation: tio.Transform=None, output_name: str=None,
+                            export_prediction: bool=False) -> dict:
         r"""Get the average Dice test score.
             #Returns:
                 return (float): Average Dice score of test set. """
@@ -275,7 +279,14 @@ class BaseAgent():
 
         scores = ScoreList(self.exp.config)
         loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble, ood_augmentation=ood_augmentation,
-                             output_name=output_name)
+                             output_name=output_name,
+                             export_prediction=export_prediction)
+
+        #loss_log = self.test(scores, save_img=None, pseudo_ensemble=pseudo_ensemble, ood_augmentation=ood_augmentation,
+        #                     output_name=output_name,
+        #                     export_prediction=export_prediction,
+        #                     split='train', prediction_export_path="temp")
+        #assert False, "remove those changes"
 
         if self.exp.get_from_config("trainer.find_best_model_on") is not None:
             self.model.load_state_dict(current_params)
@@ -342,7 +353,8 @@ class BaseAgent():
                 dataloader (Dataloader): contains training data
                 loss_f (nn.Model): The loss for training"""
         for epoch in range(self.exp.currentStep, self.exp.get_max_steps()+1):
-            print("Epoch: " + str(epoch))
+            torch.cuda.reset_peak_memory_stats(self.device)
+            print(f"{datetime.datetime.now().strftime('%I:%M%p, %B %d, %Y')} Epoch: {epoch}")
             self.exp.set_model_state('train')
             loss_log = {}
             self.initialize_epoch()
@@ -356,6 +368,26 @@ class BaseAgent():
                         loss_log[key].append(loss_item[key])
                     else:
                         loss_log[key].append(loss_item[key].detach())
+
+            if epoch == 2:
+                print("measure memory allocation")
+                mem_allocation = torch.cuda.max_memory_allocated(self.device)
+                mem_allocation_mb = mem_allocation/ 1024**2
+                print(f"allocated memory: {mem_allocation_mb} MiB")
+                mem_allocation_dict ={
+                    'byte': mem_allocation,
+                    'MiB': mem_allocation_mb
+                }
+                dump_json_file(mem_allocation_dict, os.path.join(pc.FILER_BASE_PATH, self.exp.config['experiment.model_path'], 'mem_allocation.json'))
+
+                num_params = sum(p.numel() for p in self.model.parameters())
+                num_params_trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+                print(f"model has {num_params} params, of which {num_params_trainable} are trainable")
+                num_params_dict ={
+                    'num_params': num_params,
+                    'num_params_trainable': num_params_trainable
+                }
+                dump_json_file(num_params_dict, os.path.join(pc.FILER_BASE_PATH, self.exp.config['experiment.model_path'], 'num_params.json'))
 
             if self.exp.get_from_config('trainer.ema') and self.exp.get_from_config('trainer.ema.update_per') == 'epoch':
                 self.ema.update()
@@ -412,6 +444,17 @@ class BaseAgent():
     #            self.exp.write_histogram('ood/Dice/' + str(key) + ", " + str(augmentation) + '/byPatient', np.fromiter(loss_log[key].values(), dtype=float), epoch)
     #    self.exp.dataset = dataset_train
 
+    
+    def compute_nqm_score(self, prediction_stack: np.ndarray) -> float:
+        mean = np.sum(prediction_stack, axis=0) / prediction_stack.shape[0]
+        stdd = 0
+        for i in range(prediction_stack.shape[0]):
+            img = prediction_stack[i] - mean
+            img = np.power(img, 2)
+            stdd = stdd + img
+        stdd = stdd / prediction_stack.shape[0]
+        stdd = np.sqrt(stdd)
+        return np.sum(stdd) / np.sum(mean)
 
     def labelVariance(self, images: torch.Tensor, median: torch.Tensor, img_mri: torch.Tensor, img_id: str, targets: torch.Tensor) -> None:
         r"""Calculate variance over all predictions
@@ -432,30 +475,6 @@ class BaseAgent():
         stdd = np.sqrt(stdd)
 
         print("NQM Score: ", np.sum(stdd) / np.sum(median))
-
-        # Save files refactor
-        if False:
-            nib_save = np.expand_dims(img_mri[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("path", str(img_id) + "_image.nii.gz"))
-            
-            nib_save = np.expand_dims(targets[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("path", str(img_id) + "_gt.nii.gz"))
-
-            nib_save = np.expand_dims(stdd[0, ..., 0], axis=-1) 
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("path", str(img_id) + "_variance.nii.gz"))
-
-            nib_save = np.expand_dims(mean[0, ..., 0], axis=-1) 
-            nib_save[nib_save > 0.5] = 1 
-            nib_save[nib_save != 1] = 0
-            nib_save = nib.Nifti1Image(nib_save , np.array(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 4, 0), (0, 0, 0, 1))), nib.Nifti1Header()) #np.array(((0, 0, 1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))
-            nib.save(nib_save, os.path.join("path", str(img_id) + "_label.nii.gz"))
-        
-            f = open(os.path.join("path", str(img_id) + "_score.txt"), "a")
-            f.write(str(np.sum(stdd) / np.sum(median)))
-            f.close()
 
         return
 
@@ -478,5 +497,6 @@ class BaseAgent():
     def test(self, loss_f: torch.nn.Module, save_img: list = None, tag: str = 'test/img/', 
              pseudo_ensemble: bool = False, split='test',
              ood_augmentation: tio.Transform=None,
-             output_name: str=None) -> dict:
+             output_name: str=None,
+             prediction_export_path: str="pred") -> dict:
         raise NotImplementedError

@@ -5,7 +5,7 @@ cholec_dataset_config = {
     'experiment.dataset.rescale': True,
     'experiment.dataset.input_size': [240, 432, 80],
 
-    'experiment.dataset.split_file': r"clmn1/octree_study/Experiments/cholec_seg_5_OctreeNCA3D/data_split.pkl", 
+    'experiment.dataset.split_file': r"clmn1/octree_study/cholec_split.pkl", 
 
     'model.input_channels': 3,
 

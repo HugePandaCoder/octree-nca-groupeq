@@ -30,6 +30,7 @@ class M3DNCAAgent(UNetAgent):
         inputs = inputs.permute(0, 2, 3, 4, 1)
 
         out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
+        out["target_unpatched"] = targets
         return out 
 
     def batch_step(self, data: tuple, loss_f: torch.nn.Module, gradient_norm: bool = False) -> dict:

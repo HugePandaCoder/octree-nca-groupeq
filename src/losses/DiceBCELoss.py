@@ -34,12 +34,12 @@ class DiceBCELoss(torch.nn.Module):
             for m in range(target.shape[-1]):
                 loss_loc = self.compute(output[..., m], target[...])
                 loss = loss + loss_loc
-                loss_ret[m] = loss_loc.item()
+                loss_ret[f"mask_{m}"] = loss_loc.item()
         else:
             for m in range(target.shape[-1]):
                 if 1 in target[..., m]:
                     loss_loc = self.compute(output[..., m], target[..., m])
                     loss = loss + loss_loc
-                    loss_ret[m] = loss_loc.item()
+                    loss_ret[f"mask_{m}"] = loss_loc.item()
 
         return loss, loss_ret

@@ -13,12 +13,15 @@ import os
 import random, zarr, tqdm, pickle as pkl, openslide
 
 class Dataset_PESO(Dataset_Base):
-    def __init__(self, patches_path: str, patch_size: tuple[int, int], path: str, img_level:int) -> None:
+    def __init__(self, patches_path: str, patch_size: tuple[int, int], path: str, img_level:int, return_background_class: bool) -> None:
         self.slice = -1
         self.delivers_channel_axis = True
         self.is_rgb = True
 
         self.img_level = img_level
+        self.return_background_class = return_background_class
+
+        assert len(patch_size) == 2, f"patch_size must be a tuple of length 2, but is {patch_size}"
         
 
         if os.path.exists(os.path.join(patches_path, f"patches_{img_level}_{patch_size[0]}_{patch_size[1]}.pkl")):
@@ -106,7 +109,8 @@ class Dataset_PESO(Dataset_Base):
         lbl = np.array(lbl)[:,:,0]
 
         lbl = lbl == 2
-        lbl = lbl.astype(float)
+        lbl = lbl
+
 
 
         mean = np.array([0.485, 0.456, 0.406])
@@ -114,13 +118,29 @@ class Dataset_PESO(Dataset_Base):
         img = img / 255.0
         img = (img - mean) / std
 
-        if len(lbl.shape) == 2:
-            lbl = lbl[..., None]
+
+        assert len(lbl.shape) == 2, f"lbl.shape must be H W, but is {lbl.shape}"
+        if self.return_background_class:
+            background_lbl = np.logical_not(lbl)
+            lbl = np.stack([background_lbl, lbl], 2)
+        else:
+            lbl = lbl[None, ...]
+
+        lbl = lbl.astype(float)
+        #print(lbl.shape)   HWC
+
 
         data_dict = {}
         data_dict['id'] = _id
         data_dict['image'] = img
         data_dict['label'] = lbl
+        data_dict['patient_id'] = name
+        data_dict['position'] = (pos_x, pos_y)
         #2D: data_dict['image']: HWC, data_dict['label']: HWC
 
         return data_dict
+    
+    def getPublicIdByIndex(self, idx: int):
+        name,x,y = self.images_list[idx]
+        _id = f"{name}_{x}_{y}"
+        return _id

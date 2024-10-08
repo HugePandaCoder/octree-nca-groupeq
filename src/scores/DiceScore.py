@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 class DiceScore(torch.nn.Module):
 
 
-    def forward(self, output: torch.Tensor, target: torch.Tensor):
+    def forward(self, output: torch.Tensor, target: torch.Tensor, **kwargs):
+        #target: BHWDC or BHWC
+        #output: BHWDC or BHWC
         output = output > 0
         d = {}
 

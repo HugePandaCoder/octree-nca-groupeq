@@ -8,12 +8,11 @@ from src.utils.BaselineConfigs import EXP_OctreeNCA, EXP_OctreeNCA2D_extrapolati
 import octree_vis
 from src.utils.ProjectConfiguration import ProjectConfiguration as pc
 import configs
-from src.utils.convert_to_cluster import convert_paths_to_cluster_paths, maybe_convert_paths_to_cluster_paths
 
 print("Study Path:", pc.STUDY_PATH)
 
 study_config = {
-        'experiment.name': r'peso_extrapolation_vitca_top_only',
+        'experiment.name': r'peso_extrapolation_vitca_top_only_masked_2',
         'experiment.description': "OctreeNCAExtrapolation",
 }
 
@@ -25,7 +24,7 @@ study_config = study_config | configs.default.default_config
 
 study_config['model.output_channels'] = 3
 study_config['experiment.logging.also_eval_on_train'] = False
-study_config['trainer.losses'] = ["torch.nn.L1Loss", "src.losses.OverflowLoss.OverflowLoss"]
+study_config['trainer.losses'] = ["src.losses.MaskedL1Loss.MaskedL1Loss", "src.losses.OverflowLoss.MaskedOverflowLoss"]
 study_config['trainer.loss_weights'] = [1e2, 1e2]
 study_config['experiment.logging.evaluate_interval']= 2001
 
@@ -33,7 +32,7 @@ study_config['experiment.logging.evaluate_interval']= 2001
 study_config['model.octree.res_and_steps'] = [[[160, 160], 5], [[80, 80], 10], [[40, 40], 10], [[20,20], 10], [[10, 10], 20]]
 study_config['experiment.dataset.input_size'] = [160, 160]
 
-study_config['performance.compile'] = True
+study_config['performance.compile'] = False
 
 study_config['experiment.task.margin'] = 30
 study_config['experiment.task.direction'] = "top"

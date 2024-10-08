@@ -1,5 +1,6 @@
 
 
+import einops
 from src.datasets.Dataset_3D import Dataset_3D
 from src.datasets.Dataset_Base import Dataset_Base
 import os
@@ -8,14 +9,16 @@ import cv2
 import torch, math
 
 class Dataset_CholecSeg_preprocessed(Dataset_Base):
-    def __init__(self, use_max_sequence_length_in_eval: bool, patch_size: tuple=None):
+    def __init__(self, patch_size: tuple=None, slice_wise: bool = False):
         super().__init__()
         self.slice = None
         self.delivers_channel_axis = True
         self.is_rgb = True
-        self.use_max_sequence_length_in_eval = use_max_sequence_length_in_eval
 
         self.patch_size = patch_size
+        self.slice_wise = slice_wise
+        if self.slice_wise:
+            self.slice = 2
 
     
     def getFilesInPath(self, path: str):
@@ -33,7 +36,11 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
             id = inner_dir
             dic[id] = {}
             for i, f in enumerate(os.listdir(os.path.join(path, inner_dir))):
-                dic[id][i] = f
+                if self.slice_wise:
+                    for j in range(80):
+                        dic[id][i*80+j] = (f, j)
+                else:
+                    dic[id][i] = f
         return dic
     
 
@@ -76,51 +83,35 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
     def __getitem__(self, idx: str):
         # images have a resolution of 854x480 with 80 frames
 
-        if self.state == "train" or not self.use_max_sequence_length_in_eval:
-            patient_name = self.images_list[idx][:len("videoXX")]
-            path = os.path.join(self.images_path, patient_name, self.images_list[idx])
-
-            data_dict = self.load_item_internal(path)
-
-
-            data_dict['id'] = self.images_list[idx]
+        if self.slice_wise:
+            file_name, slice_idx = self.images_list[idx]
+            patient_name = file_name[:len("videoXX")]
         else:
-            assert self.state in ["val", "test"]
-            patient_name = self.images_list[idx][:len("videoXX")]
-            frame_end = int(self.images_list[idx][len("videoXX") + 1:])
-            all_folders = []
+            file_name = self.images_list[idx]
+            patient_name = file_name[:len("videoXX")]
 
-            iterator = 0
-            while True:
-                path_at_question = os.path.join(self.images_path, patient_name, f"{patient_name}_{str(frame_end + iterator).zfill(5)}")
-                if os.path.exists(path_at_question):
-                    all_folders.append(path_at_question)
-                    iterator += 80
-                else:
-                    break
-            iterator = 80
-            while True:
-                path_at_question = os.path.join(self.images_path, patient_name, f"{patient_name}_{str(frame_end - iterator).zfill(5)}")
-                if os.path.exists(path_at_question):
-                    all_folders.append(path_at_question)
-                    iterator += 80
-                else:
-                    break
+        path = os.path.join(self.images_path, patient_name, file_name)
 
-            all_folders.sort()
-            all_segmentations = []
-            all_videos = []
-            for folder in all_folders:
-                temp_dict = self.load_item_internal(folder)
-                all_videos.append(temp_dict['image'])
-                all_segmentations.append(temp_dict['label'])
-
-            data_dict = {}
-            data_dict['id'] = self.images_list[idx]
-            data_dict['image'] = np.concatenate(all_videos, axis=3)
-            data_dict['label'] = np.concatenate(all_segmentations, axis=2)
+        data_dict = self.load_item_internal(path)
+        data_dict['patient_id'] = patient_name
+        data_dict['recording_id'] = file_name
 
 
+        data_dict['id'] = file_name
+
+        # patient_id: id that indicates the patient (used for data splitting)
+        # recording_id: id that indicates the recording (this is already unique for all patients) 
+        #       the recording id used during evaluation. Each recording id needs to be predicted separately
+        # id: some id, that is unique for each sample
+
+        if self.slice_wise:
+            assert self.patch_size is None, "Patch size is not supported for slice wise"
+            data_dict['id'] = f"{file_name}_{slice_idx}"
+            data_dict['image'] = data_dict['image'][...,slice_idx]
+            data_dict['label'] = data_dict['label'][:,:,slice_idx]
+
+            data_dict['image'] = einops.rearrange(data_dict['image'], 'c h w -> h w c')
+            data_dict['label'] = einops.rearrange(data_dict['label'], 'h w c -> h w c')
         
         if self.patch_size is not None and self.state == "train":
             img = data_dict['image']
@@ -153,4 +144,4 @@ class Dataset_CholecSeg_preprocessed(Dataset_Base):
     
     def set_size(self, size: tuple) -> None:
         super().set_size(size)
-        assert self.size[2] == 80, "The temporal dimension must be 80"
+        assert self.size[2] == 80, f"The temporal dimension must be 80, but got {self.size}"

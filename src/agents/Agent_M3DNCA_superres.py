@@ -57,15 +57,17 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             inputs = inputs[:, :, :, :,self.exp.get_from_config('model.input_channels'):self.exp.get_from_config('model.input_channels')+self.exp.get_from_config('model.output_channels')]
         else:
             out = self.model(inputs, targets, self.exp.get_from_config('trainer.batch_duplication'))
-        
+
         if visualize:
             fig.add_subplot(1, 3, 3)
-            plt.imshow(inputs[0, :, :, 12, 0].detach().cpu().numpy())
+            plt.imshow(out["pred"][0, :, :, 12, 0].detach().cpu().numpy())
             plt.show()
             input("Press Enter to continue...")
         
 
         out["inputs"] = einops.rearrange(inputs, 'b h w d c -> b c h w d')
+        if "target" not in out.keys():
+            out["target"] = targets
         return out
     
 
@@ -186,9 +188,11 @@ class M3DNCAAgent_superres(M3DNCAAgent):
             assert data['image'].shape[0] == 1, "Batch size must be 1 for evaluation"
             data_id, inputs, *_ = data['id'], data['image'], data['label']
             out = self.get_outputs(data, full_img=True, tag="0")
+
+            
             outputs = out["pred"]
             inputs = out["inputs"]
-            targets = data['label']
+            targets = out['target']
 
             if isinstance(data_id, str):
                 _, id, slice = dataset.__getname__(data_id).split('_')

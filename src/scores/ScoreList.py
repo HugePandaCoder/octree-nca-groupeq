@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import src.scores.DiceScore
+import src.scores.IoUScore
+import src.scores.PatchwiseDiceScore
+import src.scores.PatchwiseIoUScore
 
 
 class ScoreList(nn.Module):
@@ -11,11 +14,16 @@ class ScoreList(nn.Module):
             self.scores.append(eval(config['experiment.task.score'][i])())
             
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, **kwargs) -> dict:
+        #target: BHWDC or BHWC
+        #output: BHWDC or BHWC
         loss_ret = {}
         for i, _ in enumerate(self.scores):
-            s = self.scores[i](pred, target)
-            if isinstance(s, tuple):
+            try:
+                s = self.scores[i](pred, target, **kwargs)
+            except TypeError:
+                s = self.scores[i](pred, target)
+            if isinstance(s, dict):
                 for k, v in s.items():
                     loss_ret[f"{self.scores[i].__class__.__name__}/{k}"] = s[k]
             else:

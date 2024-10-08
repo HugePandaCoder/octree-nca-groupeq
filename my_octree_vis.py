@@ -62,7 +62,7 @@ with torch.no_grad():
     gallery = experiment.model.create_inference_series(inputs)
 
     #convert to binary label
-    gallery.append((gallery[-1] > 0.5).float())
+    gallery.append((gallery[-1] > 0).float())
 
 
 

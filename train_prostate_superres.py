@@ -27,7 +27,7 @@ print(socket.gethostname(), torch.cuda.get_device_name())
 
 
 study_config = {
-    'experiment.name': r'new_prostate_superres_overkill_2_dev',
+    'experiment.name': r'new_prostate_superres_overkill_new_split_1',
     'experiment.description': "OctreeNCASuperres",
 
     'model.output_channels': 1,
@@ -39,10 +39,10 @@ study_config = study_config | configs.tasks.superres.superres_task_config
 study_config = study_config | configs.default.default_config
 
 study_config['trainer.ema'] = False
-study_config['performance.compile'] = False
+study_config['performance.compile'] = True
 study_config['model.train.loss_weighted_patching'] = False
 
-study_config['trainer.find_best_model_on'] = False
+study_config['trainer.find_best_model_on'] = None
 study_config['trainer.always_eval_in_last_epochs'] = None
 
 study_config['model.channel_n'] = 24
@@ -50,7 +50,7 @@ study_config['model.hidden_size'] = 100
 study_config['model.kernel_size'] = [3, 3, 3, 3, 7]
 study_config['model.octree.res_and_steps'] = [[[320,320,24], 20], [[160,160,12], 20], [[80,80,6], 20], [[40,40,6], 20], [[20,20,6], 40]]
 
-study_config['experiment.logging.evaluate_interval'] = 1
+#study_config['experiment.logging.evaluate_interval'] = 1
 #study_config['model.train.patch_sizes'] = [[40, 40, 3], [40, 40, 3], None, None, None]
 #study_config['model.channel_n'] = 12
 

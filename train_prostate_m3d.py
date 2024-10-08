@@ -1,10 +1,4 @@
 from matplotlib import pyplot as plt
-import configs.default
-import configs.models
-import configs.tasks
-import configs.tasks.segmentation
-import configs.trainers
-import configs.trainers.vitca
 from src.datasets.Dataset_DAVIS import Dataset_DAVIS
 from src.datasets.Nii_Gz_Dataset_3D import Dataset_NiiGz_3D
 from src.utils.BaselineConfigs import EXP_OctreeNCA3D, EXP_OctreeNCA3D_superres
@@ -24,7 +18,7 @@ import configs
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'new_prostate_m3d',
+    'experiment.name': r'prostate_m3d',
     'experiment.description': "M3dSegmentation",
 
     'model.output_channels': 1,
@@ -54,7 +48,7 @@ exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, dataset
 study.add_experiment(exp)
 
 study.run_experiments()
-#study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
+study.eval_experiments(ood_augmentation=ood_augmentation, output_name=output_name)
 #figure = octree_vis.visualize(study.experiments[0])
 
 

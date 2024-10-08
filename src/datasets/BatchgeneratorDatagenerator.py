@@ -48,12 +48,16 @@ class DatasetPerEpochGenerator(SlimDataLoaderBase):
         return math.ceil(len(self._data) / self.batch_size)
 
 class StepsPerEpochGenerator(SlimDataLoaderBase):
-    def __init__(self, data, num_steps_per_epoch:int, num_threads_in_mt=12, batch_size=4, difficulty_weighted_sampling:bool=False):
+    def __init__(self, data, num_steps_per_epoch:int, num_threads_in_mt=12, batch_size=4, difficulty_weighted_sampling:bool=False,
+                 precomputed_difficulties: dict=None):
         # This initializes self._data, self.batch_size and self.number_of_threads_in_multithreaded
         super(StepsPerEpochGenerator, self).__init__(data, batch_size, num_threads_in_mt)
         self.num_steps_per_epoch = num_steps_per_epoch
         self.was_initialized = False
         self.difficulty_weighted_sampling = difficulty_weighted_sampling
+        self._data.difficulties = precomputed_difficulties
+
+            
 
     def reset(self):
         self.counter = self.thread_id
@@ -70,9 +74,11 @@ class StepsPerEpochGenerator(SlimDataLoaderBase):
             raise StopIteration
         self.counter += self.number_of_threads_in_multithreaded
         if self.difficulty_weighted_sampling:
-            ids = [self._data.getPublicIdByIndex(i) for i, _ in enumerate(self._data.images_list)]
-            weights = np.array([self._data.difficulties[id] for id in ids])
-            indices = np.random.choice(np.arange(0, len(self._data)), self.batch_size, p=weights/weights.sum())
+            if not hasattr(self, "normalized_weights"):
+                ids = [self._data.getPublicIdByIndex(i) for i, _ in enumerate(self._data.images_list)]
+                weights = np.array([self._data.difficulties[id] for id in ids])
+                self.normalized_weights = weights/weights.sum()
+            indices = np.random.choice(np.arange(0, len(self._data)), self.batch_size, p=self.normalized_weights)
             batch = [self._data[img_id] for img_id in indices]
         else:
             indices = np.random.choice(np.arange(len(self._data)), self.batch_size)

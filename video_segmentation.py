@@ -150,7 +150,7 @@ for i in tqdm.tqdm(range(0, state.shape[3], PATCH_SIZE)):
 
 state = new_state
 
-segmentation = (state > 0.5).numpy()
+segmentation = (state > 0).numpy()
 del state
 
 color_dict={

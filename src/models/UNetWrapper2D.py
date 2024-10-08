@@ -1,13 +1,14 @@
 import torch, einops
 import torch.nn as nn
 from unet import UNet
+import matplotlib.pyplot as plt
 
 class UNetWrapper2D(nn.Module):
     def __init__(self, model: UNet):
-        super(UNetWrapper2D, self).__init__()
+        super().__init__()
         self.model = model
 
-    def forward(self, x, y: torch.Tensor=None, batch_duplication: int=1):
+    def forward(self, x: torch.Tensor, y: torch.Tensor=None, batch_duplication: int=1):
         if y is not None:
             y = einops.rearrange(y, 'b c h w -> b h w c')
         if self.training:
@@ -17,9 +18,9 @@ class UNetWrapper2D(nn.Module):
                 y = einops.repeat(y, 'b h w c -> (b dup) h w c', dup=batch_duplication)
             seg = self.model(x)
             seg = einops.rearrange(seg, 'b c h w -> b h w c')
-            return {"pred":seg, "target": y}
+            return {"logits":seg, "target": y}
         else:
             # evaluation
             seg = self.model(x)
             seg = einops.rearrange(seg, 'b c h w -> b h w c')
-            return {"pred":seg}
+            return {"logits":seg}
