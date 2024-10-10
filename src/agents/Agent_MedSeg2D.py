@@ -61,13 +61,13 @@ class Agent_MedSeg2D(BaseAgent):
             if pseudo_ensemble:
                 predictions = []
                 for k in range(10):
-                    predictions.append(self.get_outputs(data, full_img=True, tag=str(k))["probabilities"])
+                    predictions.append(self.get_outputs(data, full_img=True, tag=str(k))["logits"])
                 stack = torch.stack(predictions, dim=0)
                 pred, _ = torch.median(stack, dim=0)
                 #nqm_score = self.compute_nqm_score((stack>0).cpu().numpy())
                 del predictions, stack
             else:
-                pred = self.get_outputs(data, full_img=True, tag="0")["probabilities"]
+                pred = self.get_outputs(data, full_img=True, tag="0")["logits"]
             
             pred = einops.rearrange(pred, "b h w c -> b c h w")
 

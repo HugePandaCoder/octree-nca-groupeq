@@ -155,14 +155,14 @@ def merge_img_label_gt_simplified(img: torch.Tensor, pred: torch.Tensor, gt: tor
     assert pred.shape[3] == gt.shape[3]
     if segmentation:
         #sigmoid (on logits)
-        #pred > 0
-        #gt > 0
+        pred = pred > 0
+        gt = gt > 0
         # softmax:
-        num_classes = pred.shape[3]
-        pred = pred.argmax(dim=-1)
-        gt = gt.argmax(dim=-1)
-        pred = F.one_hot(pred, num_classes=num_classes).bool()
-        gt = F.one_hot(gt, num_classes=num_classes).bool()
+        #num_classes = pred.shape[3]
+        #pred = pred.argmax(dim=-1)
+        #gt = gt.argmax(dim=-1)
+        #pred = F.one_hot(pred, num_classes=num_classes).bool()
+        #gt = F.one_hot(gt, num_classes=num_classes).bool()
 
         label_img = torch.zeros(img.shape[0],img.shape[1],img.shape[2], 3)
         gt_img = torch.zeros(img.shape[0],img.shape[1],img.shape[2], 3)

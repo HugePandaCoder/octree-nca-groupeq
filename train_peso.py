@@ -15,12 +15,12 @@ from src.datasets.Dataset_CholecSeg import Dataset_CholecSeg
 from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_preprocessed
 
 import torchio as tio
-pc.STUDY_PATH = r"clmn1/octree_study_dev/"
+#pc.STUDY_PATH = r"clmn1/octree_study_dev/"
 
 print(pc.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'pesoLargeGroupNormRetrain2',
+    'experiment.name': r'pesoLargeGroupNormRetrain',
     'experiment.description': "OctreeNCA2DSegmentation",
 
     'model.output_channels': 1,
@@ -49,17 +49,18 @@ study_config['model.normalization'] = "group"
 
 #study_config['experiment.logging.evaluate_interval'] = 1
 #study_config['trainer.num_steps_per_epoch'] = 2
+#study_config['trainer.n_epochs'] = 1
 
 
 
 #study_config['trainer.datagen.difficulty_weighted_sampling'] = True
 #study_config['trainer.datagen.difficulty_dict'] = "/local/scratch/clmn1/octree_study_new/Experiments/pesoLarge_loss2_contd_OctreeNCA2DSegmentation/computed_disagreement.pkl"
 
-study_config["experiment.dataset.return_background_class"] = True
-study_config["model.output_channels"] += 1
-study_config['trainer.losses'] = ["src.losses.DiceLoss.nnUNetSoftDiceLoss", "torch.nn.CrossEntropyLoss"]
-study_config['trainer.losses.parameters'] = [{"apply_nonlin": None, "batch_dice": True, "do_bg": False, "smooth": 1e-05}, {}]
-study_config['model.apply_nonlin'] = "torch.nn.Softmax(dim=1)"
+#study_config["experiment.dataset.return_background_class"] = True
+#study_config["model.output_channels"] += 1
+#study_config['trainer.losses'] = ["src.losses.DiceLoss.nnUNetSoftDiceLoss", "torch.nn.CrossEntropyLoss"]
+#study_config['trainer.losses.parameters'] = [{"apply_nonlin": None, "batch_dice": True, "do_bg": False, "smooth": 1e-05}, {}]
+#study_config['model.apply_nonlin'] = "torch.nn.Softmax(dim=1)"
 
 study = Study(study_config)
 
@@ -75,7 +76,7 @@ study.add_experiment(exp)
 study.run_experiments()
 
 
-study.eval_experiments(export_prediction=True)
+study.eval_experiments(export_prediction=False)
 
 #figure = octree_vis.visualize(study.experiments[0], sample_id=("pds_14_HE", 14400, 24320), per_step=True)
 #figure.savefig("visualize_neg.pdf", bbox_inches='tight')

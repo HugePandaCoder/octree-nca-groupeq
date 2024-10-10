@@ -184,6 +184,12 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         #x: BHWC
         #y: BHWC
 
+        #assert x.shape[:3] == y.shape[:3], f"Expected x and y to have the same number of channels, got {x.shape[:2]} and {y.shape[:2]}"
+        #assert y.shape[3] == self.output_channels, f"Expected y to have {self.output_channels} channels, got {y.shape[3]}"
+        #assert x.shape[3] == self.input_channels, f"Expected x to have {self.input_channels} channels, got {x.shape[3]}"
+
+
+
 
         if self.loss_weighted_patching and not all([p is None for p in self.patch_sizes]):
             with torch.no_grad():
@@ -329,7 +335,6 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                 x.names = ('B', 'C', 'H', 'W')
         
         #x: BHWC
-
         y_new = torch.zeros(y.shape[0], x.shape[1], x.shape[2],
                              y.shape[3], device=self.device, dtype=torch.float)
         for b in range(x.shape[0]):

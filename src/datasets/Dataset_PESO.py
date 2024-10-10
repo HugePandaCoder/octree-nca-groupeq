@@ -1,3 +1,4 @@
+import einops
 import tifffile
 from torch.utils.data import Dataset
 from src.datasets.Data_Instance import Data_Container
@@ -13,7 +14,7 @@ import os
 import random, zarr, tqdm, pickle as pkl, openslide
 
 class Dataset_PESO(Dataset_Base):
-    def __init__(self, patches_path: str, patch_size: tuple[int, int], path: str, img_level:int, return_background_class: bool) -> None:
+    def __init__(self, patches_path: str, patch_size: tuple[int, int], path: str, img_level:int, return_background_class: bool=False) -> None:
         self.slice = -1
         self.delivers_channel_axis = True
         self.is_rgb = True
@@ -124,10 +125,10 @@ class Dataset_PESO(Dataset_Base):
             background_lbl = np.logical_not(lbl)
             lbl = np.stack([background_lbl, lbl], 2)
         else:
-            lbl = lbl[None, ...]
+            lbl = einops.rearrange(lbl, "h w -> h w 1")
 
         lbl = lbl.astype(float)
-        #print(lbl.shape)   HWC
+        #print(lbl.shape)   #HWC
 
 
         data_dict = {}

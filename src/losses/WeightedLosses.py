@@ -35,7 +35,8 @@ class WeightedLosses(nn.Module):
         for i, _ in enumerate(self.losses):
             try:
                 r = self.losses[i](**kwargs)
-            except TypeError:
+            except TypeError as e:
+                input(f"TypeError {e}")
                 if kwargs["logits"].dim() == 5:
                     logits = einops.rearrange(kwargs["logits"], "b h w d c -> b c h w d")
                     target = einops.rearrange(kwargs["target"], "b h w d c -> b c h w d")
@@ -44,6 +45,7 @@ class WeightedLosses(nn.Module):
                     logits = einops.rearrange(kwargs["logits"], "b h w c -> b c h w")
                     target = einops.rearrange(kwargs["target"], "b h w c -> b c h w")
                 r = self.losses[i](logits, target)
+            
             if isinstance(r, tuple):
                 l, d = r
             else:
