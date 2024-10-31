@@ -4,7 +4,7 @@ import torch.nn.functional as F
  
 class BasicNCA3D(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
-                 track_running_stats=False, inplace_relu=False):
+                 inplace_relu=False, normalization="batch"):
         r"""Init function
             #Args:
                 channel_n: number of channels per cell
@@ -30,7 +30,19 @@ class BasicNCA3D(nn.Module):
         padding = int((kernel_size-1) / 2)
 
         self.p0 = nn.Conv3d(channel_n, channel_n, kernel_size=kernel_size, stride=1, padding=padding, padding_mode="reflect", groups=channel_n)
-        self.bn = torch.nn.BatchNorm3d(hidden_size, track_running_stats=track_running_stats)
+        
+        if normalization == "batch":
+            self.bn = torch.nn.BatchNorm3d(hidden_size, track_running_stats=False)
+        elif normalization == "layer":
+            self.bn = torch.nn.LayerNorm(hidden_size)
+        elif normalization == "group":
+            self.bn = torch.nn.GroupNorm(1, hidden_size)
+        elif normalization == "instance":
+            self.bn = torch.nn.InstanceNorm3d(hidden_size)
+        elif normalization == "none":
+            self.bn = torch.nn.Identity()
+        else:
+            raise ValueError(f"Unknown normalization type {normalization}")
         
         with torch.no_grad():
             self.fc1.weight.zero_()

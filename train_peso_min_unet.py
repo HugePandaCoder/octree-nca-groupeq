@@ -28,7 +28,7 @@ import configs
 print(pc.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'peso_steps20',
+    'experiment.name': r'peso',
     'experiment.description': "MinUNet2DSegmentation",
 
     'model.output_channels': 1,
@@ -46,9 +46,12 @@ study_config['experiment.task.score'] = ["src.scores.PatchwiseDiceScore.Patchwis
 
 
 study_config['model.arch'] = "UNet"
-study_config['model.encoder_name'] = "resnet18"
+study_config['model.encoder_name'] = "efficientnet-b0"
+study_config['model.encoder_depth'] = 3
+#study_config['model.decoder_channels'] = [256, 128, 64]
+study_config['model.decoder_channels'] = [128, 64, 32]
 
-study_config['experiment.name'] += f"_{study_config['model.arch']}_{study_config['model.encoder_name']}_0"
+study_config['experiment.name'] += f"_{study_config['model.arch']}_{study_config['model.encoder_name']}_D{study_config['model.encoder_depth']}_0"
 
 
 study_config['trainer.ema'] = False
@@ -56,7 +59,7 @@ study_config['trainer.batch_size'] = 10
 
 #study_config['experiment.dataset.img_level'] = 0
 
-study_config['trainer.num_steps_per_epoch'] = 20
+#study_config['trainer.num_steps_per_epoch'] = 20
 
 
 study = Study(study_config)

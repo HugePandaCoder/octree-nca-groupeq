@@ -15,4 +15,4 @@ cd /gris/gris-f/homestud/nlemke/NCA
 conda activate nca3
 export PYTHONPATH=.
 
-python /gris/gris-f/homestud/nlemke/NCA/train_cholecSeg.py
+python /gris/gris-f/homestud/nlemke/NCA/train_cholecSeg_min_unet_3d.py

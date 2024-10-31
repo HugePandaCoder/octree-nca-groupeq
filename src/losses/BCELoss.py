@@ -23,12 +23,11 @@ class BCELoss(torch.nn.Module):
     
 
     def forward(self, logits: torch.Tensor, target: torch.Tensor, **kwargs):
-
         assert logits.shape == target.shape
 
         loss_ret = {}
         loss = 0
-        if len(logits.shape) == 5 and target.shape[-1] == 1:
+        if len(logits.shape) == 5 and target.shape[-1] == 1 and False:
             for m in range(target.shape[-1]):
                 loss_loc = self.compute(logits[..., m], target[...])
                 loss = loss + loss_loc

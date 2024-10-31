@@ -8,3 +8,5 @@ import configs.models.prostate_unet as prostate_unet
 import configs.models.peso as peso
 import configs.models.peso_med as peso_med
 import configs.models.cholec_unet as cholec_unet
+import configs.models.peso_unet as peso_unet
+import configs.models.cholec_m3d as cholec_m3d

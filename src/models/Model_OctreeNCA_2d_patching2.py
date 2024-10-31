@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from src.models.Model_BasicNCA2D import BasicNCA2D
+from src.models.Model_BasicNCA2D_fast import BasicNCA2DFast
 from src.models.Model_ViTCA import ViTCA
 import torchio as tio
 import random
@@ -59,7 +60,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         self.loss_weighted_patching = loss_weighted_patching
 
 
-        self.octree_res = [r_s[0] for r_s in octree_res_and_steps]
+        self.octree_res = [tuple(r_s[0]) for r_s in octree_res_and_steps]
         self.inference_steps = [r_s[1] for r_s in octree_res_and_steps]
 
         self.separate_models = separate_models
@@ -75,6 +76,8 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         else:
             assert isinstance(kernel_size, int), "kernel_size must be an integer"
 
+        backbone_class = eval(config.get("model.backbone_class", "BasicNCA2D"))
+        assert backbone_class in [BasicNCA2D, BasicNCA2DFast], f"backbone_class must be either BasicNCA2D, got {backbone_class}"
 
         if separate_models:
             if config["model.vitca"]:
@@ -92,7 +95,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                                            ))
                 self.backbone_ncas = nn.ModuleList(self.backbone_ncas)
             else:
-                self.backbone_ncas = nn.ModuleList([BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, 
+                self.backbone_ncas = nn.ModuleList([backbone_class(channel_n=channel_n, fire_rate=fire_rate, device=device, 
                                                             hidden_size=hidden_size, input_channels=input_channels, kernel_size=kernel_size[l],
                                                             normalization=normalization) 
                                                             for l in range(len(octree_res_and_steps))])
@@ -110,7 +113,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
                                            localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size], device=config["device"]
                                            )
             else:
-                self.backbone_nca = BasicNCA2D(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
+                self.backbone_nca = backbone_class(channel_n=channel_n, fire_rate=fire_rate, device=device, hidden_size=hidden_size, 
                                             input_channels=input_channels, kernel_size=kernel_size, normalization=normalization)
                 
             if compile:
@@ -141,6 +144,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         #    y = y.to(self.device)
 
         if self.training:
+            assert x.shape[1:3] == self.octree_res[0], f"Expected shape {self.octree_res[0]}, got shape {x.shape[1:3]}"
             return self.forward_train(x, y, batch_duplication)
             
         else:
@@ -360,8 +364,26 @@ class OctreeNCA2DPatch2(torch.nn.Module):
     def forward_eval(self, x: torch.Tensor):
         temp = self.patch_sizes
         self.patch_sizes = [None] * len(self.patch_sizes)
+
+
+
+        if x.shape[1:3] != self.octree_res[0]:
+            temp_octree_res = self.octree_res
+            new_octree_res = [list(x.shape[1:3])]
+            for i in range(1, len(self.octree_res)):
+                downsample_factor = np.array(self.octree_res[i-1]) / np.array(self.octree_res[i])
+                new_octree_res.append([math.ceil(new_octree_res[i-1][0] / downsample_factor[0]), 
+                                        math.ceil(new_octree_res[i-1][1] / downsample_factor[1])])
+            self.octree_res = new_octree_res
+            print("running inference on different resolution, this is the new resolution:", self.octree_res)
+
+
         out = self.forward_train(x, x)
         out.pop("target")#target contains the input anyways so we remove it here!
+
+        if x.shape[1:3] != tuple(self.octree_res[0]):
+            self.octree_res = temp_octree_res
+
         self.patch_sizes = temp
         return out
     

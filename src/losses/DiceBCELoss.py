@@ -27,18 +27,18 @@ class DiceBCELoss(torch.nn.Module):
         return Dice_BCE
     
 
-    def forward(self, output: torch.Tensor, target: torch.Tensor):
+    def forward(self, logits: torch.Tensor, target: torch.Tensor, **kwargs):
         loss_ret = {}
         loss = 0
-        if len(output.shape) == 5 and target.shape[-1] == 1:
+        if len(logits.shape) == 5 and target.shape[-1] == 1:
             for m in range(target.shape[-1]):
-                loss_loc = self.compute(output[..., m], target[...])
+                loss_loc = self.compute(logits[..., m], target[...])
                 loss = loss + loss_loc
                 loss_ret[f"mask_{m}"] = loss_loc.item()
         else:
             for m in range(target.shape[-1]):
                 if 1 in target[..., m]:
-                    loss_loc = self.compute(output[..., m], target[..., m])
+                    loss_loc = self.compute(logits[..., m], target[..., m])
                     loss = loss + loss_loc
                     loss_ret[f"mask_{m}"] = loss_loc.item()
 

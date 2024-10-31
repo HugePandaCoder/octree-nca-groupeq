@@ -5,10 +5,11 @@ import octree_vis
 from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_preprocessed
 import configs
 
+#ProjectConfiguration.STUDY_PATH = r"clmn1/octree_study_dev/"
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'cholec',
+    'experiment.name': r'cholecGN',
     'experiment.description': "OctreeNCASegmentation",
 
     'model.output_channels': 5,
@@ -22,6 +23,7 @@ study_config = study_config | configs.default.default_config
 study_config['performance.compile'] = False
 study_config['experiment.logging.also_eval_on_train'] = False
 
+study_config['model.normalization'] = "group"
 
 study = Study(study_config)
 

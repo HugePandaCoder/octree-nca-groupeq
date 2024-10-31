@@ -40,7 +40,7 @@ class PatchwiseDiceScore(torch.nn.Module):
 
             self.false_negatives[m][patient_id] += torch.sum((1 - output[..., m]) * target[..., m]).item()
 
-            d[m] = 2.0 * self.true_positives[m][patient_id] / (2.0 * self.true_positives[m][patient_id] + self.false_positives[m][patient_id] + self.false_negatives[m][patient_id])
+            d[m] = 2.0 * self.true_positives[m][patient_id] / (2.0 * self.true_positives[m][patient_id] + self.false_positives[m][patient_id] + self.false_negatives[m][patient_id] + 0.00001)
 
 
         

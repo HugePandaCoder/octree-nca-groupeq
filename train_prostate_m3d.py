@@ -18,7 +18,7 @@ import configs
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'prostate_m3d',
+    'experiment.name': r'prostate_m3d_fast',
     'experiment.description': "M3dSegmentation",
 
     'model.output_channels': 1,
@@ -34,6 +34,8 @@ study_config['performance.compile'] = False
 
 study_config['trainer.batch_size'] = 3
 study_config['trainer.batch_duplication'] = 2
+
+study_config['model.backbone_class'] = "BasicNCA3DFast"
 
 study = Study(study_config)
 

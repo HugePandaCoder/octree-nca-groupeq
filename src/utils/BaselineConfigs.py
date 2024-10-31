@@ -174,6 +174,9 @@ class EXP_OctreeNCA3D(ExperimentWrapper):
                                 octree_res_and_steps=config['octree_res_and_steps'], separate_models=config['separate_models'],
                                 compile=config['compile'], kernel_size=config['kernel_size'])
             
+        #print(model)
+        #input("model")
+
         if 'gradient_accumulation' in config and config['gradient_accumulation']:
             agent = M3DNCAAgentGradientAccum(model)
         else:
@@ -214,7 +217,11 @@ class EXP_UNet3D(ExperimentWrapper):
         if dataset_class is None:
             assert False, "Dataset is None"
 
-        model = UNet3D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1)
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        model_params.pop("eval.patch_wise")
+        model = UNet3D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1, **model_params)
         model = UNetWrapper3D(model)
         if config['performance.compile']:
             model.compile()
@@ -234,8 +241,12 @@ class EXP_UNet2D(ExperimentWrapper):
         
         assert not config.get('gradient_accumulation', False)
 
-        model = UNet2D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1)
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        model = UNet2D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1, **model_params)
         model = UNetWrapper2D(model)
+        
 
         if config['performance.compile']:
             model.compile()
@@ -266,6 +277,32 @@ class EXP_min_UNet2D(ExperimentWrapper):
         loss_function = WeightedLosses(config)
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+
+import segmentation_models_pytorch_3d as smp3d
+class EXP_min_UNet3D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+        
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        #model_params.pop("eval.patch_wise")
+        model = smp3d.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
+        model = UNetWrapper3D(model)
+
+
+        if config['performance.compile']:
+            model.compile()
+        agent = M3DNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+    
 
 import segmentation_models_pytorch as smp
 class EXP_min_UNet(ExperimentWrapper):

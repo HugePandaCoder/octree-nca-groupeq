@@ -9,6 +9,7 @@ import math
 import torch.nn.functional as F
 import subprocess as sp
 
+from src.models.Model_BasicNCA3D_fast import BasicNCA3DFast
 from src.models.Model_VitCA3D import ViTCA3D
 
 class OctreeNCA3D(nn.Module):
@@ -37,6 +38,8 @@ class OctreeNCA3D(nn.Module):
         separate_models = config['model.octree.separate_models']
         kernel_size = config['model.kernel_size']
 
+        normalization = config.get("model.normalization", "batch")
+
         self.octree_res = [tuple(r_s[0]) for r_s in octree_res_and_steps]
         self.inference_steps = [r_s[1] for r_s in octree_res_and_steps]
 
@@ -54,6 +57,9 @@ class OctreeNCA3D(nn.Module):
             assert isinstance(kernel_size, int), "kernel_size must be an integer"
 
 
+        backbone_class = eval(config.get("model.backbone_class", "BasicNCA3D"))
+        assert backbone_class in [BasicNCA3D, BasicNCA3DFast], f"backbone_class must be either BasicNCA3D, got {backbone_class}"
+
         if separate_models:
             if config["model.vitca"]:
                 self.backbone_ncas = []
@@ -70,9 +76,9 @@ class OctreeNCA3D(nn.Module):
                                            ))
                 self.backbone_ncas = nn.ModuleList(self.backbone_ncas)
             else:
-                self.backbone_ncas = nn.ModuleList([BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, 
+                self.backbone_ncas = nn.ModuleList([backbone_class(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, 
                                                             hidden_size=config['model.hidden_size'], input_channels=self.input_channels, kernel_size=kernel_size[l],
-                                                            track_running_stats=False, inplace_relu=config['performance.inplace_operations']) 
+                                                            inplace_relu=config['performance.inplace_operations'], normalization=normalization) 
                                                             for l in range(len(octree_res_and_steps))])
             if config['performance.compile']:
                 for i, model in enumerate(self.backbone_ncas):
@@ -89,8 +95,9 @@ class OctreeNCA3D(nn.Module):
                                            localize_attn=True, localized_attn_neighbourhood=[conv_size, conv_size, conv_size], device=config["device"]
                                            )
             else:
-                self.backbone_nca = BasicNCA3D(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, hidden_size=config['model.hidden_size'], 
-                                            input_channels=self.input_channels, kernel_size=kernel_size, inplace_relu=config['performance.inplace_operations'])
+                self.backbone_nca = backbone_class(channel_n=self.channel_n, fire_rate=self.fire_rate, device=self.device, hidden_size=config['model.hidden_size'], 
+                                            input_channels=self.input_channels, kernel_size=kernel_size, inplace_relu=config['performance.inplace_operations'], 
+                                            normalization=normalization)
             if config['performance.compile']:
                 self.backbone_nca = torch.compile(self.backbone_nca)
 

@@ -268,7 +268,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         pred = x[..., self.input_channels:self.input_channels+self.output_channels]
         hidden = x[..., :self.input_channels+self.output_channels]
 
-        return {'pred': pred, 'target': y, 'hidden': hidden, "intermediate_outputs": intermediate_outputs,
+        return {'logits': pred, 'target': y, 'hidden': hidden, "intermediate_outputs": intermediate_outputs,
                 "intermediate_patches": intermediate_patches}
     
 

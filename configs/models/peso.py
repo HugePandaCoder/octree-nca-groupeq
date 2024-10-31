@@ -12,6 +12,7 @@ peso_model_config = {
 
         'model.octree.res_and_steps': [[[320,320], 5], [[160,160], 5], [[80,80], 5], [[40,40], 5], [[20,20], 20]],
         'model.octree.separate_models': True,
+        'model.backbone_class': "BasicNCA2DFast",
 
         'model.vitca': False,
         'model.vitca.depth': 1,

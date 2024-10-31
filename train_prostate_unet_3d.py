@@ -26,7 +26,7 @@ import configs
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'prostate_unet',
+    'experiment.name': r'prostate_unet5XS',
     'experiment.description': "UNetSegmentation",
 
     'model.output_channels': 1,
@@ -49,6 +49,8 @@ study_config['experiment.dataset.patchify.patch_size'] = [160, 160, 24]
 
 study_config['model.eval.patch_wise'] = True
 
+study_config['model.num_encoding_blocks'] = 2
+study_config['model.out_channels_first_layer'] = 4
 
 study = Study(study_config)
 

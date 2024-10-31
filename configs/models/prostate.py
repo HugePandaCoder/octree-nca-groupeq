@@ -12,6 +12,7 @@ prostate_model_config = {
 
         'model.octree.res_and_steps': [[[320,320,24], 5], [[160,160,12], 5], [[80,80,6], 5], [[40,40,6], 5], [[20,20,6], 20]],
         'model.octree.separate_models': True,
+        'model.backbone_class': "BasicNCA3DFast",
 
         'model.vitca': False,
         'model.vitca.depth': 1,

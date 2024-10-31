@@ -12,6 +12,7 @@ cholec_model_config = {
 
         'model.octree.res_and_steps': [[[240, 432, 80], 20], [[120, 216, 40], 20], [[60,108,20], 20], [[30,54,10], 20], [[15,27,5], 40]],
         'model.octree.separate_models': True,
+        'model.backbone_class': "BasicNCA3DFast",
 
         'model.vitca': False,
         'model.vitca.depth': 1,

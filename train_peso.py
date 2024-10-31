@@ -20,7 +20,7 @@ import torchio as tio
 print(pc.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'pesoLargeGroupNormRetrain',
+    'experiment.name': r'pesoS10NN',
     'experiment.description': "OctreeNCA2DSegmentation",
 
     'model.output_channels': 1,
@@ -36,14 +36,16 @@ study_config['experiment.logging.evaluate_interval'] = study_config['trainer.n_e
 study_config['experiment.task.score'] = ["src.scores.PatchwiseDiceScore.PatchwiseDiceScore",
                                          "src.scores.PatchwiseIoUScore.PatchwiseIoUScore"]
 
-study_config['model.octree.res_and_steps'] = [[[320,320], 20], [[160,160], 20], [[80,80], 20], [[40,40], 20], [[20,20], 40]]
+study_config['model.octree.res_and_steps'] = [[[320,320], 10], [[160,160], 10], [[80,80], 10], [[40,40], 10], [[20,20], 20]]
+#study_config['model.octree.res_and_steps'] = [[[320,320], 20], [[160,160], 20], [[80,80], 20], [[40,40], 20]]
+#study_config['model.kernel_size'] = [3, 3, 3, 3]
 
 
 study_config['trainer.losses'] = ["src.losses.DiceLoss.DiceLoss", "src.losses.BCELoss.BCELoss"]
 study_config['trainer.losses.parameters'] = [{}, {}]
 study_config['trainer.loss_weights'] = [1.0, 1.0]
 
-study_config['model.normalization'] = "group"
+study_config['model.normalization'] = "none"
 
 
 
@@ -62,14 +64,58 @@ study_config['model.normalization'] = "group"
 #study_config['trainer.losses.parameters'] = [{"apply_nonlin": None, "batch_dice": True, "do_bg": False, "smooth": 1e-05}, {}]
 #study_config['model.apply_nonlin'] = "torch.nn.Softmax(dim=1)"
 
+
+
+study_config['model.normalization'] = "none"    #"none"
+
+steps = 5                                      # 10
+alpha = 1.0                                     # 1.0
+study_config['model.octree.res_and_steps'] = [[[320,320], steps], [[160,160], steps], [[80,80], steps], [[40,40], steps], [[20,20], int(alpha * 20)]]
+
+
+study_config['model.channel_n'] = 16            # 16
+study_config['model.hidden_size'] = 64          # 64
+
+study_config['trainer.batch_size'] = 3          # 3
+
+dice_loss_weight = 1.0                          # 1.0
+
+
+ema_decay = 0.99                               # 0.99
+study_config['trainer.ema'] = ema_decay > 0.0
+study_config['trainer.ema.decay'] = ema_decay
+
+
+study_config['trainer.losses'] = ["src.losses.DiceLoss.DiceLoss", "src.losses.BCELoss.BCELoss"]
+study_config['trainer.losses.parameters'] = [{}, {}]
+study_config['trainer.loss_weights'] = [dice_loss_weight, 2.0-dice_loss_weight]
+#study_config['trainer.loss_weights'] = [1.5, 0.5]
+
+study_config['experiment.name'] = f"pesofAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
+
+
+
+print(study_config['experiment.name'])
+
+
+
+input("Press Enter to continue...")
+
+
 study = Study(study_config)
 
+#exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_class=Dataset_PESO, dataset_args={
+#                                                            'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
+#                                                            'patch_size': study_config['experiment.dataset.input_size'],
+#                                                            'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
+#                                                            'img_level': study_config['experiment.dataset.img_level'],
+#                                                            'return_background_class': study_config.get('experiment.dataset.return_background_class', False),
+#                                                      })
 exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_class=Dataset_PESO, dataset_args={
                                                             'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
-                                                            'patch_size': study_config['experiment.dataset.input_size'],
+                                                            'patch_size': [1280, 1280],
                                                             'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
-                                                            'img_level': study_config['experiment.dataset.img_level'],
-                                                            'return_background_class': study_config.get('experiment.dataset.return_background_class', False),
+                                                            'img_level': study_config['experiment.dataset.img_level']
                                                       })
 study.add_experiment(exp)
 
