@@ -24,11 +24,11 @@ class Study():
             experiment.agent.train(experiment.data_loaders['train'], experiment.loss_function)
             
 
-    def eval_experiments(self, ood_augmentation: tio.Transform=None, output_name: str=None, export_prediction: bool=False) -> None:
+    def eval_experiments(self, ood_augmentation: tio.Transform=None, output_name: str=None, export_prediction: bool=False, pseudo_ensemble=True) -> None:
         r"""Eval all experiments
         """
         for experiment in self.experiments:
-            experiment.agent.getAverageDiceScore(pseudo_ensemble=True, ood_augmentation=ood_augmentation, output_name=output_name,
+            experiment.agent.getAverageDiceScore(pseudo_ensemble=pseudo_ensemble, ood_augmentation=ood_augmentation, output_name=output_name,
                                                  export_prediction=export_prediction)
             
     

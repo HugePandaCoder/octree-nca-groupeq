@@ -68,8 +68,10 @@ class BasicNCA3DFast(nn.Module):
             fire_rate=self.fire_rate
 
         with torch.no_grad():
-            stochastic = torch.zeros([delta_state.size(0),delta_state.size(1),
-                                    delta_state.size(2), delta_state.size(3),1], device=delta_state.device)
+            #stochastic = torch.zeros([delta_state.size(0),delta_state.size(1),
+            #                        delta_state.size(2), delta_state.size(3),1], device=delta_state.device)
+            stochastic = torch.zeros([delta_state.size(0),1,
+                                    delta_state.size(2), delta_state.size(3), delta_state.size(4)], device=delta_state.device)
             stochastic.bernoulli_(p=self.fire_rate).float()
         delta_state = delta_state * stochastic
 

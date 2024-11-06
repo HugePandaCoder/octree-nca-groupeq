@@ -2,6 +2,11 @@ import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+try:
+    import nca_cuda
+except:
+    pass
+#import nca_cuda
  
 class BasicNCA2DFast(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
@@ -18,6 +23,7 @@ class BasicNCA2DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
+        self.use_forward_cuda = False
 
         self.device = device
         self.channel_n = channel_n
@@ -56,7 +62,7 @@ class BasicNCA2DFast(nn.Module):
         self.to(self.device)
 
     def update(self, state, fire_rate):
-        # state.shape: BCHWD
+        # state.shape: BCHW
         delta_state = self.conv(state)
         delta_state = torch.cat([state, delta_state], dim=1)
         delta_state = self.fc0(delta_state)
@@ -68,12 +74,25 @@ class BasicNCA2DFast(nn.Module):
             fire_rate=self.fire_rate
 
         with torch.no_grad():
-            stochastic = torch.zeros([delta_state.size(0),delta_state.size(1),
-                                    delta_state.size(2),1], device=delta_state.device)
+            stochastic = torch.zeros([delta_state.size(0),1,delta_state.size(2),
+                                    delta_state.size(3)], device=delta_state.device)
+            #stochastic = torch.zeros([delta_state.size(0),delta_state.size(1),delta_state.size(2),
+            #                        1], device=delta_state.device)
             stochastic.bernoulli_(p=self.fire_rate).float()
         delta_state = delta_state * stochastic
 
         return state[:, self.input_channels:] + delta_state
+
+    def forward_cuda(self, state, steps=10, fire_rate=0.5):
+        print("CUDA quick!")
+        assert fire_rate == 0.5, "fire_rate must be 0.5 for CUDA implementation"
+        assert isinstance(self.bn, torch.nn.modules.linear.Identity), f"{self.bn} not supported in CUDA implementation"
+        const_inputs = state[:,0:self.input_channels]
+        for step in range(steps):
+            rand = torch.zeros(1, 1, state.size(2), state.size(3)).bernoulli_(0.5).bool().cuda()
+            new_state = nca_cuda.nca2d_cuda(rand, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
+            state = torch.cat([const_inputs, new_state], dim=1)
+        return state
 
     def forward(self, x, steps=10, fire_rate=0.5):
         r"""Forward function applies update function s times leaving input channels unchanged
@@ -85,6 +104,11 @@ class BasicNCA2DFast(nn.Module):
         #x: BHWC
         state = einops.rearrange(x, "b h w c -> b c h w")
         #x: BCHW
+
+        if not self.training and self.use_forward_cuda:
+            state = self.forward_cuda(state, steps, fire_rate)
+            return einops.rearrange(state, "b c h w -> b h w c")
+        
 
         const_inputs = state[:,0:self.input_channels]
 

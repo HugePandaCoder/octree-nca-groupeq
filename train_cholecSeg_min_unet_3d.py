@@ -23,11 +23,12 @@ study_config = study_config | configs.tasks.segmentation.segmentation_task_confi
 study_config = study_config | configs.default.default_config
 
 
-study_config['model.encoder_name'] = "resnet18"
+study_config['model.encoder_name'] = "densenet121"
 study_config['experiment.name'] += f"_{study_config['model.arch']}_{study_config['model.encoder_name']}_0"
 study_config['model.strides'] = [[2,2,2], [2,2,2], [2,2,2], [2,2,2], [1,1,1]]
 study_config['model.encoder_depth'] = 5
 study_config['model.decoder_channels'] = [256, 128, 64, 32, 16]
+study_config['model.encoder_weights'] = None
 
 study_config['trainer.ema'] = False
 study_config['performance.compile'] = False

@@ -43,5 +43,10 @@ class PatchwiseDiceScore(torch.nn.Module):
             d[m] = 2.0 * self.true_positives[m][patient_id] / (2.0 * self.true_positives[m][patient_id] + self.false_positives[m][patient_id] + self.false_negatives[m][patient_id] + 0.00001)
 
 
+        #plt.subplot(1, 2, 1)
+        #plt.imshow(output[0, ..., 0].cpu())
+        #plt.subplot(1, 2, 2)
+        #plt.imshow(target[0, ..., 0].cpu())
+        #plt.show()
         
         return d

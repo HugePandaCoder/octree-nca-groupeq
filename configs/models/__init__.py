@@ -10,3 +10,4 @@ import configs.models.peso_med as peso_med
 import configs.models.cholec_unet as cholec_unet
 import configs.models.peso_unet as peso_unet
 import configs.models.cholec_m3d as cholec_m3d
+import configs.models.cholec_sam2 as cholec_sam2

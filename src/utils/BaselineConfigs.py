@@ -4,6 +4,9 @@ from src.agents.Agent_M3DNCA_superres import M3DNCAAgent_superres
 from src.agents.Agent_MedNCA_extrapolation import MedNCAAgent_extrapolation
 from src.agents.Agent_MedSeg3D_slicewise import Agent_MedSeg3D_slicewise
 from src.losses.WeightedLosses import WeightedLosses
+from src.models.SamWrapper2D import SamWrapper2D
+from src.models.SamWrapper3D import SamWrapper3D
+from src.models.SegFormerWrapper2D import SegFormerWrapper2D
 from src.models.UNetWrapper2D import UNetWrapper2D
 from src.models.UNetWrapper3D import UNetWrapper3D
 from src.models.Model_OctreeNCA_3d_patching import OctreeNCA3DPatch
@@ -232,6 +235,38 @@ class EXP_UNet3D(ExperimentWrapper):
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
 
+class EXP_SAM3D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        from sam2.build_sam import build_sam2
+        #from sam2.sam2_image_predictor import SAM2ImagePredictor
+        from sam2.sam2_video_predictor import SAM2VideoPredictor
+        from sam2.build_sam import build_sam2_video_predictor
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+
+
+        assert config['model.input_channels'] == 3
+        
+        checkpoint = config['model.checkpoint']
+        model_cfg = config['model.model_cfg']
+        predictor = build_sam2_video_predictor(model_cfg, checkpoint, device="cuda")
+        model = SamWrapper3D(predictor)
+        
+        print("numparams", sum(p.numel() for p in model.parameters()))
+        input("Press Enter to continue...")
+
+        if config['performance.compile']:
+            model.compile()
+        agent = M3DNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+    
+
 class EXP_UNet2D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
         config = study_config
@@ -254,6 +289,61 @@ class EXP_UNet2D(ExperimentWrapper):
         loss_function = WeightedLosses(config)
 
         return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+    
+class EXP_SegFormer2D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        from transformers import SegformerConfig, SegformerForSemanticSegmentation
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        configuration = SegformerConfig(num_channels=config['model.input_channels'], **model_params)
+        model = SegformerForSemanticSegmentation(configuration).to(config['experiment.device'])
+        model = SegFormerWrapper2D(model)
+        
+
+        if config['performance.compile']:
+            model.compile()
+        agent = MedNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+    
+class EXP_SAM2D(ExperimentWrapper):
+    def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        config = study_config
+        
+        if dataset_class is None:
+            assert False, "Dataset is None"
+        
+        assert not config.get('gradient_accumulation', False)
+
+        model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
+        model_params.pop("output_channels")
+        model_params.pop("input_channels")
+        assert config['model.input_channels'] == 3
+        from segment_anything import SamPredictor, sam_model_registry
+        sam = sam_model_registry["vit_h"](checkpoint="/local/scratch/clmn1/sam_checkpoints/sam_vit_h_4b8939.pth")
+        model = SamPredictor(sam.cuda())
+        model = SamWrapper2D(model)
+        
+        print("numparams", sum(p.numel() for p in model.parameters()))
+        input("Press Enter to continue...")
+
+        if config['performance.compile']:
+            model.compile()
+        agent = MedNCAAgent(model)
+        loss_function = WeightedLosses(config)
+
+        return super().createExperiment(config, model, agent, dataset_class, dataset_args, loss_function)
+
+    
 
 class EXP_min_UNet2D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
@@ -294,6 +384,8 @@ class EXP_min_UNet3D(ExperimentWrapper):
         #model_params.pop("eval.patch_wise")
         model = smp3d.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
         model = UNetWrapper3D(model)
+        #print(model)
+        #input("model")
 
 
         if config['performance.compile']:

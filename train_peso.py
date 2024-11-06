@@ -68,7 +68,7 @@ study_config['model.normalization'] = "none"
 
 study_config['model.normalization'] = "none"    #"none"
 
-steps = 5                                      # 10
+steps = 10                                      # 10
 alpha = 1.0                                     # 1.0
 study_config['model.octree.res_and_steps'] = [[[320,320], steps], [[160,160], steps], [[80,80], steps], [[40,40], steps], [[20,20], int(alpha * 20)]]
 
@@ -91,32 +91,29 @@ study_config['trainer.losses.parameters'] = [{}, {}]
 study_config['trainer.loss_weights'] = [dice_loss_weight, 2.0-dice_loss_weight]
 #study_config['trainer.loss_weights'] = [1.5, 0.5]
 
-study_config['experiment.name'] = f"pesofAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
+study_config['experiment.name'] = f"pesofFixAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
 
 
 
-print(study_config['experiment.name'])
-
-
-
-input("Press Enter to continue...")
+#print(study_config['experiment.name'])
+#input("Press Enter to continue...")
 
 
 study = Study(study_config)
 
-#exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_class=Dataset_PESO, dataset_args={
-#                                                            'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
-#                                                            'patch_size': study_config['experiment.dataset.input_size'],
-#                                                            'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
-#                                                            'img_level': study_config['experiment.dataset.img_level'],
-#                                                            'return_background_class': study_config.get('experiment.dataset.return_background_class', False),
-#                                                      })
 exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_class=Dataset_PESO, dataset_args={
                                                             'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
-                                                            'patch_size': [1280, 1280],
+                                                            'patch_size': study_config['experiment.dataset.input_size'],
                                                             'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
-                                                            'img_level': study_config['experiment.dataset.img_level']
+                                                            'img_level': study_config['experiment.dataset.img_level'],
+                                                            'return_background_class': study_config.get('experiment.dataset.return_background_class', False),
                                                       })
+#exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_class=Dataset_PESO, dataset_args={
+#                                                            'patches_path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.patches_path']),
+#                                                            'patch_size': [1280, 1280],
+#                                                            'path': os.path.join(pc.FILER_BASE_PATH, study_config['experiment.dataset.img_path']),
+#                                                            'img_level': study_config['experiment.dataset.img_level']
+#                                                      })
 study.add_experiment(exp)
 
 study.run_experiments()

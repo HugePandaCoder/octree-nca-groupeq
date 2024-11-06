@@ -25,6 +25,42 @@ study_config['experiment.logging.also_eval_on_train'] = False
 
 study_config['model.normalization'] = "group"
 
+
+study_config['model.kernel_size'] = [3, 3, 3, 3, 3]
+
+
+
+
+
+study_config['model.normalization'] = "none"    #"none"
+
+steps = 10                                      # 10
+alpha = 1.0                                     # 1.0
+study_config['model.octree.res_and_steps'] = [[[240, 432, 80], steps], [[120, 216, 40], steps], [[60,108,20], steps], [[30,54,10], steps], [[15,27,5], int(alpha * 27)]]
+
+
+study_config['model.channel_n'] = 16            # 16
+study_config['model.hidden_size'] = 64          # 64
+
+study_config['trainer.batch_size'] = 3          # 3
+
+dice_loss_weight = 1.0                          # 1.0
+
+
+ema_decay = 0.99                               # 0.99
+study_config['trainer.ema'] = ema_decay > 0.0
+study_config['trainer.ema.decay'] = ema_decay
+
+
+study_config['trainer.losses'] = ["src.losses.DiceLoss.DiceLoss", "src.losses.BCELoss.BCELoss"]
+study_config['trainer.losses.parameters'] = [{}, {}]
+study_config['trainer.loss_weights'] = [dice_loss_weight, 2.0-dice_loss_weight]
+#study_config['trainer.loss_weights'] = [1.5, 0.5]
+
+study_config['experiment.name'] = f"cholecfFixAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
+
+
+
 study = Study(study_config)
 
 exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={}, 

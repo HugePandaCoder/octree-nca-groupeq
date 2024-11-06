@@ -1,0 +1,8 @@
+LICENSE
+README.md
+nca_cuda.cu
+nca_cuda_compile.py
+conv2d_cuda.egg-info/PKG-INFO
+conv2d_cuda.egg-info/SOURCES.txt
+conv2d_cuda.egg-info/dependency_links.txt
+conv2d_cuda.egg-info/top_level.txt
