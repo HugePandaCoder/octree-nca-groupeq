@@ -4,6 +4,7 @@ import src.scores.DiceScore
 import src.scores.IoUScore
 import src.scores.PatchwiseDiceScore
 import src.scores.PatchwiseIoUScore
+import src.scores.TemporalConsistency
 
 
 class ScoreList(nn.Module):

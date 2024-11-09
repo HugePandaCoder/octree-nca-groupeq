@@ -8,6 +8,9 @@ setup(
     ext_modules=[
         CUDAExtension('nca_cuda', [
             'nca_cuda.cu',
+        ]),
+        CUDAExtension('nca_cuda3d', [
+            'nca_cuda3d.cu',
         ])
     ],
     cmdclass={

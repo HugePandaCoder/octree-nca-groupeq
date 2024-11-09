@@ -143,12 +143,23 @@ torch::Tensor nca2d_cuda(
     const torch::Tensor& fc0_bias,
     const torch::Tensor& fc1_weight
     ) {
+    TORCH_CHECK(random.is_cuda(), "random must be a CUDA tensor");
     TORCH_CHECK(state.is_cuda(), "state must be a CUDA tensor");
     TORCH_CHECK(conv_weight.is_cuda(), "conv_weight must be a CUDA tensor");
     TORCH_CHECK(conv_bias.is_cuda(), "conv_bias must be a CUDA tensor");
     TORCH_CHECK(fc0_weight.is_cuda(), "fc0_weight must be a CUDA tensor");
     TORCH_CHECK(fc0_bias.is_cuda(), "fc0_bias must be a CUDA tensor");
     TORCH_CHECK(fc1_weight.is_cuda(), "fc1_weight must be a CUDA tensor");
+
+
+    TORCH_CHECK(random.dim() == 4, "random must be B1HW");
+    TORCH_CHECK(state.dim() == 4, "state must be BCHW");
+    TORCH_CHECK(conv_weight.dim() == 4, "conv must be 2D");
+    TORCH_CHECK(conv_bias.dim() == 1,"conv must be 1D");
+    TORCH_CHECK(fc0_weight.dim() == 4, "fc0 must be 2D");
+    TORCH_CHECK(fc0_bias.dim() == 1, "fc0 must be 1D");
+    TORCH_CHECK(fc1_weight.dim() == 4, "fc1 must be 2D");
+
 
     
     TORCH_CHECK(random.is_contiguous(), "random must be contiguous");
@@ -165,6 +176,11 @@ torch::Tensor nca2d_cuda(
     int W = state.size(3);
 
     int out_C = fc1_weight.size(0);
+
+    TORCH_CHECK(random.size(0) == B, "Random batch size mismatch");
+    TORCH_CHECK(random.size(1) == 1, "Random size mismatch");
+    TORCH_CHECK(random.size(2) == H, "Random height size mismatch");
+    TORCH_CHECK(random.size(3) == W, "Random width size mismatch");
 
     TORCH_CHECK(state.size(1) == C, "State channel size mismatch");
 

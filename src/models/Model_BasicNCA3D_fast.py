@@ -2,6 +2,10 @@ import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+try:
+    import nca_cuda3d
+except:
+    pass
  
 class BasicNCA3DFast(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
@@ -18,6 +22,7 @@ class BasicNCA3DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
+        self.use_forward_cuda = False
 
         self.device = device
         self.channel_n = channel_n
@@ -77,6 +82,18 @@ class BasicNCA3DFast(nn.Module):
 
         return state[:, self.input_channels:] + delta_state
 
+    def forward_cuda(self, state, steps=10, fire_rate=0.5):
+        print("3d CUDA quick!")
+        assert fire_rate == 0.5, "fire_rate must be 0.5 for CUDA implementation"
+        assert isinstance(self.bn, torch.nn.modules.linear.Identity), f"{self.bn} not supported in CUDA implementation"
+        const_inputs = state[:,0:self.input_channels]
+        for step in range(steps):
+            rand = torch.zeros(1, 1, state.size(2), state.size(3), state.size(4)).bernoulli_(0.5).bool().cuda()
+            new_state = nca_cuda3d.nca3d_cuda(rand, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
+            state = torch.cat([const_inputs, new_state], dim=1)
+        return state
+    
+
     def forward(self, x, steps=10, fire_rate=0.5):
         r"""Forward function applies update function s times leaving input channels unchanged
             #Args:
@@ -87,6 +104,10 @@ class BasicNCA3DFast(nn.Module):
         #x: BHWDC
         state = einops.rearrange(x, "b h w d c -> b c h w d")
         #x: BCHWD
+
+        if not self.training and self.use_forward_cuda:
+            state = self.forward_cuda(state, steps, fire_rate)
+            return einops.rearrange(state, "b c h w d -> b h w d c")
 
         const_inputs = state[:,0:self.input_channels]
 

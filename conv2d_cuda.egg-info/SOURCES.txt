@@ -1,6 +1,7 @@
 LICENSE
 README.md
 nca_cuda.cu
+nca_cuda3d.cu
 nca_cuda_compile.py
 conv2d_cuda.egg-info/PKG-INFO
 conv2d_cuda.egg-info/SOURCES.txt

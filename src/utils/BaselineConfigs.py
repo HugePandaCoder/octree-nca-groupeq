@@ -223,7 +223,7 @@ class EXP_UNet3D(ExperimentWrapper):
         model_params = {k.replace("model.", ""): v for k, v in config.items() if k.startswith('model.')}
         model_params.pop("output_channels")
         model_params.pop("input_channels")
-        model_params.pop("eval.patch_wise")
+        model_params.pop("eval.patch_wise") if "eval.patch_wise" in model_params else None
         model = UNet3D(in_channels=config['model.input_channels'], out_classes=config['model.output_channels'], padding=1, **model_params)
         model = UNetWrapper3D(model)
         if config['performance.compile']:
@@ -382,7 +382,7 @@ class EXP_min_UNet3D(ExperimentWrapper):
         model_params.pop("output_channels")
         model_params.pop("input_channels")
         #model_params.pop("eval.patch_wise")
-        model = smp3d.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
+        model = smp3d.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params, encoder_weights=None)
         model = UNetWrapper3D(model)
         #print(model)
         #input("model")

@@ -183,7 +183,7 @@ def measure_vram_and_print(size):
 
 
 num_pixel_to_measurements = {}
-for mult in [20, 40, 80, 160, 300, 335][::-1]:
+for mult in [20, 40, 80, 160, 300, 480][::-1]:
     size = (mult*16, mult*16)
     num_pixel = size[0] * size[1]
     num_pixel_to_measurements[num_pixel] = []

@@ -6,7 +6,6 @@ try:
     import nca_cuda
 except:
     pass
-#import nca_cuda
  
 class BasicNCA2DFast(nn.Module):
     def __init__(self, channel_n, fire_rate, device, hidden_size=128, input_channels=1, init_method="standard", kernel_size=7, groups=False,
@@ -23,7 +22,7 @@ class BasicNCA2DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
-        self.use_forward_cuda = False
+        self.use_forward_cuda = True
 
         self.device = device
         self.channel_n = channel_n

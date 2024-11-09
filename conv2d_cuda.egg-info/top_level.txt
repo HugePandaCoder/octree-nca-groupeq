@@ -1,1 +1,2 @@
 nca_cuda
+nca_cuda3d

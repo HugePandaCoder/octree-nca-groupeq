@@ -5,7 +5,7 @@ import octree_vis
 from src.datasets.Dataset_CholecSeg_preprocessed import Dataset_CholecSeg_preprocessed
 import configs
 
-#ProjectConfiguration.STUDY_PATH = r"clmn1/octree_study_dev/"
+ProjectConfiguration.STUDY_PATH = r"clmn1/octree_study_dev/"
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
@@ -58,6 +58,18 @@ study_config['trainer.loss_weights'] = [dice_loss_weight, 2.0-dice_loss_weight]
 #study_config['trainer.loss_weights'] = [1.5, 0.5]
 
 study_config['experiment.name'] = f"cholecfFixAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
+
+
+
+study_config['experiment.name'] = "TEST1"
+study_config['trainer.n_epochs'] = 1
+study_config['trainer.num_steps_per_epoch'] = 1
+study_config['experiment.save_interval'] = 1
+
+study_config['experiment.task.score'] = ["src.scores.DiceScore.DiceScore", "src.scores.IoUScore.IoUScore",
+                                         "src.scores.TemporalConsistency.MeanTemporalFlickerScore",
+                                         "src.scores.TemporalConsistency.TemporalConsistencyScore"]
+
 
 
 
