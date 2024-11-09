@@ -22,7 +22,7 @@ class BasicNCA2DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
-        self.use_forward_cuda = True
+        self.use_forward_cuda = False
 
         self.device = device
         self.channel_n = channel_n
@@ -88,8 +88,9 @@ class BasicNCA2DFast(nn.Module):
         assert isinstance(self.bn, torch.nn.modules.linear.Identity), f"{self.bn} not supported in CUDA implementation"
         const_inputs = state[:,0:self.input_channels]
         for step in range(steps):
-            rand = torch.zeros(1, 1, state.size(2), state.size(3)).bernoulli_(0.5).bool().cuda()
-            new_state = nca_cuda.nca2d_cuda(rand, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
+            new_state = torch.zeros(state.size(0), state.size(1)-self.input_channels, state.size(2), state.size(3), device=state.device)
+            new_state[:, 0].bernoulli_(0.5)
+            new_state = nca_cuda.nca2d_cuda(new_state, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
             state = torch.cat([const_inputs, new_state], dim=1)
         return state
 
