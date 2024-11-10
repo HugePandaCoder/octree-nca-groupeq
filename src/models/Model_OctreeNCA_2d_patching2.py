@@ -138,7 +138,8 @@ class OctreeNCA2DPatch2(torch.nn.Module):
         #y: BCHW
 
         x = x.permute(0, 2, 3, 1)
-        y = y.permute(0, 2, 3, 1)
+        if y is not None:
+            y = y.permute(0, 2, 3, 1)
 
         #if y is not None:
         #    y = y.to(self.device)

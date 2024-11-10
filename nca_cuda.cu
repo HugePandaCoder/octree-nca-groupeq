@@ -59,8 +59,8 @@ __global__ void nca2d_cuda_kernel(
         //}
 
         if(new_state[unravel_index(0, tx, ty, W, H)] < 0.5) {
-            for(int out = 0; out < out_C; out++) {
-                new_state[unravel_index(out, tx, ty, W, H)] = state[unravel_index(out+(C - out_C), tx, ty, W, H)];
+            for(int out = 0; out < C; out++) {
+                new_state[unravel_index(out, tx, ty, W, H)] = state[unravel_index(out, tx, ty, W, H)];
             }
             return;
         }
@@ -117,13 +117,18 @@ __global__ void nca2d_cuda_kernel(
         //}
         //return;
 
-        for (int out = 0; out < out_C; out++) {
+        for (int out = 0; out < C; out++) {
             int out_index = unravel_index(out, tx, ty, W, H);
             float res = 0.0f;
-            for(int in = 0; in < HIDDEN; in++) {
-                res += hidden[in] * fc1_weight[unravel_index_linear1(in, out)];
+            if(out < C - out_C){
+                new_state[out_index] = state[out_index];
             }
-            new_state[out_index] = res + state[unravel_index(out+(C - out_C), tx, ty, W, H)];
+            else{
+                for(int in = 0; in < HIDDEN; in++) {
+                    res += hidden[in] * fc1_weight[unravel_index_linear1(in, out - (C - out_C))];
+                }
+                new_state[out_index] = res + state[unravel_index(out, tx, ty, W, H)];
+            }
         }
         //new_state[unravel_index(0, tx, ty, W, H)] = hidden[0];
         //new_state[unravel_index(1, tx, ty, W, H)] = hidden[1];
@@ -177,7 +182,7 @@ torch::Tensor nca2d_cuda(
     int out_C = fc1_weight.size(0);
 
     TORCH_CHECK(new_state.size(0) == B, "new_state batch size mismatch");
-    TORCH_CHECK(new_state.size(1) == out_C, "new_state size mismatch");
+    TORCH_CHECK(new_state.size(1) == C, "new_state size mismatch");
     TORCH_CHECK(new_state.size(2) == H, "new_state height size mismatch");
     TORCH_CHECK(new_state.size(3) == W, "new_state width size mismatch");
 

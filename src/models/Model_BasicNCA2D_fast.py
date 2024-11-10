@@ -82,16 +82,18 @@ class BasicNCA2DFast(nn.Module):
 
         return state[:, self.input_channels:] + delta_state
 
-    def forward_cuda(self, state, steps=10, fire_rate=0.5):
+    def forward_cuda(self, state: torch.Tensor, steps=10, fire_rate=0.5):
         print("CUDA quick!")
         assert fire_rate == 0.5, "fire_rate must be 0.5 for CUDA implementation"
         assert isinstance(self.bn, torch.nn.modules.linear.Identity), f"{self.bn} not supported in CUDA implementation"
-        const_inputs = state[:,0:self.input_channels]
+        
+        state = state.contiguous()
+
         for step in range(steps):
-            new_state = torch.zeros(state.size(0), state.size(1)-self.input_channels, state.size(2), state.size(3), device=state.device)
+            new_state = torch.zeros(state.size(0), state.size(1), state.size(2), state.size(3), device=state.device)
             new_state[:, 0].bernoulli_(0.5)
-            new_state = nca_cuda.nca2d_cuda(new_state, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
-            state = torch.cat([const_inputs, new_state], dim=1)
+            nca_cuda.nca2d_cuda(new_state, state, self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
+            state = new_state
         return state
 
     def forward(self, x, steps=10, fire_rate=0.5):

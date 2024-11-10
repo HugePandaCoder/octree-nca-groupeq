@@ -22,7 +22,7 @@ class BasicNCA3DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
-        self.use_forward_cuda = False
+        self.use_forward_cuda = True
 
         self.device = device
         self.channel_n = channel_n
@@ -86,11 +86,14 @@ class BasicNCA3DFast(nn.Module):
         print("3d CUDA quick!")
         assert fire_rate == 0.5, "fire_rate must be 0.5 for CUDA implementation"
         assert isinstance(self.bn, torch.nn.modules.linear.Identity), f"{self.bn} not supported in CUDA implementation"
-        const_inputs = state[:,0:self.input_channels]
+        
+        state = state.contiguous()
+        
         for step in range(steps):
-            rand = torch.zeros(1, 1, state.size(2), state.size(3), state.size(4)).bernoulli_(0.5).bool().cuda()
-            new_state = nca_cuda3d.nca3d_cuda(rand, state.contiguous(), self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
-            state = torch.cat([const_inputs, new_state], dim=1)
+            new_state = torch.zeros(state.size(0), state.size(1), state.size(2), state.size(3), state.size(4), device=state.device)
+            new_state[:, 0].bernoulli_(0.5)
+            nca_cuda3d.nca3d_cuda(new_state, state, self.conv.weight, self.conv.bias, self.fc0.weight, self.fc0.bias, self.fc1.weight)
+            state = new_state
         return state
     
 

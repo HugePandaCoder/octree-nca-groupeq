@@ -24,14 +24,13 @@ __device__ inline int unravel_index_linear1(int in, int out) {
 }
 
 __global__ void nca3d_cuda_kernel(
-    const bool* random,
+    float * new_state,
     const float* state, 
     const float* conv_weight, 
     const float* conv_bias, 
     const float* fc0_weight, 
     const float* fc0_bias, 
-    const float* fc1_weight, 
-    float* new_state,
+    const float* fc1_weight,
     int W, 
     int H,
     int D,
@@ -48,9 +47,9 @@ __global__ void nca3d_cuda_kernel(
 
     if (tx < W && ty < H && tz < D) {
 
-        if(!random[unravel_index(0, tx, ty, tz, W, H, D)]) {
-            for(int out = 0; out < out_C; out++) {
-                new_state[unravel_index(out, tx, ty, tz, W, H, D)] = state[unravel_index(out+(C - out_C), tx, ty, tz, W, H, D)];
+        if(new_state[unravel_index(0, tx, ty, tz, W, H, D)] < 0.5) {
+            for(int out = 0; out < C; out++) {
+                new_state[unravel_index(out, tx, ty, tz, W, H, D)] = state[unravel_index(out, tx, ty, tz, W, H, D)];
             }
             return;
         }
@@ -114,13 +113,18 @@ __global__ void nca3d_cuda_kernel(
         //}
         //return;
 
-        for (int out = 0; out < out_C; out++) {
+        for (int out = 0; out < C; out++) {
             int out_index = unravel_index(out, tx, ty, tz, W, H, D);
             float res = 0.0f;
-            for(int in = 0; in < HIDDEN; in++) {
-                res += hidden[in] * fc1_weight[unravel_index_linear1(in, out)];
+            if(out < C - out_C){
+                new_state[out_index] = state[out_index];
             }
-            new_state[out_index] = res + state[unravel_index(out+(C - out_C), tx, ty, tz, W, H, D)];
+            else{
+                for(int in = 0; in < HIDDEN; in++) {
+                    res += hidden[in] * fc1_weight[unravel_index_linear1(in, out - (C - out_C))];
+                }
+                new_state[out_index] = res + state[unravel_index(out, tx, ty, tz, W, H, D)];
+            }
         }
         //new_state[unravel_index(0, tx, ty, W, H)] = hidden[0];
         //new_state[unravel_index(1, tx, ty, W, H)] = hidden[1];
@@ -131,7 +135,7 @@ __global__ void nca3d_cuda_kernel(
 
 
 torch::Tensor nca3d_cuda(
-    const torch::Tensor& random,
+    torch::Tensor& new_state,
     const torch::Tensor& state, 
     const torch::Tensor& conv_weight,
     const torch::Tensor& conv_bias,
@@ -139,7 +143,7 @@ torch::Tensor nca3d_cuda(
     const torch::Tensor& fc0_bias,
     const torch::Tensor& fc1_weight
     ) {
-    TORCH_CHECK(random.is_cuda(), "random must be a CUDA tensor");
+    TORCH_CHECK(new_state.is_cuda(), "random must be a CUDA tensor");
     TORCH_CHECK(state.is_cuda(), "state must be a CUDA tensor");
     TORCH_CHECK(conv_weight.is_cuda(), "conv_weight must be a CUDA tensor");
     TORCH_CHECK(conv_bias.is_cuda(), "conv_bias must be a CUDA tensor");
@@ -148,7 +152,7 @@ torch::Tensor nca3d_cuda(
     TORCH_CHECK(fc1_weight.is_cuda(), "fc1_weight must be a CUDA tensor");
 
 
-    TORCH_CHECK(random.dim() == 5, "random must be B1HWD");
+    TORCH_CHECK(new_state.dim() == 5, "random must be B1HWD");
     TORCH_CHECK(state.dim() == 5, "state must be BCHWD");
     TORCH_CHECK(conv_weight.dim() == 5, "conv must be 2D");
     TORCH_CHECK(conv_bias.dim() == 1,"conv must be 1D");
@@ -158,7 +162,7 @@ torch::Tensor nca3d_cuda(
 
 
     
-    TORCH_CHECK(random.is_contiguous(), "random must be contiguous");
+    TORCH_CHECK(new_state.is_contiguous(), "random must be contiguous");
     TORCH_CHECK(state.is_contiguous(), "state must be contiguous");
     TORCH_CHECK(conv_weight.is_contiguous(), "conv_weight must be contiguous");
     TORCH_CHECK(conv_bias.is_contiguous(), "conv_bias must be contiguous");
@@ -174,11 +178,11 @@ torch::Tensor nca3d_cuda(
 
     int out_C = fc1_weight.size(0);
 
-    TORCH_CHECK(random.size(0) == B, "Random batch size mismatch");
-    TORCH_CHECK(random.size(1) == 1, "Random size mismatch");
-    TORCH_CHECK(random.size(2) == H, "Random height size mismatch");
-    TORCH_CHECK(random.size(3) == W, "Random width size mismatch");
-    TORCH_CHECK(random.size(4) == D, "Random depth size mismatch");
+    TORCH_CHECK(new_state.size(0) == B, "Random batch size mismatch");
+    TORCH_CHECK(new_state.size(1) == C, "Random size mismatch");
+    TORCH_CHECK(new_state.size(2) == H, "Random height size mismatch");
+    TORCH_CHECK(new_state.size(3) == W, "Random width size mismatch");
+    TORCH_CHECK(new_state.size(4) == D, "Random depth size mismatch");
 
     TORCH_CHECK(state.size(1) == C, "State channel size mismatch");
 
@@ -205,7 +209,7 @@ torch::Tensor nca3d_cuda(
     TORCH_CHECK(fc1_weight.size(3) == 1, "FC1 weight size mismatch");
     TORCH_CHECK(fc1_weight.size(4) == 1, "FC1 weight size mismatch");
 
-    auto new_state = torch::zeros({1, out_C, H, W, D}, state.options());
+    //auto new_state = torch::zeros({1, out_C, H, W, D}, state.options());
 
     dim3 threads(8, 8, 8);
     dim3 blocks((W + threads.x - 1) / threads.x,
@@ -213,14 +217,13 @@ torch::Tensor nca3d_cuda(
                 (D + threads.z - 1) / threads.z);
 
     nca3d_cuda_kernel<<<blocks, threads>>>(
-        random.data_ptr<bool>(),
+        new_state.data_ptr<float>(),
         state.data_ptr<float>(),
         conv_weight.data_ptr<float>(),
         conv_bias.data_ptr<float>(),
         fc0_weight.data_ptr<float>(),
         fc0_bias.data_ptr<float>(),
         fc1_weight.data_ptr<float>(),
-        new_state.data_ptr<float>(),
         W, 
         H,
         D,
