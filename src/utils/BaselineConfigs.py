@@ -360,7 +360,7 @@ class EXP_min_UNet2D(ExperimentWrapper):
         #model_params.pop("eval.patch_wise")
         model = smp.create_model(in_channels=config['model.input_channels'], classes=config['model.output_channels'],**model_params)
         model = UNetWrapper2D(model)
-
+        
         if config['performance.compile']:
             model.compile()
         agent = MedNCAAgent(model)

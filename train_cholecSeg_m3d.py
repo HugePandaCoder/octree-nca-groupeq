@@ -9,7 +9,7 @@ import configs
 print("Study Path:", ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'cholec',
+    'experiment.name': r'cholec_fast_dummy',
     'experiment.description': "M3dSegmentation",
 
     'model.output_channels': 5,
@@ -23,6 +23,7 @@ study_config = study_config | configs.default.default_config
 study_config['performance.compile'] = False
 study_config['experiment.logging.also_eval_on_train'] = False
 
+study_config['trainer.n_epochs'] = 1
 
 study = Study(study_config)
 
@@ -32,5 +33,7 @@ exp = EXP_OctreeNCA3D().createExperiment(study_config, detail_config={},
 study.add_experiment(exp)
 
 study.run_experiments()
+
+exit()
 study.eval_experiments()
 #figure = octree_vis.visualize(study.experiments[0])

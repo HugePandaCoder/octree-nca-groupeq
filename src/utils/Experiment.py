@@ -144,6 +144,7 @@ class Experiment():
 
         config_keys = list(self.config.keys())
 
+        config_keys.remove('experiment.run_hash')
 
         for k, v in loaded_config.items():
             if k == "experiment.run_hash":
@@ -167,7 +168,6 @@ class Experiment():
             in_key = input("Do you want to continue with the loaded configuration? [y, N] ")
             if in_key.lower() != 'y':
                 raise Exception(f"Loaded configuration is missing keys: {config_keys}. Check if you are loading the correct experiment.")
-
 
         self.config = loaded_config
 

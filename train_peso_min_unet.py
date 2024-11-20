@@ -23,7 +23,7 @@ import torchio as tio
 
 import configs
 
-#pc.STUDY_PATH = r"clmn1/octree_study_dev/"
+pc.STUDY_PATH = r"clmn1/octree_study_dev/"
 
 print(pc.STUDY_PATH)
 

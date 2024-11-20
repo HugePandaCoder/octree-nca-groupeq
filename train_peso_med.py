@@ -20,7 +20,7 @@ import torchio as tio
 print(pc.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'peso_med',
+    'experiment.name': r'peso_med_fast_dummy',
     'experiment.description': "OctreeNCA2DSegmentation",
 
     'model.output_channels': 1,
@@ -39,6 +39,7 @@ study_config['experiment.task.score'] = ["src.scores.PatchwiseDiceScore.Patchwis
 
 #study_config['experiment.logging.evaluate_interval'] = 1
 
+study_config['trainer.n_epochs'] = 1
 
 
 study = Study(study_config)
@@ -53,8 +54,8 @@ exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_c
 study.add_experiment(exp)
 
 study.run_experiments()
+exit()
 
-
-study.eval_experiments(export_prediction=True)
+study.eval_experiments(export_prediction=False)
 #figure = octree_vis.visualize(study.experiments[0])
 

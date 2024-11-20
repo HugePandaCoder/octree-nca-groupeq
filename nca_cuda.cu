@@ -7,22 +7,24 @@
 #define KERNEL_SIZE 3
 #define FIRE_RATE 1.0f
 
-__device__ inline int unravel_index(int channel, int x, int y, int W, int H) {
+typedef long index_type; //uint32_t won't work. No idea why!!!
+
+__device__ inline index_type unravel_index(index_type channel, index_type x, index_type y, index_type W, index_type H) {
     //to access an element at (tx, ty) in channel c, use state[c * W * H + ty * W + tx]
     return channel * W * H + y * W + x;
 }
 
-__device__ inline int unravel_index_kernel(int i_x, int i_y, int channel) {
+__device__ inline index_type unravel_index_kernel(index_type i_x, index_type i_y, index_type channel) {
     //to access an element at (i_x, i_y) in channel c, use state[channel * KERNEL_SIZE * 1 * KERNEL_SIZE + i_y * KERNEL_SIZE + i_x]
     return channel * KERNEL_SIZE * KERNEL_SIZE + i_y * KERNEL_SIZE + i_x;
 }
 
-__device__ inline int unravel_index_linear0(int in, int out) {
+__device__ inline index_type unravel_index_linear0(index_type in, index_type out) {
     //to access an element at (i_x, i_y) in channel c, use state[2*C * out + in + 0 + 0]
     return 2*C * out + in;
 }
 
-__device__ inline int unravel_index_linear1(int in, int out) {
+__device__ inline index_type unravel_index_linear1(index_type in, index_type out) {
     //to access an element at (i_x, i_y) in channel c, use state[HIDDEN * out + in + 0 + 0]
     return HIDDEN * out + in;
 }
@@ -40,9 +42,9 @@ __global__ void nca2d_cuda_kernel(
     int out_C) {
     
     
-    int tx = threadIdx.x + blockIdx.x * blockDim.x;
-    int ty = threadIdx.y + blockIdx.y * blockDim.y;
-    long id = blockIdx.x * blockDim.x + threadIdx.x + blockIdx.y * blockDim.y + threadIdx.y;
+    index_type tx = threadIdx.x + blockIdx.x * blockDim.x;
+    index_type ty = threadIdx.y + blockIdx.y * blockDim.y;
+    //long id = blockIdx.x * blockDim.x + threadIdx.x + blockIdx.y * blockDim.y + threadIdx.y;
 
     float out_conv[C];
     float hidden[HIDDEN];
@@ -74,8 +76,8 @@ __global__ void nca2d_cuda_kernel(
                     //int input_y = std::clamp(ty + i_y-1, 0, H-1);
 
                     // reflect padding
-                    int input_x = tx + i_x-1;
-                    int input_y = ty + i_y-1;
+                    index_type input_x = tx + i_x-1;
+                    index_type input_y = ty + i_y-1;
                     if(input_x < 0) {
                         input_x = 1;
                     }
@@ -90,8 +92,8 @@ __global__ void nca2d_cuda_kernel(
                     }
 
 
-                    int input_index = unravel_index(current_channel, input_x, input_y, W, H);
-                    int kernel_index = unravel_index_kernel(i_x, i_y, current_channel);
+                    index_type input_index = unravel_index(current_channel, input_x, input_y, W, H);
+                    index_type kernel_index = unravel_index_kernel(i_x, i_y, current_channel);
                     out_conv[current_channel] += state[input_index] * conv_weight[kernel_index];
                 }
             }
@@ -101,7 +103,7 @@ __global__ void nca2d_cuda_kernel(
         for (int out = 0; out < HIDDEN; out++) {
             hidden[out] = 0.0f;
             for(int in = 0; in < C; in++) {
-                int input_index = unravel_index(in, tx, ty, W, H);
+                index_type input_index = unravel_index(in, tx, ty, W, H);
                 hidden[out] += state[input_index] * fc0_weight[unravel_index_linear0(in, out)];
             }
             for(int in = 0; in < C; in++) {
@@ -118,7 +120,7 @@ __global__ void nca2d_cuda_kernel(
         //return;
 
         for (int out = 0; out < C; out++) {
-            int out_index = unravel_index(out, tx, ty, W, H);
+            index_type out_index = unravel_index(out, tx, ty, W, H);
             float res = 0.0f;
             if(out < C - out_C){
                 new_state[out_index] = state[out_index];
@@ -173,6 +175,11 @@ torch::Tensor nca2d_cuda(
     TORCH_CHECK(fc0_weight.is_contiguous(), "fc0_weight must be contiguous");
     TORCH_CHECK(fc0_bias.is_contiguous(), "fc0_bias must be contiguous");
     TORCH_CHECK(fc1_weight.is_contiguous(), "fc1_weight must be contiguous");
+
+
+    TORCH_CHECK(new_state.numel() == state.numel(), "new_state too large");
+    TORCH_CHECK(state.numel() < std::numeric_limits<index_type>::max(), "state too large");
+
 
     int B = state.size(0);
     //int C = state.size(1);

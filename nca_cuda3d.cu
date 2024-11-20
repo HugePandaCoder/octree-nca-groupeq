@@ -7,19 +7,21 @@
 #define KERNEL_SIZE 3
 #define FIRE_RATE 1.0f
 
-__device__ inline int unravel_index(int channel, int x, int y, int z, int W, int H, int D) {
+typedef uint32_t index_type;
+
+__device__ inline index_type unravel_index(index_type channel, index_type x, index_type y, index_type z, index_type W, index_type H, index_type D) {
     return channel * W * H * D + y * W * D + x * D + z;
 }
 
-__device__ inline int unravel_index_kernel(int i_x, int i_y, int i_z, int channel) {
+__device__ inline index_type unravel_index_kernel(index_type i_x, index_type i_y, index_type i_z, index_type channel) {
     return channel * KERNEL_SIZE * KERNEL_SIZE * KERNEL_SIZE + i_y * KERNEL_SIZE * KERNEL_SIZE + i_x * KERNEL_SIZE + i_z;
 }
 
-__device__ inline int unravel_index_linear0(int in, int out) {
+__device__ inline index_type unravel_index_linear0(index_type in, index_type out) {
     return 2*C * out + in;
 }
 
-__device__ inline int unravel_index_linear1(int in, int out) {
+__device__ inline index_type unravel_index_linear1(index_type in, index_type out) {
     return HIDDEN * out + in;
 }
 
@@ -37,9 +39,9 @@ __global__ void nca3d_cuda_kernel(
     int out_C) {
     
     
-    int tx = threadIdx.x + blockIdx.x * blockDim.x;
-    int ty = threadIdx.y + blockIdx.y * blockDim.y;
-    int tz = threadIdx.z + blockIdx.z * blockDim.z;
+    index_type tx = threadIdx.x + blockIdx.x * blockDim.x;
+    index_type ty = threadIdx.y + blockIdx.y * blockDim.y;
+    index_type tz = threadIdx.z + blockIdx.z * blockDim.z;
 
     float out_conv[C];
     float hidden[HIDDEN];
@@ -61,9 +63,9 @@ __global__ void nca3d_cuda_kernel(
                     for(int i_z = 0; i_z < KERNEL_SIZE; i_z++){
 
                         // reflect padding
-                        int input_x = tx + i_x-1;
-                        int input_y = ty + i_y-1;
-                        int input_z = tz + i_z-1;
+                        index_type input_x = tx + i_x-1;
+                        index_type input_y = ty + i_y-1;
+                        index_type input_z = tz + i_z-1;
                         if(input_x < 0) {
                             input_x = 1;
                         }
@@ -85,8 +87,8 @@ __global__ void nca3d_cuda_kernel(
 
 
 
-                        int input_index = unravel_index(current_channel, input_x, input_y, input_z, W, H, D);
-                        int kernel_index = unravel_index_kernel(i_x, i_y, i_z, current_channel);
+                        index_type input_index = unravel_index(current_channel, input_x, input_y, input_z, W, H, D);
+                        index_type kernel_index = unravel_index_kernel(i_x, i_y, i_z, current_channel);
                         out_conv[current_channel] += state[input_index] * conv_weight[kernel_index];
                     }
                 }
@@ -97,7 +99,7 @@ __global__ void nca3d_cuda_kernel(
         for (int out = 0; out < HIDDEN; out++) {
             hidden[out] = 0.0f;
             for(int in = 0; in < C; in++) {
-                int input_index = unravel_index(in, tx, ty, tz, W, H, D);
+                index_type input_index = unravel_index(in, tx, ty, tz, W, H, D);
                 hidden[out] += state[input_index] * fc0_weight[unravel_index_linear0(in, out)];
             }
             for(int in = 0; in < C; in++) {
@@ -114,7 +116,7 @@ __global__ void nca3d_cuda_kernel(
         //return;
 
         for (int out = 0; out < C; out++) {
-            int out_index = unravel_index(out, tx, ty, tz, W, H, D);
+            index_type out_index = unravel_index(out, tx, ty, tz, W, H, D);
             float res = 0.0f;
             if(out < C - out_C){
                 new_state[out_index] = state[out_index];
@@ -177,6 +179,10 @@ torch::Tensor nca3d_cuda(
     int D = state.size(4);
 
     int out_C = fc1_weight.size(0);
+
+    TORCH_CHECK(new_state.numel() == state.numel(), "new_state too large");
+    TORCH_CHECK(state.numel() < std::numeric_limits<index_type>::max(), "state too large");
+
 
     TORCH_CHECK(new_state.size(0) == B, "Random batch size mismatch");
     TORCH_CHECK(new_state.size(1) == C, "Random size mismatch");

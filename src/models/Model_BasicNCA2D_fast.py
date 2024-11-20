@@ -119,3 +119,5 @@ class BasicNCA2DFast(nn.Module):
             state = torch.cat([const_inputs, new_state], dim=1)
 
         return einops.rearrange(state, "b c h w -> b h w c")
+    
+

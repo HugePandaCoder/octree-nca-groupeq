@@ -22,7 +22,7 @@ class BasicNCA3DFast(nn.Module):
                 groups: if channels in input should be interconnected
         """
         super().__init__()
-        self.use_forward_cuda = True
+        self.use_forward_cuda = False
 
         self.device = device
         self.channel_n = channel_n
