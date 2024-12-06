@@ -36,15 +36,15 @@ def downscale(x: torch.Tensor, out_size):
     x.names = ('B', 'C', 'H', 'W', 'D')
     return out
 
-video_path = "/local/scratch/Cholec80/cholec80_full_set/videos/video01.mp4"
+video_path = "/local/scratch/Cholec80/cholec80_full_set/videos/video12.mp4"
 video_reader = imageio.get_reader(video_path)
 n_frames = video_reader.get_meta_data()['duration'] * video_reader.get_meta_data()['fps']
 
-start = 120
-#num_frames = 119*16
-num_frames = 18*16
+start = 10000
+num_frames = 119*16
+#num_frames = 18*16
 RECORD_MEMORY = False
-CUDA = False
+CUDA = True
 EXPORT_VIDEO = True
 EXPORT_AS_ARRAY = False
 print(num_frames)
