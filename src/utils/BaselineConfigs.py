@@ -6,7 +6,6 @@ from src.agents.Agent_MedSeg3D_slicewise import Agent_MedSeg3D_slicewise
 from src.losses.WeightedLosses import WeightedLosses
 from src.models.SamWrapper2D import SamWrapper2D
 from src.models.SamWrapper3D import SamWrapper3D
-from src.models.SegFormerWrapper2D import SegFormerWrapper2D
 from src.models.UNetWrapper2D import UNetWrapper2D
 from src.models.UNetWrapper3D import UNetWrapper3D
 from src.models.Model_OctreeNCA_3d_patching import OctreeNCA3DPatch
@@ -292,6 +291,7 @@ class EXP_UNet2D(ExperimentWrapper):
     
 class EXP_SegFormer2D(ExperimentWrapper):
     def createExperiment(self, study_config : dict, detail_config : dict = {}, dataset_class = None, dataset_args = {}):
+        from src.models.SegFormerWrapper2D import SegFormerWrapper2D
         from transformers import SegformerConfig, SegformerForSemanticSegmentation
         config = study_config
         

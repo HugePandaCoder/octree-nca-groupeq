@@ -12,7 +12,7 @@ prostate_m3d_nca_model_config = {
 
         'model.octree.res_and_steps': [[[320,320,24], 20], [[80,80,6], 40]],
         'model.octree.separate_models': True,
-        'model.backbone_class': "BasicNCA2DFast",
+        'model.backbone_class': "BasicNCA3DFast",
 
         'model.vitca': False,
         'model.vitca.depth': 1,

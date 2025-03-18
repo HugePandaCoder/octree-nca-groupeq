@@ -15,10 +15,11 @@ import torchio as tio
 
 import configs
 
+#ProjectConfiguration.STUDY_PATH = r"clmn1/octree_study_dev/"
 print(ProjectConfiguration.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'prostate_m3d_fast',
+    'experiment.name': r'prostate_m3d_5lvl',
     'experiment.description': "M3dSegmentation",
 
     'model.output_channels': 1,
@@ -36,6 +37,20 @@ study_config['trainer.batch_size'] = 3
 study_config['trainer.batch_duplication'] = 2
 
 study_config['model.backbone_class'] = "BasicNCA3DFast"
+
+
+
+#study_config["model.octree.res_and_steps"] = [[[320,320,24], 20], [[160,160,12], 20], [[80,80,6], 40]]
+#study_config["model.kernel_size"] = [3, 3, 7]
+#study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None]
+
+#study_config["model.octree.res_and_steps"] = [[[320,320,24], 20], [[160,160,12], 20], [[80,80,6], 20], [[40,40,3], 20]]
+#study_config["model.kernel_size"] = [3, 3, 3, 5]
+#study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None, None]
+
+study_config["model.octree.res_and_steps"] = [[[320,320,24], 20], [[160,160,12], 20], [[80,80,6], 20], [[40,40,3], 20], [[20,20,3], 10]]
+study_config["model.kernel_size"] = [3, 3, 3, 3, 5]
+study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None, None]
 
 study = Study(study_config)
 

@@ -20,8 +20,10 @@ import numpy as np
 from PIL import Image as PILImage
 import git
 from matplotlib import figure
-from torchmetrics.image.fid import FrechetInceptionDistance
-from torchmetrics.image.kid import KernelInceptionDistance
+#from torchmetrics.image.fid import FrechetInceptionDistance
+#from torchmetrics.image.kid import KernelInceptionDistance
+FrechetInceptionDistance = None
+KernelInceptionDistance = None
 from tqdm import tqdm
 from src.utils.DataAugmentations import get_transform_arr
 from batchgenerators.transforms.utility_transforms import NumpyToTensor

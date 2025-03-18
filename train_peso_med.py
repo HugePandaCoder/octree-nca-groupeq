@@ -20,7 +20,7 @@ import torchio as tio
 print(pc.STUDY_PATH)
 
 study_config = {
-    'experiment.name': r'peso_med_fast_dummy',
+    'experiment.name': r'peso_med_fast_real',
     'experiment.description': "OctreeNCA2DSegmentation",
 
     'model.output_channels': 1,
@@ -39,7 +39,7 @@ study_config['experiment.task.score'] = ["src.scores.PatchwiseDiceScore.Patchwis
 
 #study_config['experiment.logging.evaluate_interval'] = 1
 
-study_config['trainer.n_epochs'] = 1
+#study_config['trainer.n_epochs'] = 1
 
 
 study = Study(study_config)

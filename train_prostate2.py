@@ -59,7 +59,24 @@ study_config['model.normalization'] = "none"    #"none"
 
 steps = 10                                      # 10
 alpha = 1.0                                     # 1.0
-study_config['model.octree.res_and_steps'] = [[[320,320,24], steps], [[160,160,12], steps], [[80,80,6], steps], [[40,40,6], steps], [[20,20,6], int(alpha * 20)]]
+num_levels = 2                                  # 5
+if num_levels == 5:
+    study_config['model.octree.res_and_steps'] = [[[320,320,24], steps], [[160,160,12], steps], [[80,80,6], steps], [[40,40,6], steps], [[20,20,6], int(alpha * 20)]]
+    study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None, None, None]
+elif num_levels == 4:
+    study_config['model.octree.res_and_steps'] = [[[320,320,24], steps], [[160,160,12], steps], [[80,80,6], steps], [[40,40,6], int(alpha * 40)]]
+    study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None, None]
+elif num_levels == 3:
+    study_config['model.octree.res_and_steps'] = [[[320,320,24], steps], [[160,160,12], steps], [[80,80,6], int(alpha * 80)]]
+    study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6], None]
+elif num_levels == 2:
+    study_config['model.octree.res_and_steps'] = [[[320,320,24], steps], [[160,160,12], int(alpha * 160)]]
+    study_config["model.train.patch_sizes"] = [[80, 80, 6], [80, 80, 6]]
+else:
+    raise ValueError(f"Invalid number of levels {num_levels}")
+
+study_config["model.kernel_size"] = [3] * num_levels
+
 
 
 study_config['model.channel_n'] = 16            # 16
@@ -80,7 +97,7 @@ study_config['trainer.losses.parameters'] = [{}, {}]
 study_config['trainer.loss_weights'] = [dice_loss_weight, 2.0-dice_loss_weight]
 #study_config['trainer.loss_weights'] = [1.5, 0.5]
 
-study_config['experiment.name'] = f"prostatefAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}"
+study_config['experiment.name'] = f"prostatefAbl_{study_config['model.normalization']}_{steps}_{alpha}_{study_config['model.channel_n']}_{study_config['trainer.batch_size']}_{dice_loss_weight}_{ema_decay}_{num_levels}lvl"
 
 
 
