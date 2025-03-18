@@ -266,7 +266,7 @@ class OctreeNCA3DPatch2(OctreeNCA3D):
         
         self.remove_names(x)
         pred = x[..., self.input_channels:self.input_channels+self.output_channels]
-        hidden = x[..., :self.input_channels+self.output_channels]
+        hidden = x[..., self.input_channels+self.output_channels:]
 
         return {'logits': pred, 'target': y, 'hidden': hidden, "intermediate_outputs": intermediate_outputs,
                 "intermediate_patches": intermediate_patches}
