@@ -146,8 +146,6 @@ class Experiment():
 
         config_keys = list(self.config.keys())
 
-        config_keys.remove('experiment.run_hash')
-
         for k, v in loaded_config.items():
             if k == "experiment.run_hash":
                 pass
