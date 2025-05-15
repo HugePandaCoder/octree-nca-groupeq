@@ -11,6 +11,8 @@ os.makedirs(os.path.join(OUT_PATH, "imagesTr"), exist_ok=True)
 os.makedirs(os.path.join(OUT_PATH, "labelsTr"), exist_ok=True)
 
 
+
+
 cases_tr = []
 for f in os.listdir(os.path.join(INPUT_PATH, "imagesTr")):
     name = f[:-len(".nii.gz")]
