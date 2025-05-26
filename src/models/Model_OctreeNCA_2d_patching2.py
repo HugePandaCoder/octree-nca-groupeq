@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from src.models.Model_BasicNCA2D import BasicNCA2D
+from src.models.Model_BasicNCA2D_GroupEq import BasicNCA2D_GroupEq
 from src.models.Model_BasicNCA2D_fast import BasicNCA2DFast
 from src.models.Model_ViTCA import ViTCA
 import torchio as tio
@@ -77,7 +78,7 @@ class OctreeNCA2DPatch2(torch.nn.Module):
             assert isinstance(kernel_size, int), "kernel_size must be an integer"
 
         backbone_class = eval(config.get("model.backbone_class", "BasicNCA2D"))
-        assert backbone_class in [BasicNCA2D, BasicNCA2DFast], f"backbone_class must be either BasicNCA2D, got {backbone_class}"
+        assert backbone_class in [BasicNCA2D, BasicNCA2DFast, BasicNCA2D_GroupEq], f"backbone_class must be either BasicNCA2D, got {backbone_class}"
 
         if separate_models:
             if config["model.vitca"]:
