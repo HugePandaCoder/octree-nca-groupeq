@@ -19,12 +19,21 @@ import torchio as tio
 
 print(pc.STUDY_PATH)
 
-study_config = {
-    'experiment.name': r'peso_med_fast_real',
-    'experiment.description': "OctreeNCA2DSegmentation",
+# study_config = {
+    
+#     'experiment.name': r'peso_med_fast_real',
+#     'experiment.description': "OctreeNCA2DSegmentation",
 
+
+#     'model.output_channels': 1,
+# }
+
+study_config = {
+    'experiment.name': r'peso_med_groupeq',
+    'experiment.description': "OctreeNCA2DSegmentationWithGroupEq",
     'model.output_channels': 1,
 }
+
 study_config = study_config | configs.models.peso_med.peso_model_config
 study_config = study_config | configs.trainers.nca.nca_trainer_config
 study_config = study_config | configs.datasets.peso.peso_dataset_config
@@ -36,7 +45,7 @@ study_config['experiment.logging.evaluate_interval'] = study_config['trainer.n_e
 study_config['experiment.task.score'] = ["src.scores.PatchwiseDiceScore.PatchwiseDiceScore",
                                          "src.scores.PatchwiseIoUScore.PatchwiseIoUScore"]
 
-
+study_config['model.backbone_class'] = "BasicNCA2D_GroupEq"
 #study_config['experiment.logging.evaluate_interval'] = 1
 
 #study_config['trainer.n_epochs'] = 1
@@ -54,7 +63,6 @@ exp = EXP_OctreeNCA().createExperiment(study_config, detail_config={}, dataset_c
 study.add_experiment(exp)
 
 study.run_experiments()
-exit()
 
 study.eval_experiments(export_prediction=False)
 #figure = octree_vis.visualize(study.experiments[0])
