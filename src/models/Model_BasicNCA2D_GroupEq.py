@@ -17,15 +17,15 @@ class BasicNCA2D_GroupEq(nn.Module):
 
     
 
-        # Because group equivariant convolutions expand channels by 8
-        base_hidden_size = hidden_size // 8
+        # Because group equivariant convolutions expand channels by 4
+        base_hidden_size = hidden_size // 4
 
-        # Lift Z2 input to P4M space
+        # Lift Z2 input to P4 space
 
     
         self.perceive = P4ConvZ2(in_channels=channel_n, out_channels=base_hidden_size, kernel_size=kernel_size, padding=padding)
 
-        # P4M → P4M convolutions
+        # P4 → P4 convolutions
         self.update_conv = P4ConvP4(in_channels=base_hidden_size, out_channels=channel_n, kernel_size=1)
 
         # Normalization
@@ -46,8 +46,8 @@ class BasicNCA2D_GroupEq(nn.Module):
         # x_in: BHWC
         x = x_in.permute(0, 3, 1, 2)  # BCHW
 
-        # Lift to P4M (B x C x H x W) → (B x 8C x H x W)
-        y = self.perceive(x)  # B x (8*out) x H x W
+        # Lift to P4 (B x C x H x W) → (B x 4C x H x W)
+        y = self.perceive(x)  # B x (4*out) x H x W
         y = self.bn(y)
         y = F.relu(y)
         dy = self.update_conv(y)  # B x channel_n x H x W
